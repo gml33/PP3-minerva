@@ -1,0 +1,289 @@
+{% extends 'base.html' %}
+{% block title %}Estadísticas de Links{% endblock %}
+
+{% block content %}
+<h1 class="mb-4 text-center">Estadísticas de Links Relevantes</h1>
+
+<div class="pdf-container mx-auto">
+    <form id="filtros-estadisticas" class="row g-3 mb-4" onsubmit="return false;">
+        <div class="col-md-4">
+            <label class="form-label">Usuario</label>
+            <select name="usuario" class="form-select">
+                <option value="">Todos</option>
+                {% for u in usuarios %}
+                <option value="{{ u.username }}">{{ u.username }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Desde</label>
+            <input type="date" name="desde" class="form-control">
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Hasta</label>
+            <input type="date" name="hasta" class="form-control">
+        </div>
+        <div class="col-12 text-end">
+            <button type="button" class="btn btn-primary" onclick="cargarEstadisticas()">🔍 Aplicar filtros</button>
+            <a id="btnExportarPDF" href="{% url 'exportar_estadisticas_pdf' %}" class="btn btn-outline-danger"
+                target="_blank">📄 Exportar PDF</a>
+        </div>
+    </form>
+
+    <div id="filtros-aplicados" class="alert alert-info mt-3 d-none"></div>
+
+    {% if promedio_dias > 0 %}
+    <div class="alert alert-info text-center">
+        ⏳ <strong>Tiempo promedio de aprobación:</strong> {{ promedio_dias }} días ({{ promedio_horas }} horas)
+    </div>
+    {% else %}
+    <div class="alert alert-secondary text-center">
+        ⏳ <strong>No hay datos suficientes para calcular el tiempo promedio de aprobación de links relevantes.</strong>
+    </div>
+    {% endif %}
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <canvas id="graficoTorta"></canvas>
+        </div>
+        <div class="col-md-6">
+            <canvas id="graficoBarras"></canvas>
+        </div>
+    </div>
+    <div class="row mb-4">
+        <div class="col-md-3"></div>
+        <div class="col-md-6">
+            <canvas id="graficoCategorias"></canvas>
+        </div>
+    </div>
+
+
+    <h4 class="mt-4">Links Relevantes</h4>
+<div class="mx-auto">
+    <table class="table table-dark table-striped table-bordered table-hover table-sm text-white" id="tablaLinks">
+        <thead class="table-dark">
+            <tr>
+                <th style="width: 150px;">Fecha</th>
+                <th>URL</th>
+                <th style="width: 120px;">Estado</th>
+                <th style="width: 120px;">Usuario</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- JS inserta aquí las filas -->
+        </tbody>
+    </table>
+</div>
+</div>
+
+<style>
+    .pdf-container {
+        padding: 30px;
+        background: #1e1e1e;
+        font-size: 12px;
+        line-height: 1.5;
+        color: #fff;
+        max-width: 1000px;
+    }
+</style>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+<script>
+    let graficoTorta = null;
+    let graficoBarras = null;
+    let graficoCategorias = null;
+
+    function mostrarFiltrosAplicados(usuario, desde, hasta) {
+        const filtrosDiv = document.getElementById('filtros-aplicados');
+        let html = "<strong>Filtros aplicados:</strong><br>";
+        let alguno = false;
+        if (usuario) { html += `Usuario: <code>${usuario}</code><br>`; alguno = true; }
+        if (desde) { html += `Desde: <code>${desde}</code><br>`; alguno = true; }
+        if (hasta) { html += `Hasta: <code>${hasta}</code><br>`; alguno = true; }
+        filtrosDiv.innerHTML = html;
+        filtrosDiv.classList.toggle('d-none', !alguno);
+    }
+
+    function actualizarGraficos(data) {
+        const ctxTorta = document.getElementById('graficoTorta').getContext('2d');
+        const estados = Object.keys(data.torta);
+        const cantidades = Object.values(data.torta);
+        const colores = estados.map(estado => {
+            if (estado.toLowerCase().includes('aprobado')) return '#28a745';     // Verde
+            if (estado.toLowerCase().includes('descartado')) return '#dc3545';   // Rojo
+            return '#ffc107'; // Por defecto (amarillo)
+        });
+
+        if (graficoTorta) { graficoTorta.destroy(); }
+        graficoTorta = new Chart(ctxTorta, {
+            type: 'pie',
+            data: {
+                labels: estados,
+                datasets: [{ data: cantidades, backgroundColor: colores }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: true, labels: { color: '#fff' } },
+                    title: { display: true, color: '#fff', text: 'Distribución por Estado' }
+                }
+            }
+        });
+
+        const ctxBarras = document.getElementById('graficoBarras').getContext('2d');
+        if (graficoBarras) { graficoBarras.destroy(); }
+        graficoBarras = new Chart(ctxBarras, {
+            type: 'bar',
+            data: {
+                labels: data.barras_labels,
+                datasets: [{ label: 'Links por Día', data: data.barras_values }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false, labels: { color: '#fff' } },
+                    title: { display: true, color: '#fff', text: 'Links cargados por día' }
+                },
+                scales: {
+                    x: { title: { display: true, color: '#fff', text: 'Fecha' } },
+                    y: { title: { display: true, color: '#fff', text: 'Cantidad' }, beginAtZero: true }
+                }
+            }
+        });
+
+        const ctxCategorias = document.getElementById('graficoCategorias').getContext('2d');
+        if (graficoCategorias) { graficoCategorias.destroy(); }
+        graficoCategorias = new Chart(ctxCategorias, {
+            type: 'bar',
+            data: {
+                labels: data.categorias_labels,
+                datasets: [{ label: 'Links por Categoría', data: data.categorias_values }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false, labels: { color: '#fff' } },
+                    title: { display: true, color: '#fff', text: 'Links por Categoría' }
+                },
+                scales: {
+                    x: { title: { display: true, color: '#fff', text: 'Categoría' } },
+                    y: { title: { display: true, color: '#fff', text: 'Cantidad' }, beginAtZero: true }
+                }
+            }
+        });
+
+        // 🧹 Eliminar canvas de torta anterior si existe
+        const contenedor = document.getElementById("graficoCategorias").parentNode;
+        const anterior = document.getElementById("graficoCategoriasTorta");
+        if (anterior) {
+            contenedor.removeChild(anterior);
+        }
+
+        // 🎨 Crear nuevo canvas
+        const nuevoCanvas = document.createElement("canvas");
+        nuevoCanvas.id = "graficoCategoriasTorta";
+        contenedor.appendChild(nuevoCanvas);
+
+        const ctxCategoriasTorta = nuevoCanvas.getContext("2d");
+
+        const coloresCategorias = data.categorias_labels.map((_, i) => `hsl(${i * 45 % 360}, 70%, 60%)`);
+
+        new Chart(ctxCategoriasTorta, {
+            type: 'pie',
+            data: {
+                labels: data.categorias_labels,
+                datasets: [{
+                    data: data.categorias_values,
+                    backgroundColor: coloresCategorias
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true, color: '#fff',
+                        text: 'Distribución de Links por Categoría'
+                    },
+                    legend: {
+                        position: 'bottom'
+                    },
+                    datalabels: {
+                        color: '#fff',
+                        formatter: (value, context) => {
+                            const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                            const porcentaje = ((value / total) * 100).toFixed(1);
+                            return `${porcentaje}%`;
+                        }
+                    }
+                }
+            },
+            plugins: [ChartDataLabels]
+        });
+    }
+
+    function actualizarTabla(data) {
+        const tbody = document.querySelector('#tablaLinks tbody');
+        tbody.innerHTML = '';
+        if (data.tabla.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4">No hay resultados para los filtros seleccionados.</td></tr>';
+            return;
+        }
+        data.tabla.forEach(link => {
+            const fila = document.createElement('tr');
+            fila.innerHTML = `
+            <td>${link.fecha}</td>
+            <td style="max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                <a href="${link.url}" target="_blank">${link.url}</a>
+            </td>
+            <td>${link.estado}</td>
+            <td>${link.usuario}</td>
+        `;
+            tbody.appendChild(fila);
+        });
+    }
+
+    function cargarEstadisticas() {
+        const usuario = document.querySelector('select[name="usuario"]').value;
+        const desde = document.querySelector('input[name="desde"]').value;
+        const hasta = document.querySelector('input[name="hasta"]').value;
+        mostrarFiltrosAplicados(usuario, desde, hasta);
+
+        let url = `/api/estadisticas/?`;
+        let urlPDF = `{% url 'exportar_estadisticas_pdf' %}?`;
+        if (usuario) {
+            url += `usuario=${encodeURIComponent(usuario)}&`;
+            urlPDF += `usuario=${encodeURIComponent(usuario)}&`;
+        }
+        if (desde) {
+            url += `desde=${encodeURIComponent(desde)}&`;
+            urlPDF += `desde=${encodeURIComponent(desde)}&`;
+        }
+        if (hasta) {
+            url += `hasta=${encodeURIComponent(hasta)}&`;
+            urlPDF += `hasta=${encodeURIComponent(hasta)}&`;
+        }
+
+        document.getElementById('btnExportarPDF').href = urlPDF;
+
+        fetch(url)
+            .then(resp => resp.json())
+            .then(data => {
+                actualizarGraficos(data);
+                actualizarTabla(data);
+            })
+            .catch(err => {
+                alert("¡Oops! No se pudieron cargar las estadísticas. Esto es más raro que un lunes sin café.");
+            });
+    }
+
+    window.addEventListener('DOMContentLoaded', function () {
+        cargarEstadisticas();
+        document.querySelectorAll('#filtros-estadisticas select, #filtros-estadisticas input').forEach(el => {
+            el.addEventListener('change', cargarEstadisticas);
+        });
+    });
+</script>
+
+{% endblock %}

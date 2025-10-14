@@ -1,0 +1,184 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Iniciar Sesión</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.6/dist/darkly/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* Estilo opcional para que el captcha se vea un poco mejor con Bootstrap */
+        .captcha-container img {
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-bottom: 0; /* Aseguramos que no haya margen extra aquí para alineación */
+            vertical-align: middle; /* Para alinear la imagen con el texto del input */
+        }
+        /* Aseguramos que el campo de texto del captcha también tenga el padding y altura correctos */
+        .captcha-container .captcha-text-field,
+        input[type="text"],
+        input[type="password"]
+        {
+            width: 100%;
+            padding: 0.375rem 0.75rem;
+            font-size: 1rem;
+            line-height: 1.5;
+            color: #495057;
+            background-color: #fff;
+            background-clip: padding-box;
+            border: 1px solid #ced4da;
+            border-radius: 0.25rem;
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+            height: calc(1.5em + 0.75rem + 2px);
+            box-sizing: border-box;
+        }
+        .form-control {
+            height: calc(1.5em + 0.75rem + 2px);
+            box-sizing: border-box;
+        }
+
+        /* Alineación vertical del label en formularios horizontales */
+        .form-group-horizontal .col-form-label {
+            padding-top: calc(0.375rem + 1px); /* Ajusta para que coincida con el padding del input */
+            padding-bottom: calc(0.375rem + 1px); /* Ajusta para que coincida con el padding del input */
+            margin-bottom: 0;
+            line-height: 1.5;
+        }
+        /* Ajuste para el contenedor del captcha en modo horizontal */
+        .captcha-horizontal-container {
+            display: flex; /* Usamos flexbox para alinear los elementos del captcha */
+            align-items: center; /* Centra verticalmente la imagen y el input del captcha */
+            gap: 5px; /* Espacio entre la imagen y el input del captcha */
+        }
+        /* Ajuste para el input del captcha dentro del contenedor flex */
+        .captcha-horizontal-container .captcha-text-field {
+            flex-grow: 1; /* Permite que el campo de texto del captcha ocupe el espacio restante */
+        }
+        /* Pequeño ajuste para el ancho de la imagen del captcha si es necesario */
+        .captcha-horizontal-container img {
+            max-width: 120px; /* Ajusta el ancho máximo de la imagen del captcha */
+            height: auto;
+        }
+
+
+        .errorlist {
+            color: #dc3545; /* Rojo de Bootstrap para errores */
+            list-style-type: none; /* Quita los puntos de la lista */
+            padding-left: 0;
+            margin-top: 0.25rem;
+        }
+
+        /* --- ESTILOS MEJORADOS PARA EL FONDO DE LA IMAGEN (USANDO PSEUDO-ELEMENTO) --- */
+        .card {
+            position: relative;
+            z-index: 1;
+            background-color: #343a40;
+        }
+
+        .card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-repeat: no-repeat;
+            background-position: center 70%;
+            background-size: 50%;
+            opacity: 0.05;
+            z-index: -1;
+            pointer-events: none;
+        }
+        /* --- FIN DE ESTILOS MEJORADOS --- */
+    </style>
+</head>
+<body class="bg-dark text-white">
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow bg-secondary">
+                <div class="card-body">
+                    <div class="text-center mb-3">
+    <img src="{% static 'img/default_logo.png' %}" alt="Logo Minerva" style="max-height: 100px;">
+</div>
+
+                    <h3 class="mb-4 text-center">Iniciar Sesión</h3>
+
+                    {# Muestra errores no asociados a un campo específico (como "Usuario o contraseña incorrectos") #}
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {% for error in form.non_field_errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    <form method="post">
+                        {% csrf_token %}
+
+                        {# Renderizado del campo de Usuario #}
+                        <div class="mb-3 row form-group-horizontal"> {# Añadimos 'row' y nuestra clase 'form-group-horizontal' #}
+                            <label for="{{ form.username.id_for_label }}" class="col-sm-4 col-form-label text-sm-end"> {# Columna para el label, alineado a la derecha #}
+                                {{ form.username.label }}
+                            </label>
+                            <div class="col-sm-8"> {# Columna para el input #}
+                                {{ form.username }}
+                            </div>
+                            {% if form.username.errors %}
+                                <div class="col-sm-8 offset-sm-4"> {# Alineamos los errores debajo del campo #}
+                                    <ul class="errorlist">
+                                        {% for error in form.username.errors %}
+                                            <li>{{ error }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        {# Renderizado del campo de Contraseña #}
+                        <div class="mb-3 row form-group-horizontal"> {# Añadimos 'row' y nuestra clase 'form-group-horizontal' #}
+                            <label for="{{ form.password.id_for_label }}" class="col-sm-4 col-form-label text-sm-end"> {# Columna para el label, alineado a la derecha #}
+                                {{ form.password.label }}
+                            </label>
+                            <div class="col-sm-8"> {# Columna para el input #}
+                                {{ form.password }}
+                            </div>
+                            {% if form.password.errors %}
+                                <div class="col-sm-8 offset-sm-4"> {# Alineamos los errores debajo del campo #}
+                                    <ul class="errorlist">
+                                        {% for error in form.password.errors %}
+                                            <li>{{ error }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        {# Renderizado del campo de CAPTCHA #}
+                        <div class="mb-3 row form-group-horizontal"> {# Añadimos 'row' y nuestra clase 'form-group-horizontal' #}
+                            <label for="{{ form.captcha.id_for_label }}" class="col-sm-4 col-form-label text-sm-end"> {# Columna para el label #}
+                                {{ form.captcha.label }}
+                            </label>
+                            <div class="col-sm-8 d-flex align-items-center captcha-horizontal-container"> {# Columna para el input y la imagen #}
+                                {# Aquí el campo form.captcha renderiza la imagen y el input. Usamos flexbox para alinearlos #}
+                                {{ form.captcha }}
+                            </div>
+                            {% if form.captcha.errors %}
+                                <div class="col-sm-8 offset-sm-4"> {# Alineamos los errores debajo del campo #}
+                                    <ul class="errorlist">
+                                        {% for error in form.captcha.errors %}
+                                            <li>{{ error }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <button type="submit" class="btn btn-success w-100">Ingresar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+{% block title %}Configuraciones{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Panel de Configuraciones</h1>
+    <div class="row g-4">
+        <div class="col-md-6">
+            <h3>Diarios</h3>
+            <div class="table-responsive">
+                <table class="table table-striped align-middle">
+                    <thead><tr><th>Nombre</th><th>Acciones</th></tr></thead>
+                    <tbody>
+                        {% if diarios %}
+                            {% for diario in diarios %}
+                            <tr>
+                                <td>{{ diario.nombre }}</td>
+                                <td class="text-end">
+                                    <a href="{% url 'editar_diario' diario.id %}" class="btn btn-sm btn-warning">Editar</a>
+                                    <button class="btn btn-sm btn-danger" onclick="confirmarEliminacion('{{ diario.nombre }}', '{% url 'eliminar_diario' diario.id %}', 'diario')">Eliminar</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr><td colspan="2" class="text-muted">No hay diarios registrados.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+            <a href="{% url 'crear_diario' %}" class="btn btn-primary mt-2">Agregar Diario</a>
+        </div>
+
+        <div class="col-md-6">
+            <h3>Categorías</h3>
+            <div class="table-responsive">
+                <table class="table table-striped align-middle">
+                    <thead><tr><th>Nombre</th><th>Acciones</th></tr></thead>
+                    <tbody>
+                        {% if categorias %}
+                            {% for cat in categorias %}
+                            <tr>
+                                <td>{{ cat.nombre }}</td>
+                                <td class="text-end">
+                                    <a href="{% url 'editar_categoria' cat.id %}" class="btn btn-sm btn-warning">Editar</a>
+                                    <button class="btn btn-sm btn-danger" onclick="confirmarEliminacion('{{ cat.nombre }}', '{% url 'eliminar_categoria' cat.id %}', 'categoría')">Eliminar</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr><td colspan="2" class="text-muted">No hay categorías registradas.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+            <a href="{% url 'crear_categoria' %}" class="btn btn-primary mt-2">Agregar Categoría</a>
+        </div>
+
+        <div class="col-md-4">
+            <h3>Redes Sociales</h3>
+            <div class="table-responsive">
+                <table class="table table-striped align-middle">
+                    <thead><tr><th>Nombre</th><th>Acciones</th></tr></thead>
+                    <tbody>
+                        {% if redes_sociales %}
+                            {% for red in redes_sociales %}
+                            <tr>
+                                <td>{{ red.nombre }}</td>
+                                <td class="text-end">
+                                    <a href="{% url 'editar_red_social' red.id %}" class="btn btn-sm btn-warning">Editar</a>
+                                    <button class="btn btn-sm btn-danger" onclick="confirmarEliminacion('{{ red.nombre }}', '{% url 'eliminar_red_social' red.id %}', 'red social')">Eliminar</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr><td colspan="2" class="text-muted">No hay redes sociales registradas.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+            <a href="{% url 'crear_red_social' %}" class="btn btn-primary mt-2">Agregar Red Social</a>
+        </div>
+
+        <div class="col-md-4">
+            <h3>TV Digital</h3>
+            <div class="table-responsive">
+                <table class="table table-striped align-middle">
+                    <thead><tr><th>Nombre</th><th>Acciones</th></tr></thead>
+                    <tbody>
+                        {% if tv_digital %}
+                            {% for canal in tv_digital %}
+                            <tr>
+                                <td>{{ canal.nombre }}</td>
+                                <td class="text-end">
+                                    <a href="{% url 'editar_tv_digital' canal.id %}" class="btn btn-sm btn-warning">Editar</a>
+                                    <button class="btn btn-sm btn-danger" onclick="confirmarEliminacion('{{ canal.nombre }}', '{% url 'eliminar_tv_digital' canal.id %}', 'canal de TV digital')">Eliminar</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr><td colspan="2" class="text-muted">No hay canales de TV digital registrados.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+            <a href="{% url 'crear_tv_digital' %}" class="btn btn-primary mt-2">Agregar TV Digital</a>
+        </div>
+
+        <div class="col-md-4">
+            <h3>Radio Digital</h3>
+            <div class="table-responsive">
+                <table class="table table-striped align-middle">
+                    <thead><tr><th>Nombre</th><th>Acciones</th></tr></thead>
+                    <tbody>
+                        {% if radios_digitales %}
+                            {% for radio in radios_digitales %}
+                            <tr>
+                                <td>{{ radio.nombre }}</td>
+                                <td class="text-end">
+                                    <a href="{% url 'editar_radio_digital' radio.id %}" class="btn btn-sm btn-warning">Editar</a>
+                                    <button class="btn btn-sm btn-danger" onclick="confirmarEliminacion('{{ radio.nombre }}', '{% url 'eliminar_radio_digital' radio.id %}', 'radio digital')">Eliminar</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr><td colspan="2" class="text-muted">No hay radios digitales registradas.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+            <a href="{% url 'crear_radio_digital' %}" class="btn btn-primary mt-2">Agregar Radio Digital</a>
+        </div>
+    </div>
+</div>
+
+<!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    function confirmarEliminacion(nombre, url, tipo) {
+        Swal.fire({
+            title: `¿Estás seguro de eliminar el ${tipo}?`,
+            html: `<b>${nombre}</b><br><small>Esto puede dejar links huérfanos y el caos dominará tu panel.</small>`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, eliminar igual 😬',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = url;
+            }
+        });
+    }
+</script>
+
+{% if messages %}
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        {% for message in messages %}
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: '{{ message|escapejs }}',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
+        {% endfor %}
+    });
+</script>
+{% endif %}
+
+{% endblock %}

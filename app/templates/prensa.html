@@ -1,0 +1,871 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Panel de Prensa{% endblock %}
+
+{% block content %}
+
+<style>
+    .card.h-100 {
+        height: 300px;
+    }
+
+    .card.h-100 img {
+        object-fit: contain;
+        height: 150px;
+        width: 100%;
+    }
+    
+    .nav-tabs .nav-link {
+        font-weight: 500;
+    }
+    
+    .btn-group-actions {
+        gap: 8px;
+    }
+    
+    .osint-card {
+        transition: transform 0.2s ease-in-out;
+    }
+    
+    .osint-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .pagination {
+        margin-bottom: 0;
+    }
+    
+    .page-link {
+        color: #0d6efd;
+    }
+    
+    .page-item.active .page-link {
+        background-color: #0d6efd;
+        border-color: #0d6efd;
+    }
+</style>
+
+<!-- Alertas -->
+{% if busquedas_pendientes %}
+<div class="alert alert-warning alert-dismissible fade show" role="alert">
+    <strong>¡Atención!</strong> Hay {{ busquedas_pendientes }} búsqueda(s) pendiente(s) que requieren atención.
+    <a href="{% url 'lista_busquedas' %}" class="alert-link">Ver búsquedas pendientes</a>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+</div>
+{% endif %}
+
+{% if solicitudes_pendientes %}
+<div class="alert alert-warning" role="alert">
+    <strong>Solicitud de información pendiente:</strong> Hay {{ solicitudes_pendientes }} solicitud{{ solicitudes_pendientes|pluralize:'es' }} esperando respuesta.
+    <a href="{% url 'solicitudes_info_list' %}" class="alert-link">Ir a las solicitudes</a>
+</div>
+{% endif %}
+
+<h1 class="mb-4">Panel de Prensa</h1>
+
+<!-- Pestañas de categorías -->
+<ul class="nav nav-tabs mb-4" id="categoriasTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="diarios-tab" data-bs-toggle="tab" data-bs-target="#diarios" type="button" role="tab" aria-controls="diarios" aria-selected="true">
+            Diarios Digitales
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="redes-tab" data-bs-toggle="tab" data-bs-target="#redes" type="button" role="tab" aria-controls="redes" aria-selected="false">
+            Redes Sociales
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tv-tab" data-bs-toggle="tab" data-bs-target="#tv" type="button" role="tab" aria-controls="tv" aria-selected="false">
+            TV Digital
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="radio-tab" data-bs-toggle="tab" data-bs-target="#radio" type="button" role="tab" aria-controls="radio" aria-selected="false">
+            Radio Digital
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="osint-tab" data-bs-toggle="tab" data-bs-target="#osint" type="button" role="tab" aria-controls="osint" aria-selected="false">
+            OSINT
+        </button>
+    </li>
+</ul>
+
+<!-- Contenido de las pestañas -->
+<div class="tab-content" id="categoriasTabsContent">
+    
+    <!-- Diarios Digitales -->
+    <div class="tab-pane fade show active" id="diarios" role="tabpanel" aria-labelledby="diarios-tab">
+        <div id="cards-diarios" class="row">
+            <div class="col-12 text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Cargando diarios...</span>
+                </div>
+                <p class="mt-2">Cargando diarios digitales...</p>
+            </div>
+        </div>
+
+        <div class="card mb-4 mt-4">
+            <div class="card-header">Agregar Link de Interés</div>
+            <div class="card-body">
+                <form id="formulario-link">
+                    <div class="mb-3">
+                        <label for="url" class="form-label">URL</label>
+                        <input type="url" class="form-control" id="url" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Agregar Link</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Mis Links Cargados</span>
+                <span class="badge bg-primary" id="total-links-count">0</span>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col">
+                        <label>Desde:</label>
+                        <input type="date" id="fecha_desde" class="form-control">
+                    </div>
+                    <div class="col">
+                        <label>Hasta:</label>
+                        <input type="date" id="fecha_hasta" class="form-control">
+                    </div>
+                    <div class="col">
+                        <label>Diario:</label>
+                        <select id="diario_filtro" class="form-select">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="col d-flex align-items-end">
+                        <button class="btn btn-secondary w-100" onclick="cargarLinks(1)">Filtrar</button>
+                    </div>
+                </div>
+
+                <table class="table table-striped" id="tabla-links">
+                    <thead>
+                        <tr>
+                            <th>URL</th>
+                            <th>Fecha</th>
+                            <th>Diario</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                
+                <nav aria-label="Paginación de links">
+                    <ul class="pagination justify-content-center" id="pagination-links"></ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <!-- Redes Sociales -->
+    <div class="tab-pane fade" id="redes" role="tabpanel" aria-labelledby="redes-tab">
+        <div id="cards-redes" class="row mb-4">
+            <div class="col-12 text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Cargando redes sociales...</span>
+                </div>
+                <p class="mt-2">Cargando redes sociales...</p>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Mis Links de Redes Sociales</span>
+                <span class="badge bg-primary" id="total-redes-count">0</span>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col">
+                        <label>Desde:</label>
+                        <input type="date" id="red_fecha_desde" class="form-control">
+                    </div>
+                    <div class="col">
+                        <label>Hasta:</label>
+                        <input type="date" id="red_fecha_hasta" class="form-control">
+                    </div>
+                    <div class="col">
+                        <label>Red social:</label>
+                        <select id="red_social_filtro" class="form-select">
+                            <option value="">Todas</option>
+                        </select>
+                    </div>
+                    <div class="col d-flex align-items-end">
+                        <button type="button" class="btn btn-secondary w-100" onclick="cargarLinksRedes(1)">Filtrar</button>
+                    </div>
+                </div>
+
+                <table class="table table-striped" id="tabla-links-redes">
+                    <thead>
+                        <tr>
+                            <th>URL</th>
+                            <th>Fecha</th>
+                            <th>Red social</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                
+                <nav aria-label="Paginación de links de redes">
+                    <ul class="pagination justify-content-center" id="pagination-redes"></ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <!-- TV Digital -->
+    <div class="tab-pane fade" id="tv" role="tabpanel" aria-labelledby="tv-tab">
+        <div id="cards-tv" class="row">
+            <div class="col-12 text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Cargando TV digital...</span>
+                </div>
+                <p class="mt-2">Cargando TV digital...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Radio Digital -->
+    <div class="tab-pane fade" id="radio" role="tabpanel" aria-labelledby="radio-tab">
+        <div id="cards-radio" class="row">
+            <div class="col-12 text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Cargando radio digital...</span>
+                </div>
+                <p class="mt-2">Cargando radio digital...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- OSINT -->
+    <div class="tab-pane fade" id="osint" role="tabpanel" aria-labelledby="osint-tab">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4>Herramientas OSINT</h4>
+            {% if user.is_staff or user.is_superuser %}
+            <a class="btn btn-primary" href="{% url 'crear_herramienta_osint' %}">Agregar herramienta</a>
+            {% endif %}
+        </div>
+        
+        {% if herramientas_osint %}
+        <div class="row">
+            {% for herramienta in herramientas_osint %}
+            <div class="col-md-4 col-lg-3 mb-4">
+                <div class="card h-100 osint-card shadow-sm">
+                    <div class="card-body d-flex flex-column text-center">
+                        <!-- Logo -->
+                        <div class="mb-3">
+                            {% if herramienta.logo %}
+                                <img src="{{ herramienta.logo.url }}" alt="{{ herramienta.nombre }}" 
+                                     class="img-fluid rounded" style="max-height: 80px; max-width: 100%;">
+                            {% else %}
+                                <div class="bg-light rounded d-flex align-items-center justify-content-center mx-auto" 
+                                     style="width: 100px; height: 80px;">
+                                    <span class="text-muted small">{{ herramienta.nombre }}</span>
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Nombre -->
+                        <h6 class="card-title mb-2">{{ herramienta.nombre }}</h6>
+                        
+                        <!-- Tipo -->
+                        <span class="badge {% if herramienta.tipo == 'gratuito' %}bg-success{% else %}bg-warning{% endif %} mb-2">
+                            {{ herramienta.get_tipo_display }}
+                        </span>
+                        
+                        <!-- Descripción (truncada) -->
+                        {% if herramienta.descripcion %}
+                        <p class="card-text small text-muted flex-grow-1 mb-3">
+                            {{ herramienta.descripcion|truncatewords:15 }}
+                        </p>
+                        {% endif %}
+                        
+                        <!-- Botón Visitar -->
+                        <a href="{{ herramienta.url }}" class="btn btn-primary mt-auto" target="_blank" rel="noopener">
+                            Visitar
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+            <div class="alert alert-info">
+                Todavía no se cargaron herramientas OSINT. 
+                {% if user.is_staff or user.is_superuser %}
+                <a href="{% url 'crear_herramienta_osint' %}" class="alert-link">Agregar la primera herramienta</a>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+<!-- Modales y scripts se mantienen igual -->
+<div class="modal fade" id="modalEditar" tabindex="-1" aria-labelledby="modalEditarLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="formEditar">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalEditarLabel">Editar Link</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="editarId">
+                    <div class="mb-3">
+                        <label for="editarUrl" class="form-label">URL</label>
+                        <input type="url" class="form-control" id="editarUrl" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editarDiario" class="form-label">Diario Digital</label>
+                        <select id="editarDiario" class="form-select">
+                            <option value="">Sin asignar</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editarRedSocial" class="form-label">Red Social</label>
+                        <select id="editarRedSocial" class="form-select">
+                            <option value="">Sin asignar</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Toast para notificaciones -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div id="liveToast" class="toast align-items-center text-bg-primary border-0" role="alert" aria-live="assertive"
+        aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body" id="toastBody">Mensaje aquí</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"
+                aria-label="Cerrar"></button>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    let diariosDisponibles = [];
+    let redesDisponibles = [];
+    let currentPageLinks = 1;
+    let currentPageRedes = 1;
+    const itemsPerPage = 10;
+
+    // Función para crear una card
+    function crearCard(item) {
+        const card = document.createElement("div");
+        card.className = "col-md-3 mb-3";
+        const logo = item.logo_url || '/static/img/default_logo.png';
+        card.innerHTML = `
+            <div class="card h-100">
+                <img src="${logo}" class="card-img-top" alt="${item.nombre}" 
+                     style="object-fit: contain; height: 150px; width: 100%; padding: 10px;">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">${item.nombre}</h5>
+                    <a href="${item.url_principal}" class="btn btn-primary mt-auto" target="_blank">Visitar</a>
+                </div>
+            </div>`;
+        return card;
+    }
+
+    // Función para mostrar mensaje de "sin registros"
+    function mostrarSinRegistros(container) {
+        container.innerHTML = `
+            <div class="col-12">
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-info-circle"></i>
+                    <p class="mb-0">No hay registros disponibles en esta categoría.</p>
+                </div>
+            </div>`;
+    }
+
+    // Función para generar la paginación
+    function generarPaginacion(totalItems, currentPage, containerId, callback) {
+        const totalPages = Math.ceil(totalItems / itemsPerPage);
+        const paginationContainer = document.getElementById(containerId);
+        
+        if (totalPages <= 1) {
+            paginationContainer.innerHTML = '';
+            return;
+        }
+
+        let paginationHTML = '';
+        
+        // Botón anterior
+        if (currentPage > 1) {
+            paginationHTML += `
+                <li class="page-item">
+                    <a class="page-link" href="#" onclick="${callback}(${currentPage - 1}); return false;">
+                        &laquo; Anterior
+                    </a>
+                </li>`;
+        }
+
+        // Páginas
+        for (let i = 1; i <= totalPages; i++) {
+            if (i === currentPage) {
+                paginationHTML += `
+                    <li class="page-item active">
+                        <span class="page-link">${i}</span>
+                    </li>`;
+            } else {
+                paginationHTML += `
+                    <li class="page-item">
+                        <a class="page-link" href="#" onclick="${callback}(${i}); return false;">${i}</a>
+                    </li>`;
+            }
+        }
+
+        // Botón siguiente
+        if (currentPage < totalPages) {
+            paginationHTML += `
+                <li class="page-item">
+                    <a class="page-link" href="#" onclick="${callback}(${currentPage + 1}); return false;">
+                        Siguiente &raquo;
+                    </a>
+                </li>`;
+        }
+
+        paginationContainer.innerHTML = paginationHTML;
+    }
+
+    // Función para cargar diarios
+    async function cargarDiarios() {
+        const container = document.getElementById("cards-diarios");
+        const select = document.getElementById("editarDiario");
+        const filtroSelect = document.getElementById("diario_filtro");
+
+        // Limpiar contenedores
+        container.innerHTML = '<div class="col-12 text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando diarios...</span></div><p class="mt-2">Cargando diarios digitales...</p></div>';
+        
+        if (select) {
+            select.innerHTML = '<option value="">Sin asignar</option>';
+        }
+        if (filtroSelect) {
+            filtroSelect.innerHTML = '<option value="">Todos</option>';
+        }
+
+        try {
+            const res = await fetch("/api/diarios/");
+            diariosDisponibles = await res.json();
+
+            // Limpiar container después de cargar
+            container.innerHTML = "";
+
+            if (diariosDisponibles.length === 0) {
+                mostrarSinRegistros(container);
+            } else {
+                diariosDisponibles.forEach((diario) => {
+                    container.appendChild(crearCard(diario));
+
+                    // Agregar opciones a los selects
+                    if (select) {
+                        const option = document.createElement("option");
+                        option.value = diario.id;
+                        option.textContent = diario.nombre;
+                        select.appendChild(option);
+                    }
+                    if (filtroSelect) {
+                        const optionFiltro = document.createElement("option");
+                        optionFiltro.value = diario.id;
+                        optionFiltro.textContent = diario.nombre;
+                        filtroSelect.appendChild(optionFiltro);
+                    }
+                });
+            }
+        } catch (error) {
+            console.error("Error cargando diarios:", error);
+            container.innerHTML = '<div class="col-12"><div class="alert alert-danger text-center">Error al cargar los diarios digitales.</div></div>';
+            mostrarToast("Error al cargar diarios", "danger");
+        }
+    }
+
+    // Función para cargar redes sociales
+    async function cargarRedes() {
+        const container = document.getElementById("cards-redes");
+        const select = document.getElementById("editarRedSocial");
+        const filtroSelect = document.getElementById("red_social_filtro");
+
+        if (!container) return;
+
+        // Mostrar spinner de carga
+        container.innerHTML = '<div class="col-12 text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando redes sociales...</span></div><p class="mt-2">Cargando redes sociales...</p></div>';
+
+        if (select) {
+            select.innerHTML = '<option value="">Sin asignar</option>';
+        }
+        if (filtroSelect) {
+            filtroSelect.innerHTML = '<option value="">Todas</option>';
+        }
+
+        try {
+            const res = await fetch("/api/redes/");
+            redesDisponibles = await res.json();
+
+            // Limpiar container después de cargar
+            container.innerHTML = "";
+
+            if (redesDisponibles.length === 0) {
+                mostrarSinRegistros(container);
+            } else {
+                redesDisponibles.forEach((red) => {
+                    container.appendChild(crearCard(red));
+
+                    // Agregar opciones a los selects
+                    if (select) {
+                        const option = document.createElement("option");
+                        option.value = red.id;
+                        option.textContent = red.nombre;
+                        select.appendChild(option);
+                    }
+                    if (filtroSelect) {
+                        const optionFiltro = document.createElement("option");
+                        optionFiltro.value = red.id;
+                        optionFiltro.textContent = red.nombre;
+                        filtroSelect.appendChild(optionFiltro);
+                    }
+                });
+            }
+        } catch (error) {
+            console.error("Error cargando redes sociales:", error);
+            container.innerHTML = '<div class="col-12"><div class="alert alert-danger text-center">Error al cargar las redes sociales.</div></div>';
+            mostrarToast("Error al cargar redes sociales", "danger");
+        }
+    }
+
+    // Función para cargar colecciones (TV y Radio)
+    async function cargarColeccion(url, containerId, nombreCategoria) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        // Mostrar spinner de carga
+        container.innerHTML = '<div class="col-12 text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando ${nombreCategoria}...</span></div><p class="mt-2">Cargando ${nombreCategoria}...</p></div>';
+
+        try {
+            const res = await fetch(url);
+            const datos = await res.json();
+            
+            // Limpiar container después de cargar
+            container.innerHTML = "";
+
+            if (!Array.isArray(datos) || datos.length === 0) {
+                mostrarSinRegistros(container);
+                return;
+            }
+
+            datos.forEach((item) => {
+                container.appendChild(crearCard(item));
+            });
+        } catch (error) {
+            console.error(`Error cargando ${url}:`, error);
+            container.innerHTML = `<div class="col-12"><div class="alert alert-danger text-center">Error al cargar ${nombreCategoria}.</div></div>`;
+        }
+    }
+
+    // Cargar datos iniciales cuando se hace clic en pestañas
+    document.addEventListener("DOMContentLoaded", function() {
+        console.log("DOM cargado - iniciando carga de datos...");
+        
+        // Cargar diarios inmediatamente (pestaña activa por defecto)
+        cargarDiarios();
+        cargarLinks(1);
+        cargarLinksRedes(1);
+        
+        // Escuchar cambios de pestañas
+        document.querySelectorAll('#categoriasTabs button[data-bs-toggle="tab"]').forEach(tab => {
+            tab.addEventListener('shown.bs.tab', function (event) {
+                const target = event.target.getAttribute('data-bs-target');
+                console.log("Cambiando a pestaña:", target);
+                
+                if (target === '#diarios') {
+                    console.log("Cargando diarios...");
+                    cargarDiarios();
+                } else if (target === '#redes') {
+                    console.log("Cargando redes sociales...");
+                    cargarRedes();
+                } else if (target === '#tv') {
+                    console.log("Cargando TV...");
+                    cargarColeccion("/api/tv/", "cards-tv", "TV digital");
+                } else if (target === '#radio') {
+                    console.log("Cargando radio...");
+                    cargarColeccion("/api/radios/", "cards-radio", "radio digital");
+                }
+            });
+        });
+    });
+
+    // Función para cargar links con paginación
+    async function cargarLinks(page = 1) {
+        currentPageLinks = page;
+        const tabla = document.querySelector("#tabla-links tbody");
+        tabla.innerHTML = '<tr><td colspan="4" class="text-center"><div class="spinner-border spinner-border-sm"></div> Cargando...</td></tr>';
+
+        const desde = document.getElementById("fecha_desde").value;
+        const hasta = document.getElementById("fecha_hasta").value;
+        const diarioId = document.getElementById("diario_filtro").value || "";
+
+        let url = "/api/links_list/";
+        const params = ["fuente=diario"];
+        {% if user.userprofile.rol != 'administrador' %}
+        params.push("solo_propios=1");
+        {% endif %}
+        if (desde) params.push(`fecha_inicio=${desde}`);
+        if (hasta) params.push(`fecha_fin=${hasta}`);
+        if (diarioId) params.push(`diario_id=${diarioId}`);
+
+        if (params.length > 0) url += `?${params.join('&')}`;
+
+        try {
+            const res = await fetch(url);
+            const links = await res.json();
+
+            // Actualizar contador total
+            document.getElementById('total-links-count').textContent = links.length;
+
+            if (links.length === 0) {
+                tabla.innerHTML = `<tr><td colspan="4" class="text-center">No hay resultados</td></tr>`;
+                document.getElementById('pagination-links').innerHTML = '';
+                return;
+            }
+
+            // Calcular índices para la paginación
+            const startIndex = (page - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const paginatedLinks = links.slice(startIndex, endIndex);
+
+            // Limpiar tabla
+            tabla.innerHTML = "";
+
+            paginatedLinks.forEach(link => {
+                const row = document.createElement("tr");
+                const diarioIdLiteral = link.diario_digital !== null ? link.diario_digital : 'null';
+                const redIdLiteral = link.red_social !== null ? link.red_social : 'null';
+                row.innerHTML = `
+                    <td><a href="${link.url}" target="_blank">${link.url.length > 50 ? link.url.slice(0, 50) + '…' : link.url}</a></td>
+                    <td>${new Date(link.fecha_carga).toLocaleDateString()}</td>
+                    <td>${link.diario_nombre || 'Sin asignar'}</td>
+                    <td>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-sm btn-warning"
+                                onclick="abrirModalEditar(${link.id}, ${JSON.stringify(link.url)}, ${diarioIdLiteral}, ${redIdLiteral})">
+                                Editar
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="eliminarLink(${link.id})">Eliminar</button>
+                        </div>
+                    </td>`;
+                tabla.appendChild(row);
+            });
+
+            // Generar paginación
+            generarPaginacion(links.length, page, 'pagination-links', 'cargarLinks');
+
+        } catch (error) {
+            console.error("Error cargando links:", error);
+            tabla.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Error al cargar los datos</td></tr>`;
+            mostrarToast("Error al cargar links", "danger");
+        }
+    }
+
+    // Función para cargar links de redes sociales con paginación
+    async function cargarLinksRedes(page = 1) {
+        currentPageRedes = page;
+        const tabla = document.querySelector("#tabla-links-redes tbody");
+        if (!tabla) return;
+        tabla.innerHTML = '<tr><td colspan="4" class="text-center"><div class="spinner-border spinner-border-sm"></div> Cargando...</td></tr>';
+
+        const desde = document.getElementById("red_fecha_desde").value;
+        const hasta = document.getElementById("red_fecha_hasta").value;
+        const redId = document.getElementById("red_social_filtro").value || "";
+
+        let url = "/api/links_list/";
+        const params = ["fuente=red_social"];
+        {% if user.userprofile.rol != 'administrador' %}
+        params.push("solo_propios=1");
+        {% endif %}
+        if (desde) params.push(`fecha_inicio=${desde}`);
+        if (hasta) params.push(`fecha_fin=${hasta}`);
+        if (redId) params.push(`red_social_id=${redId}`);
+
+        if (params.length > 0) url += `?${params.join('&')}`;
+
+        try {
+            const res = await fetch(url);
+            const links = await res.json();
+
+            // Actualizar contador total
+            document.getElementById('total-redes-count').textContent = links.length;
+
+            if (links.length === 0) {
+                tabla.innerHTML = `<tr><td colspan="4" class="text-center">No hay resultados</td></tr>`;
+                document.getElementById('pagination-redes').innerHTML = '';
+                return;
+            }
+
+            // Calcular índices para la paginación
+            const startIndex = (page - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const paginatedLinks = links.slice(startIndex, endIndex);
+
+            // Limpiar tabla
+            tabla.innerHTML = "";
+
+            paginatedLinks.forEach(link => {
+                const row = document.createElement("tr");
+                const diarioIdLiteral = link.diario_digital !== null ? link.diario_digital : 'null';
+                const redIdLiteral = link.red_social !== null ? link.red_social : 'null';
+                row.innerHTML = `
+                    <td><a href="${link.url}" target="_blank">${link.url.length > 50 ? link.url.slice(0, 50) + '…' : link.url}</a></td>
+                    <td>${new Date(link.fecha_carga).toLocaleDateString()}</td>
+                    <td>${link.red_social_nombre || 'Sin asignar'}</td>
+                    <td>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-sm btn-warning"
+                                onclick="abrirModalEditar(${link.id}, ${JSON.stringify(link.url)}, ${diarioIdLiteral}, ${redIdLiteral})">
+                                Editar
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="eliminarLink(${link.id})">Eliminar</button>
+                        </div>
+                    </td>`;
+                tabla.appendChild(row);
+            });
+
+            // Generar paginación
+            generarPaginacion(links.length, page, 'pagination-redes', 'cargarLinksRedes');
+
+        } catch (error) {
+            console.error("Error cargando links de redes:", error);
+            tabla.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Error al cargar los datos</td></tr>`;
+            mostrarToast("Error al cargar links de redes", "danger");
+        }
+    }
+
+    function abrirModalEditar(id, urlActual, diarioIdActual, redSocialIdActual) {
+        document.getElementById("editarId").value = id;
+        document.getElementById("editarUrl").value = urlActual;
+        document.getElementById("editarDiario").value = diarioIdActual || "";
+        document.getElementById("editarRedSocial").value = redSocialIdActual || "";
+        let modal = new bootstrap.Modal(document.getElementById("modalEditar"));
+        modal.show();
+    }
+
+    document.getElementById("formEditar").addEventListener("submit", async e => {
+        e.preventDefault();
+        const id = document.getElementById("editarId").value;
+        const url = document.getElementById("editarUrl").value;
+        const diario = document.getElementById("editarDiario").value || null;
+        const redSocial = document.getElementById("editarRedSocial").value || null;
+
+        try {
+            const res = await fetch(`/api/links/${id}/`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCookie("csrftoken")
+                },
+                body: JSON.stringify({ url, diario_digital: diario, red_social: redSocial })
+            });
+            if (!res.ok) throw new Error("No se pudo editar el link");
+            bootstrap.Modal.getInstance(document.getElementById("modalEditar")).hide();
+            mostrarToast("Link actualizado exitosamente", "success");
+            cargarLinks(currentPageLinks);
+            cargarLinksRedes(currentPageRedes);
+        } catch (error) {
+            console.error("Error editando link:", error);
+            mostrarToast("Error al actualizar el link", "danger");
+        }
+    });
+
+    async function eliminarLink(id) {
+        const result = await Swal.fire({
+            title: '¿Estás seguro?',
+            text: "¡Esto eliminará el link permanentemente!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const res = await fetch(`/api/links/${id}/`, {
+                    method: "DELETE",
+                    headers: { "X-CSRFToken": getCookie("csrftoken") }
+                });
+                if (!res.ok) throw new Error("No se pudo eliminar");
+                mostrarToast("Link eliminado correctamente", "success");
+                cargarLinks(currentPageLinks);
+                cargarLinksRedes(currentPageRedes);
+            } catch (error) {
+                console.error("Error eliminando link:", error);
+                mostrarToast("Error al eliminar link", "danger");
+            }
+        }
+    }
+
+    function mostrarToast(mensaje, tipo = 'primary') {
+        const toastEl = document.getElementById('liveToast');
+        const toastBody = document.getElementById('toastBody');
+        toastEl.className = `toast align-items-center text-bg-${tipo} border-0`;
+        toastBody.textContent = mensaje;
+        const toast = new bootstrap.Toast(toastEl);
+        toast.show();
+    }
+
+    document.getElementById("formulario-link").addEventListener("submit", async e => {
+        e.preventDefault();
+        const urlInput = document.getElementById("url");
+        try {
+            const res = await fetch("/api/links/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCookie("csrftoken")
+                },
+                body: JSON.stringify({ url: urlInput.value })
+            });
+            if (!res.ok) throw new Error("No se pudo agregar el link");
+            urlInput.value = "";
+            mostrarToast("Link agregado correctamente", "success");
+            cargarLinks(currentPageLinks);
+            cargarLinksRedes(currentPageRedes);
+        } catch (error) {
+            console.error("Error agregando link:", error);
+            mostrarToast("Error al agregar el link", "danger");
+        }
+    });
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let cookie of cookies) {
+                cookie = cookie.trim();
+                if (cookie.startsWith(name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+</script>
+
+{% endblock content %}

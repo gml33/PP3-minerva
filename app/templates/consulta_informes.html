@@ -1,0 +1,305 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Consulta de Informes{% endblock %}
+
+{% block content %}
+
+<body>
+
+    <h1 class="mb-4 text-center">Consultar Informes</h1>
+
+    <form method="GET" action="/informes/consulta/">
+
+        <!-- Datos personales -->
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label>Apellido</label>
+                <input type="text" name="apellido" class="form-control" value="{{ request.GET.apellido }}">
+            </div>
+            <div class="col-md-4">
+                <label>Nombre</label>
+                <input type="text" name="nombre" class="form-control" value="{{ request.GET.nombre }}">
+            </div>
+            <div class="col-md-4">
+                <label>Documento</label>
+                <input type="text" name="documento" class="form-control" value="{{ request.GET.documento }}">
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label>Nacionalidad</label>
+                <input type="text" name="nacionalidad" class="form-control" value="{{ request.GET.nacionalidad }}">
+            </div>
+            <div class="col-md-4">
+                <label>Banda</label>
+                <input type="text" name="banda" class="form-control" value="{{ request.GET.banda }}">
+            </div>
+            <div class="col-md-4">
+                <label>Actividad</label>
+                <input type="text" name="actividad" class="form-control" value="{{ request.GET.actividad }}">
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label>Rol</label>
+<select name="rol" class="form-select">
+    <option value="">Seleccione un rol</option>
+    <option value="soldadito" {% if request.GET.rol|default_if_none:"" == "soldadito" %}selected{% endif %}>Soldadito</option>
+    <option value="sicario" {% if request.GET.rol|default_if_none:"" == "sicario" %}selected{% endif %}>Sicario</option>
+    <option value="lugarteniente" {% if request.GET.rol|default_if_none:"" == "lugarteniente" %}selected{% endif %}>Lugarteniente</option>
+    <option value="lider" {% if request.GET.rol|default_if_none:"" == "lider" %}selected{% endif %}>Lider</option>
+</select>
+            </div>
+            <div class="col-md-4">
+                <label>Situación</label>
+<select name="situacion" class="form-select">
+    <option value="">Seleccione situación</option>
+    <option value="libertad" {% if request.GET.situacion|default:"" == "libertad" %}selected{% endif %}>Libertad</option>
+    <option value="fallecido" {% if request.GET.situacion|default:"" == "fallecido" %}selected{% endif %}>Fallecido</option>
+    <option value="detenido" {% if request.GET.situacion|default:"" == "detenido" %}selected{% endif %}>Detenido</option>
+    <option value="domiciliaria" {% if request.GET.situacion|default:"" == "domiciliaria" %}selected{% endif %}>Domiciliaria</option>
+    <option value="profugo" {% if request.GET.situacion|default:"" == "profugo" %}selected{% endif %}>Prófugo</option>
+</select>
+
+            </div>
+            <div class="col-md-4">
+                <label>Fecha Nac. Desde</label>
+                <input type="date" name="fecha_nacimiento_desde" class="form-control" value="{{ request.GET.fecha_nacimiento_desde }}">
+            </div>
+            <div class="col-md-4">
+                <label>Fecha Nac. Hasta</label>
+                <input type="date" name="fecha_nacimiento_hasta" class="form-control"› value="{{ request.GET.fecha_nacimiento_hasta }}">
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label>Alias contiene</label>
+            <input type="text" name="alias" class="form-control" value="{{ request.GET.alias }}">
+        </div>
+        <div class="mb-3">
+    <label>Teléfono contiene</label>
+    <input type="text" name="telefono" class="form-control" value="{{ request.GET.telefono }}">
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-4">
+        <label>Calle domicilio contiene</label>
+        <input type="number" name="calle" class="form-control" value="{{ request.GET.calle }}">
+    </div>
+    <div class="col-md-4">
+        <label>Barrio domicilio contiene</label>
+        <input type="text" name="barrio" class="form-control" value="{{ request.GET.barrio }}">
+    </div>
+    <div class="col-md-4">
+        <label>Ciudad domicilio contiene</label>
+        <input type="text" name="ciudad" class="form-control" value="{{ request.GET.ciudad }}">
+    </div>
+    <div class="col-md-4">
+        <label>Provincia domicilio contiene</label>
+        <input type="text" name="provincia" class="form-control" value="{{ request.GET.provincia }}">
+    </div>
+    <div class="col-md-3">
+        <label>Altura desde</label>
+        <input type="number" name="altura_desde" class="form-control" value="{{ request.GET.altura_desde }}">
+    </div>
+    <div class="col-md-3">
+        <label>Altura hasta</label>
+        <input type="number" name="altura_hasta" class="form-control" value="{{ request.GET.altura_hasta }}">
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-4">
+        <label>Marca vehículo</label>
+        <input type="text" name="vehiculo_marca" class="form-control" value="{{ request.GET.vehiculo_marca }}">
+    </div>
+    <div class="col-md-4">
+        <label>Modelo vehículo</label>
+        <input type="text" name="vehiculo_modelo" class="form-control" value="{{ request.GET.vehiculo_modelo }}">
+    </div>
+    <div class="col-md-4">
+        <label>Dominio vehículo</label>
+        <input type="text" name="vehiculo_dominio" class="form-control" value="{{ request.GET.vehiculo_dominio }}">
+    </div>
+    <div class="col-md-4">
+        <label>Color vehículo</label>
+        <input type="text" name="vehiculo_color" class="form-control" value="{{ request.GET.vehiculo_color }}">
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-4">
+        <label>Nombre empleador</label>
+        <input type="text" name="empleador_nombre" class="form-control" value="{{ request.GET.empleador_nombre }}">
+    </div>
+    <div class="col-md-4">
+        <label>CUIT empleador</label>
+        <input type="number" name="empleador_cuit" class="form-control" value="{{ request.GET.empleador_cuit }}">
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-4">
+        <label>Nombre vínculo</label>
+        <input type="text" name="vinculo_nombre" class="form-control" value="{{ request.GET.vinculo_nombre }}">
+    </div>
+    <div class="col-md-4">
+        <label>DNI vínculo</label>
+        <input type="number" name="vinculo_dni" class="form-control" value="{{ request.GET.vinculo_dni }}">
+    </div>
+</div>
+
+        <button type="submit" class="btn btn-primary mt-3">Buscar</button>
+        <button type="button" class="btn btn-secondary mt-3 ms-2" onclick="limpiarFormulario()">Limpiar</button>
+    </form>
+
+    <hr class="my-5">
+{% if request.GET %}
+    <h2 class="mb-4">Resultados</h2>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Fecha</th>
+                <th>Generado por</th>
+                <th>Apellido</th>
+                <th>Nombre</th>
+                <th>Documento</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for inf in informes %}
+            <tr>
+                <td>{{ inf.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                <td>{{ inf.generado_por.username }}</td>
+                <td>{{ inf.apellido }}</td>
+                <td>{{ inf.nombre }}</td>
+                <td>{{ inf.documento }}</td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-info" onclick="verInforme({{ inf.id }})" data-bs-toggle="modal" data-bs-target="#modalInforme">Ver</button>
+                    <a href="{% url 'exportar_informe_pdf' inf.id %}" class="btn btn-sm btn-danger ms-1" target="_blank">PDF</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6">No hay informes que coincidan con los filtros.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endif %}
+    <!-- Modal Detalle de Informe -->
+<div class="modal fade" id="modalInforme" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalle del Informe</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="detalleInforme"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function limpiarFormulario() {
+        window.location.href = window.location.pathname;
+    }
+</script>
+
+<script>
+function formatFecha(fechaIso) {
+    if (!fechaIso) return '';
+    const fecha = new Date(fechaIso);
+    const dia = String(fecha.getDate()).padStart(2, '0');
+    const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+    const anio = fecha.getFullYear();
+    const horas = String(fecha.getHours()).padStart(2, '0');
+    const minutos = String(fecha.getMinutes()).padStart(2, '0');
+    return `${dia}/${mes}/${anio} ${horas}:${minutos}`;
+}
+
+function verInforme(id) {
+    fetch(`/api/informes/${id}/detalle/`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === "ok") {
+            const inf = data.informe;
+            console.log("VEHICULOS:", inf.vehiculos);
+
+            let html = `
+    ${inf.foto ? `<img src="${inf.foto}" alt="Foto del informe" class="img-fluid mb-3" style="max-height: 300px;">` : ''}
+    <div class="mb-2">
+        <small class="text-muted">Última edición:</small> 
+        <span class="badge bg-info text-dark">${inf.fecha_modificacion}</span>
+    </div>
+    <p><strong>Generado por:</strong> ${inf.generado_por}</p>
+    <p><strong>Fecha creación:</strong> ${inf.fecha_creacion}</p>
+    <hr>
+    <p><strong>Apellido:</strong> ${inf.apellido}</p>
+    <p><strong>Nombre:</strong> ${inf.nombre}</p>
+    <p><strong>Documento:</strong> ${inf.documento}</p>
+    <p><strong>CUIT:</strong> ${inf.cuit}</p>
+    <p><strong>Nacionalidad:</strong> ${inf.nacionalidad}</p>
+    <p><strong>Banda:</strong> ${inf.banda}</p>
+    <p><strong>Rol:</strong> ${inf.rol}</p>
+    <p><strong>Situación:</strong> ${inf.situacion}</p>
+    <p><strong>Actividad:</strong> ${inf.actividad}</p>
+    <p><strong>Fecha nacimiento:</strong> ${inf.fecha_nacimiento}</p>
+    <hr>
+    <p><strong>Alias:</strong> ${inf.alias.join(", ")}</p>
+    <p><strong>Teléfonos:</strong> ${inf.telefonos.join(", ")}</p>
+    <hr>
+    <p><strong>Domicilios:</strong></p>
+    <ul>${inf.domicilios.map(d => 
+        `<li>${d.calle} ${d.altura}, ${d.barrio}, ${d.ciudad}, ${d.provincia}</li>`
+    ).join('')}</ul>
+    
+    <p><strong>Vehículos:</strong></p>
+    <ul>${inf.vehiculos.map(v => 
+        `<li>${v.marca} ${v.modelo} (${v.dominio}) - Color: ${v.color || '-'}</li>`
+    ).join('')}</ul>
+
+    <p><strong>Empleadores:</strong></p>
+    <ul>${inf.empleadores.map(e => 
+        `<li>${e.nombre} (CUIT: ${e.cuit}) - Alta: ${e.alta}, Baja: ${e.baja}</li>`
+    ).join('')}</ul>
+
+    <p><strong>Vínculos:</strong></p>
+    <ul>${inf.vinculos.map(v => 
+        `<li>${v.nombre_apellido} (DNI: ${v.dni}) - Tipo: ${v.tipo}</li>`
+    ).join('')}</ul>
+
+    <hr>
+    <p><strong>Artículos Asociados:</strong></p>
+    <table class="table table-sm">
+        <thead><tr><th>Título</th><th>Categoría</th><th>Fecha</th></tr></thead>
+        <tbody>${inf.articulos.map(a => 
+            `<tr><td>${a.titulo}</td><td>${a.categoria}</td><td>${a.fecha}</td></tr>`
+        ).join('')}</tbody>
+    </table>
+`;
+
+            document.getElementById("detalleInforme").innerHTML = html;
+        } else {
+            document.getElementById("detalleInforme").innerHTML = "<p class='text-danger'>No se pudo cargar el informe.</p>";
+        }
+    })
+    .catch(err => {
+        console.error("Error al cargar el informe:", err);
+        document.getElementById("detalleInforme").innerHTML = "<p class='text-danger'>Error al cargar el informe.</p>";
+    });
+}
+
+</script>
+
+
+
+</body>
+
+{% endblock content %}

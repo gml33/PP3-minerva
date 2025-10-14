@@ -1,0 +1,192 @@
+{% extends 'base.html' %}
+{% block title %}Historial de Actividades{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">Historial de Actividades</h1>
+
+    <form id="filtro-actividad" class="row g-3 mb-4">
+        <div class="col-md-3">
+            <label for="usuario" class="form-label">Usuario</label>
+            <select id="usuario" class="form-select">
+                <option value="">Todos</option>
+            </select>
+        </div>
+
+        <div class="col-md-3">
+            <label for="tipo" class="form-label">Tipo de Actividad</label>
+            <select id="tipo" class="form-select">
+                <option value="">Todos</option>
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <label for="desde" class="form-label">Desde</label>
+            <input type="date" id="desde" class="form-control">
+        </div>
+
+        <div class="col-md-2">
+            <label for="hasta" class="form-label">Hasta</label>
+            <input type="date" id="hasta" class="form-control">
+        </div>
+
+        <div class="col-md-1 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+        </div>
+
+        <div class="col-md-1 d-flex align-items-end">
+            <button type="button" class="btn btn-success w-100" id="btnExportar">Excel</button>
+        </div>
+
+        <div class="col-md-1 d-flex align-items-end">
+            <button type="button" class="btn btn-danger w-100" id="btnExportarPDF">PDF</button>
+        </div>
+    </form>
+
+    <table class="table table-bordered table-striped table-sm">
+        <thead class="table-light">
+            <tr>
+                <th>Fecha</th>
+                <th>Usuario</th>
+                <th>Tipo</th>
+                <th>Descripción</th>
+            </tr>
+        </thead>
+        <tbody id="tabla-actividad">
+            <!-- Aquí se renderizan las actividades con JS -->
+        </tbody>
+    </table>
+</div>
+
+<script>
+
+    document.addEventListener("DOMContentLoaded", () => {
+        const tablaBody = document.getElementById("tabla-actividad");
+        const filtroForm = document.getElementById("filtro-actividad");
+        const usuarioSelect = document.getElementById("usuario");
+        const tipoSelect = document.getElementById("tipo");
+        const desdeInput = document.getElementById("desde");
+        const hastaInput = document.getElementById("hasta");
+
+        cargarUsuarios();
+        cargarTipos();
+        cargarActividades(); // carga inicial sin filtros
+
+        filtroForm.addEventListener("submit", e => {
+            e.preventDefault();
+            cargarActividades();
+        });
+
+        document.getElementById("btnExportar").addEventListener("click", () => {
+            // ⚠️ Leer los valores dentro del evento
+            const usuario = document.getElementById("usuario")?.value || "";
+            const tipo = document.getElementById("tipo")?.value || "";
+            const desde = document.getElementById("desde")?.value || "";
+            const hasta = document.getElementById("hasta")?.value || "";
+
+            let url = "/actividades/exportar_excel/";
+            const filtros = [];
+
+            if (usuario) filtros.push(`usuario=${encodeURIComponent(usuario)}`);
+            if (tipo) filtros.push(`tipo=${encodeURIComponent(tipo)}`);
+            if (desde) filtros.push(`desde=${desde}`);
+            if (hasta) filtros.push(`hasta=${hasta}`);
+
+            if (filtros.length > 0) {
+                url += "?" + filtros.join("&");
+            }
+
+            console.log("📤 URL final de exportación:", url);
+            window.open(url, "_blank");
+        });
+
+
+        document.getElementById("btnExportarPDF").addEventListener("click", () => {
+            let url = "/actividades/exportar_pdf/?";
+
+            const filtros = [];
+            if (usuarioSelect.value) filtros.push(`usuario=${usuarioSelect.value}`);
+            if (tipoSelect.value) filtros.push(`tipo=${tipoSelect.value}`);
+            if (desdeInput.value) filtros.push(`desde=${desdeInput.value}`);
+            if (hastaInput.value) filtros.push(`hasta=${hastaInput.value}`);
+
+            if (filtros.length > 0) {
+                url += filtros.join("&");
+            }
+
+            window.open(url, "_blank");
+        });
+
+        async function cargarUsuarios() {
+            const res = await fetch("/api/usuarios/");
+            const data = await res.json();
+            data.forEach(user => {
+                const option = document.createElement("option");
+                option.value = user.username;
+                option.textContent = `${user.username}`;
+                usuarioSelect.appendChild(option);
+            });
+        }
+
+        function cargarTipos() {
+            const tipos = {
+                login: "Inicio de sesión",
+                logout: "Cierre de sesión",
+                carga_link: "Carga de Link",
+                cambio_estado: "Cambio de Estado",
+                clic_link: "Clic en Link",
+                creacion_articulo: "Creación de Artículo",
+                otro: "Otro"
+            };
+            for (let key in tipos) {
+                const option = document.createElement("option");
+                option.value = key;
+                option.textContent = tipos[key];
+                tipoSelect.appendChild(option);
+            }
+        }
+
+        async function cargarActividades() {
+            tablaBody.innerHTML = "";
+
+            let url = "/api/actividades/?";
+
+            const filtros = [];
+            if (usuarioSelect.value) filtros.push(`usuario=${usuarioSelect.value}`);
+            if (tipoSelect.value) filtros.push(`tipo=${tipoSelect.value}`);
+            if (desdeInput.value) filtros.push(`desde=${desdeInput.value}`);
+            if (hastaInput.value) filtros.push(`hasta=${hastaInput.value}`);
+
+            if (filtros.length > 0) {
+                url += filtros.join("&");
+            }
+
+            const res = await fetch(url);
+            const data = await res.json();
+
+            console.log("Actividades recibidas:", data);
+
+            if (data.length === 0) {
+                tablaBody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="text-center text-muted">No se encontraron actividades con los filtros aplicados.</td>
+                </tr>
+            `;
+                return;
+            }
+
+            data.forEach(act => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                <td>${new Date(act.fecha_hora).toLocaleString()}</td>
+                <td>${act.usuario || '(anónimo)'}</td>
+                <td>${act.tipo.replaceAll('_', ' ')}</td>
+                <td>${act.descripcion}</td>
+            `;
+                tablaBody.appendChild(row);
+            });
+        }
+    });
+</script>
+
+{% endblock %}
