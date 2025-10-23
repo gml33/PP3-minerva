@@ -456,7 +456,7 @@ class InformeIndividual(models.Model):
         return f"{self.apellido}, {self.nombre} - {self.documento}"
 
 
-class HechoCriminal(models.Model):
+class HechoDelictivo(models.Model):
     class Calificacion(models.TextChoices):
         ROBO = "robo", "Robo"
         HURTO = "hurto", "Hurto"
@@ -510,8 +510,8 @@ class HechoCriminal(models.Model):
     )
 
     class Meta:
-        verbose_name = "Hecho Criminal"
-        verbose_name_plural = "Hechos Criminales"
+        verbose_name = "Hecho Delictivo"
+        verbose_name_plural = "Hechos Delictivos"
         ordering = ["-fecha"]
 
     def __str__(self):
@@ -528,7 +528,7 @@ class BandaCriminal(models.Model):
         blank=True,
     )
     hechos = models.ManyToManyField(
-        HechoCriminal,
+        HechoDelictivo,
         related_name="bandas_involucradas",
         blank=True,
     )

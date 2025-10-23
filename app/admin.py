@@ -23,7 +23,7 @@ from .models import (
     InformeIndividual,
     SolicitudInfo,
     HerramientaOSINT,
-    HechoCriminal,
+    HechoDelictivo,
     BandaCriminal,
     RedSocial,
     TvDigital,
@@ -137,8 +137,8 @@ class HerramientaOSINTAdmin(admin.ModelAdmin):
     search_fields = ("nombre", "descripcion")
 
 
-@admin.register(HechoCriminal)
-class HechoCriminalAdmin(admin.ModelAdmin):
+@admin.register(HechoDelictivo)
+class HechoDelictivoAdmin(admin.ModelAdmin):
     list_display = ("fecha", "categoria", "ubicacion", "calificacion", "creado_por")
     list_filter = ("fecha", "categoria", "calificacion")
     search_fields = ("descripcion", "ubicacion")

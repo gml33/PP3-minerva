@@ -11,7 +11,7 @@ from .models import (
     RedSocial,
     TvDigital,
     RadioDigital,
-    HechoCriminal,
+    HechoDelictivo,
     LinkRelevante,
 )
 
@@ -101,7 +101,7 @@ class RadioDigitalForm(forms.ModelForm):
         }
 
 
-class HechoCriminalForm(forms.ModelForm):
+class HechoDelictivoForm(forms.ModelForm):
     autor = forms.ModelMultipleChoiceField(
         queryset=InformeIndividual.objects.all(),
         required=False,
@@ -116,7 +116,7 @@ class HechoCriminalForm(forms.ModelForm):
     )
 
     class Meta:
-        model = HechoCriminal
+        model = HechoDelictivo
         fields = [
             "fecha",
             "categoria",

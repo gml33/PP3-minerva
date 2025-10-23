@@ -54,7 +54,7 @@ from .models import (
     InformeIndividual,
     SolicitudInfo,
     HerramientaOSINT,
-    HechoCriminal,
+    HechoDelictivo,
     BandaCriminal,
     RedSocial,
     TvDigital,
@@ -91,7 +91,7 @@ from .forms import (
     RedSocialForm,
     TvDigitalForm,
     RadioDigitalForm,
-    HechoCriminalForm,
+    HechoDelictivoForm,
 )
 
 # Asegúrate de que esta utilidad exista en tu proyecto
@@ -190,6 +190,49 @@ def redaccion_view(request):
         "redaccion.html",
         {
             "solicitudes_usuario": solicitudes_usuario,
+        },
+    )
+
+
+@login_required
+def hechos_delictivos_view(request):
+    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.ADMIN]:
+        return render(request, "403.html", status=403)
+
+    if request.method == "POST":
+        form = HechoDelictivoForm(request.POST, user=request.user)
+        if form.is_valid():
+            hecho = form.save(commit=False)
+            hecho.creado_por = request.user
+            hecho.save()
+            form.save_m2m()
+            log_actividad(
+                request,
+                TipoActividad.OTRO,
+                f"Hecho delictivo creado desde panel (ID {hecho.pk}).",
+            )
+            messages.success(request, "Hecho delictivo registrado correctamente.")
+            return redirect("hechos_delictivos")
+        messages.error(
+            request,
+            "No se pudo registrar el hecho delictivo. Verificá los datos ingresados.",
+        )
+    else:
+        form = HechoDelictivoForm(user=request.user)
+
+    hechos = (
+        HechoDelictivo.objects.filter(creado_por=request.user)
+        .select_related("creado_por")
+        .prefetch_related("autor", "noticias")
+        .order_by("-fecha")
+    )
+
+    return render(
+        request,
+        "hechos_delictivos.html",
+        {
+            "form": form,
+            "hechos": hechos,
         },
     )
 
@@ -2293,47 +2336,47 @@ def eliminar_radio_digital(request, id):
 
 
 @login_required
-def crear_hecho_criminal(request):
+def crear_hecho_delictivo(request):
     if request.method != "POST":
-        return redirect("redaccion")
+        return redirect("hechos_delictivos")
 
     if request.user.userprofile.rol not in [Roles.REDACCION, Roles.ADMIN]:
-        messages.error(request, "No tenés permisos para registrar hechos criminales.")
-        return redirect("redaccion")
+        messages.error(request, "No tenés permisos para registrar hechos delictivos.")
+        return redirect("hechos_delictivos")
 
-    form = HechoCriminalForm(request.POST, user=request.user)
+    form = HechoDelictivoForm(request.POST, user=request.user)
     if form.is_valid():
         hecho = form.save(commit=False)
         hecho.creado_por = request.user
         hecho.save()
         form.save_m2m()
-        request.session.pop("hecho_criminal_form_data", None)
+        request.session.pop("hecho_delictivo_form_data", None)
         log_actividad(
             request,
             TipoActividad.OTRO,
-            f"Hecho criminal creado (ID {hecho.pk}).",
+            f"Hecho delictivo creado (ID {hecho.pk}).",
         )
-        messages.success(request, "Hecho criminal registrado correctamente.")
+        messages.success(request, "Hecho delictivo registrado correctamente.")
     else:
-        request.session["hecho_criminal_form_data"] = request.POST.urlencode()
+        request.session["hecho_delictivo_form_data"] = request.POST.urlencode()
         errores = "; ".join(
             [f"{campo}: {', '.join(map(str, lista))}" for campo, lista in form.errors.items()]
         )
-        messages.error(request, f"No se pudo registrar el hecho criminal: {errores}")
+        messages.error(request, f"No se pudo registrar el hecho delictivo: {errores}")
 
-    return redirect("redaccion")
+    return redirect("hechos_delictivos")
 
 
 @login_required
-def editar_hecho_criminal(request, id):
-    hecho = get_object_or_404(HechoCriminal, id=id)
+def editar_hecho_delictivo(request, id):
+    hecho = get_object_or_404(HechoDelictivo, id=id)
     if request.user.userprofile.rol not in [Roles.REDACCION, Roles.ADMIN]:
         return render(request, "403.html", status=403)
     if hecho.creado_por not in [request.user, None] and request.user.userprofile.rol != Roles.ADMIN:
         return render(request, "403.html", status=403)
 
     if request.method == "POST":
-        form = HechoCriminalForm(request.POST, instance=hecho, user=request.user)
+        form = HechoDelictivoForm(request.POST, instance=hecho, user=request.user)
         if form.is_valid():
             hecho = form.save(commit=False)
             if hecho.creado_por is None:
@@ -2343,16 +2386,16 @@ def editar_hecho_criminal(request, id):
             log_actividad(
                 request,
                 TipoActividad.OTRO,
-                f"Hecho criminal editado (ID {hecho.pk}).",
+                f"Hecho delictivo editado (ID {hecho.pk}).",
             )
-            messages.success(request, "Hecho criminal actualizado correctamente.")
-            return redirect("redaccion")
+            messages.success(request, "Hecho delictivo actualizado correctamente.")
+            return redirect("hechos_delictivos")
     else:
-        form = HechoCriminalForm(instance=hecho, user=request.user)
+        form = HechoDelictivoForm(instance=hecho, user=request.user)
 
     return render(
         request,
-        "form_hecho_criminal.html",
+        "form_hecho_delictivo.html",
         {
             "form": form,
             "action": "Editar",
@@ -2362,8 +2405,8 @@ def editar_hecho_criminal(request, id):
 
 
 @login_required
-def eliminar_hecho_criminal(request, id):
-    hecho = get_object_or_404(HechoCriminal, id=id)
+def eliminar_hecho_delictivo(request, id):
+    hecho = get_object_or_404(HechoDelictivo, id=id)
     if request.user.userprofile.rol not in [Roles.REDACCION, Roles.ADMIN]:
         return render(request, "403.html", status=403)
     if hecho.creado_por not in [request.user, None] and request.user.userprofile.rol != Roles.ADMIN:
@@ -2372,11 +2415,73 @@ def eliminar_hecho_criminal(request, id):
     log_actividad(
         request,
         TipoActividad.OTRO,
-        f"Hecho criminal eliminado (ID {hecho.pk}).",
+        f"Hecho delictivo eliminado (ID {hecho.pk}).",
     )
     hecho.delete()
-    messages.success(request, "Hecho criminal eliminado correctamente.")
-    return redirect("redaccion")
+    messages.success(request, "Hecho delictivo eliminado correctamente.")
+    return redirect("hechos_delictivos")
+
+
+@login_required
+def hecho_delictivo_detalle_view(request, id):
+    hecho = get_object_or_404(
+        HechoDelictivo.objects.select_related("creado_por").prefetch_related(
+            "autor", "noticias"
+        ),
+        id=id,
+    )
+    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.ADMIN]:
+        return render(request, "403.html", status=403)
+    if (
+        request.user.userprofile.rol == Roles.REDACCION
+        and hecho.creado_por not in [request.user, None]
+    ):
+        return render(request, "403.html", status=403)
+
+    return render(
+        request,
+        "hecho_delictivo_detalle.html",
+        {
+            "hecho": hecho,
+        },
+    )
+
+
+@login_required
+def exportar_hecho_delictivo_pdf(request, id):
+    hecho = get_object_or_404(
+        HechoDelictivo.objects.select_related("creado_por").prefetch_related(
+            "autor", "noticias"
+        ),
+        id=id,
+    )
+    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.ADMIN]:
+        return render(request, "403.html", status=403)
+    if (
+        request.user.userprofile.rol == Roles.REDACCION
+        and hecho.creado_por not in [request.user, None]
+    ):
+        return render(request, "403.html", status=403)
+
+    context = {
+        "hecho": hecho,
+        "autores": hecho.autor.all(),
+        "noticias": hecho.noticias.all(),
+        "creado_por": hecho.creado_por.username if hecho.creado_por else "No registrado",
+        "fecha_registro": hecho.fecha.strftime("%d/%m/%Y"),
+        "generado_en": localtime(now()).strftime("%d/%m/%Y %H:%M"),
+    }
+
+    html = render_to_string("hecho_delictivo_pdf.html", context)
+    pdf_file = HTML(string=html, base_url=request.build_absolute_uri()).write_pdf()
+
+    fecha_str = hecho.fecha.strftime("%Y-%m-%d")
+    categoria = slugify(hecho.get_categoria_display() or "hecho")
+    nombre_archivo = f"HechoDelictivo_{categoria}_{fecha_str}.pdf"
+
+    response = HttpResponse(pdf_file, content_type="application/pdf")
+    response["Content-Disposition"] = f'inline; filename="{nombre_archivo}"'
+    return response
 
 
 # -------------------- API ADICIONAL (No REST Framework) --------------------

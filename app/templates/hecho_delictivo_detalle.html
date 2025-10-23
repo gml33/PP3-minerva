@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% block title %}Detalle Hecho Delictivo{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">Detalle del Hecho Delictivo</h1>
+    <div>
+        <a class="btn btn-secondary" href="{% url 'hechos_delictivos' %}">Volver</a>
+        <a class="btn btn-success" href="{% url 'exportar_hecho_delictivo_pdf' hecho.id %}" target="_blank">Exportar PDF</a>
+        <a class="btn btn-primary" href="{% url 'editar_hecho_delictivo' hecho.id %}">Editar</a>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">Información general</div>
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Fecha</dt>
+            <dd class="col-sm-9">{{ hecho.fecha|date:"d/m/Y" }}</dd>
+
+            <dt class="col-sm-3">Categoría</dt>
+            <dd class="col-sm-9">{{ hecho.get_categoria_display|default:"Sin categoría" }}</dd>
+
+            <dt class="col-sm-3">Ubicación</dt>
+            <dd class="col-sm-9">{{ hecho.ubicacion }}</dd>
+
+            <dt class="col-sm-3">Calificación</dt>
+            <dd class="col-sm-9">{{ hecho.get_calificacion_display }}</dd>
+
+            <dt class="col-sm-3">Registrado por</dt>
+            <dd class="col-sm-9">
+                {% if hecho.creado_por %}
+                    {{ hecho.creado_por.username }}
+                {% else %}
+                    <span class="text-muted">No registrado</span>
+                {% endif %}
+            </dd>
+        </dl>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">Descripción</div>
+    <div class="card-body">
+        <p class="mb-0">{{ hecho.descripcion|linebreaks }}</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">Autores vinculados</div>
+            <div class="card-body">
+                {% with autores=hecho.autor.all %}
+                    {% if autores %}
+                        <ul class="mb-0">
+                            {% for autor in autores %}
+                                <li>{{ autor }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="mb-0 text-muted">Sin autores relacionados.</p>
+                    {% endif %}
+                {% endwith %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">Noticias asociadas</div>
+            <div class="card-body">
+                {% with noticias=hecho.noticias.all %}
+                    {% if noticias %}
+                        <ul class="mb-0">
+                            {% for noticia in noticias %}
+                                <li><a href="{{ noticia.url }}" target="_blank">{{ noticia.url }}</a></li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="mb-0 text-muted">Sin noticias relacionadas.</p>
+                    {% endif %}
+                {% endwith %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

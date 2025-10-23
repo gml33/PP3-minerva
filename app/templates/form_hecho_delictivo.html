@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
-{% block title %}{{ action }} Hecho Criminal{% endblock %}
+{% block title %}{{ action }} Hecho Delictivo{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
-    <h1>{{ action }} Hecho Criminal</h1>
+    <h1>{{ action }} Hecho Delictivo</h1>
 
     {% if messages %}
         {% for message in messages %}
@@ -28,7 +28,7 @@
             </div>
         {% endfor %}
         <button type="submit" class="btn btn-primary">Guardar</button>
-        <a href="{% url 'redaccion' %}" class="btn btn-secondary">Volver</a>
+        <a href="{% url 'hechos_delictivos' %}" class="btn btn-secondary">Volver</a>
     </form>
 </div>
 {% endblock %}

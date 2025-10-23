@@ -52,6 +52,9 @@
                             <a class="nav-link" href="{% url 'solicitud_info_portal' %}">Solicitud de información</a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link" href="{% url 'hechos_delictivos' %}">Hechos Delictivos</a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link" href="{% url 'actividad' %}">Actividades</a>
                         </li>
                         <li class="nav-item">
@@ -89,6 +92,9 @@
                         {% elif user.userprofile.rol == 'redaccion' %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'redaccion' %}">Redacción</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'hechos_delictivos' %}">Hechos Delictivos</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'solicitud_info_portal' %}">Solicitud de información</a>
