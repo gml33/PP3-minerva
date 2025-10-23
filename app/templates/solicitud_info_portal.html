@@ -135,15 +135,22 @@
                             {{ solicitud.descripcion|truncatechars:20|linebreaksbr }}
                         </td>
                         <td class="text-wrap" style="min-width: 180px;">
-                            {% if solicitud.articulos.all %}
+                            {% with articulos_rel=solicitud.articulos.all %}
+                            {% if articulos_rel %}
                                 <ul class="mb-0 ps-3">
-                                    {% for articulo in solicitud.articulos.all %}
-                                        <li><strong>#{{ articulo.id }}</strong> - {{ articulo.titulo }}</li>
+                                    {% for articulo in articulos_rel %}
+                                        <li>
+                                            <strong>#{{ articulo.id }}</strong> -
+                                            <a href="{% url 'articulo_editar' articulo.id %}" class="link-primary">
+                                                {{ articulo.titulo|default:"Sin título" }}
+                                            </a>
+                                        </li>
                                     {% endfor %}
                                 </ul>
                             {% else %}
                                 <span class="text-muted">Sin artículos asociados</span>
                             {% endif %}
+                            {% endwith %}
                         </td>
                         <td style="white-space: nowrap;">
                             {% if solicitud.fecha_respuesta %}

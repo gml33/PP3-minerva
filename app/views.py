@@ -85,6 +85,7 @@ from .forms import (
     CustomAuthenticationForm,
     CategoriaForm,
     DiarioForm,
+    ArticuloForm,
     SolicitudInfoForm,
     SolicitudInfoRespuestaForm,
     HerramientaOSINTForm,
@@ -233,6 +234,55 @@ def hechos_delictivos_view(request):
         {
             "form": form,
             "hechos": hechos,
+        },
+    )
+
+
+@login_required
+def articulo_editar_view(request, id):
+    articulo = get_object_or_404(
+        Articulo.objects.select_related("generado_por", "categoria").prefetch_related(
+            "solicitudes_info__respondido_por"
+        ),
+        pk=id,
+    )
+
+    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.ADMIN]:
+        return render(request, "403.html", status=403)
+
+    if (
+        request.user.userprofile.rol == Roles.REDACCION
+        and articulo.generado_por != request.user
+    ):
+        return render(request, "403.html", status=403)
+
+    if request.method == "POST":
+        form = ArticuloForm(request.POST, instance=articulo)
+        if form.is_valid():
+            form.save()
+            log_actividad(
+                request,
+                TipoActividad.OTRO,
+                f"Artículo actualizado desde panel: {articulo.titulo} (ID {articulo.pk}).",
+            )
+            messages.success(request, "Artículo actualizado correctamente.")
+            return redirect("articulo_editar", id=articulo.id)
+    else:
+        form = ArticuloForm(instance=articulo)
+
+    solicitudes_relacionadas = (
+        articulo.solicitudes_info.select_related("respondido_por")
+        .all()
+        .order_by("-fecha_creacion")
+    )
+
+    return render(
+        request,
+        "articulo_editar.html",
+        {
+            "articulo": articulo,
+            "form": form,
+            "solicitudes_relacionadas": solicitudes_relacionadas,
         },
     )
 

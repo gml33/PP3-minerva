@@ -102,6 +102,33 @@ class RadioDigitalForm(forms.ModelForm):
         }
 
 
+class ArticuloForm(forms.ModelForm):
+    class Meta:
+        model = Articulo
+        fields = [
+            "titulo",
+            "fecha",
+            "lugar",
+            "descripcion",
+            "categoria",
+            "estado",
+        ]
+        widgets = {
+            "titulo": forms.TextInput(attrs={"class": "form-control"}),
+            "fecha": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
+            "lugar": forms.TextInput(attrs={"class": "form-control"}),
+            "descripcion": forms.Textarea(
+                attrs={"class": "form-control", "rows": 5}
+            ),
+            "categoria": forms.Select(attrs={"class": "form-select"}),
+            "estado": forms.Select(attrs={"class": "form-select"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["categoria"].required = False
+
+
 class HechoDelictivoForm(forms.ModelForm):
     autor = forms.ModelMultipleChoiceField(
         queryset=InformeIndividual.objects.all(),

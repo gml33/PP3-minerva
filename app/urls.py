@@ -71,6 +71,7 @@ from .views import (
     eliminar_hecho_delictivo,
     hecho_delictivo_detalle_view,
     exportar_hecho_delictivo_pdf,
+    articulo_editar_view,
     # NUEVAS APIs PARA PANEL DE CLASIFICACIÓN
     api_links_list,
     api_diarios,
@@ -213,6 +214,11 @@ urlpatterns = [
         "api/articulos/<int:id>/exportar_pdf/",
         exportar_articulo_pdf,
         name="exportar_articulo_pdf",
+    ),
+    path(
+        "articulos/<int:id>/editar/",
+        articulo_editar_view,
+        name="articulo_editar",
     ),
     path("captcha/", include("captcha.urls")),
     path("informes/", informes_view, name="informes"),

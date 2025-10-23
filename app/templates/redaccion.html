@@ -222,7 +222,11 @@
                                             {% with articulos=solicitud.articulos.all %}
                                                 {% if articulos %}
                                                     {% for articulo in articulos %}
-                                                        <div>{{ articulo.titulo }}</div>
+                                                        <div>
+                                                            <a href="{% url 'articulo_editar' articulo.id %}" class="link-primary">
+                                                                {{ articulo.titulo|default:"Sin título" }}
+                                                            </a>
+                                                        </div>
                                                     {% endfor %}
                                                 {% else %}
                                                     <span class="text-muted">Sin artículo asociado.</span>
