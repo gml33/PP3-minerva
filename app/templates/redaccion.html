@@ -208,6 +208,7 @@
                                     <tr>
                                         <th>Fecha</th>
                                         <th>Descripción</th>
+                                        <th>Artículo relacionado</th>
                                         <th>Estado</th>
                                         <th>Respuesta</th>
                                     </tr>
@@ -217,6 +218,17 @@
                                     <tr>
                                         <td style="white-space: nowrap;">{{ solicitud.fecha_creacion|date:'d/m/Y H:i' }}</td>
                                         <td class="text-wrap" style="min-width: 220px; max-width: 320px;">{{ solicitud.descripcion|linebreaksbr }}</td>
+                                        <td class="text-wrap" style="min-width: 200px; max-width: 260px;">
+                                            {% with articulos=solicitud.articulos.all %}
+                                                {% if articulos %}
+                                                    {% for articulo in articulos %}
+                                                        <div>{{ articulo.titulo }}</div>
+                                                    {% endfor %}
+                                                {% else %}
+                                                    <span class="text-muted">Sin artículo asociado.</span>
+                                                {% endif %}
+                                            {% endwith %}
+                                        </td>
                                         <td style="white-space: nowrap;">
                                             {% if solicitud.fecha_respuesta %}
                                                 <span class="badge bg-success">Respondida</span>

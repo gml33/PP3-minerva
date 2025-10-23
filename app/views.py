@@ -181,6 +181,7 @@ def redaccion_view(request):
 
     solicitudes_usuario = (
         SolicitudInfo.objects.select_related("respondido_por")
+        .prefetch_related("articulos")
         .filter(usuario_creador=request.user)
         .order_by("-fecha_creacion")
     )
@@ -247,6 +248,14 @@ def solicitud_info_portal_view(request):
     else:
         form = SolicitudInfoForm(user=request.user)
 
+    articulos_queryset = form.fields["articulos"].queryset.select_related("categoria")
+    categorias_articulos = (
+        articulos_queryset.exclude(categoria__isnull=True)
+        .values_list("categoria__nombre", flat=True)
+        .distinct()
+        .order_by("categoria__nombre")
+    )
+
     return render(
         request,
         "solicitud_info_portal.html",
@@ -254,6 +263,9 @@ def solicitud_info_portal_view(request):
             "form": form,
             "solicitudes_usuario": solicitudes_usuario,
             "solicitudes_page": solicitudes_page,
+            "articulos_disponibles": articulos_queryset,
+            "categorias_articulos": list(categorias_articulos),
+            "estados_articulo": Articulo.Estado.choices,
         },
     )
 
@@ -1981,6 +1993,48 @@ def eliminar_herramienta_osint(request, id):
     herramienta.delete()
     messages.success(request, "Herramienta eliminada correctamente.")
     return redirect("herramientas_osint")
+
+
+@login_required
+def exportar_fuentes_osint(request):
+    if request.user.userprofile.rol != Roles.GERENTE_PRODUCCION:
+        return render(request, "403.html", status=403)
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Herramientas OSINT"
+    ws.append(["Nombre", "URL", "Tipo", "Descripción"])
+
+    for herramienta in HerramientaOSINT.objects.all().order_by("nombre"):
+        ws.append(
+            [
+                herramienta.nombre,
+                herramienta.url,
+                herramienta.get_tipo_display(),
+                herramienta.descripcion or "",
+            ]
+        )
+
+    def _agregar_fuentes(titulo, queryset):
+        hoja = wb.create_sheet(titulo)
+        hoja.append(["Nombre", "URL principal"])
+        for fuente in queryset:
+            hoja.append([fuente.nombre, fuente.url_principal])
+
+    _agregar_fuentes("Diarios digitales", DiarioDigital.objects.all().order_by("nombre"))
+    _agregar_fuentes("Redes sociales", RedSocial.objects.all().order_by("nombre"))
+    _agregar_fuentes("TV digital", TvDigital.objects.all().order_by("nombre"))
+    _agregar_fuentes("Radios digitales", RadioDigital.objects.all().order_by("nombre"))
+
+    ahora = localtime(now()).strftime("%Y%m%d_%H%M%S")
+    nombre_archivo = f"fuentes_osint_{ahora}.xlsx"
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = f'attachment; filename="{nombre_archivo}"'
+    wb.save(response)
+    return response
 
 
 # ========================

@@ -55,6 +55,7 @@ from .views import (
     editar_herramienta_osint,
     eliminar_herramienta_osint,
     osint_panel_view,
+    exportar_fuentes_osint,
     crear_red_social,
     editar_red_social,
     eliminar_red_social,
@@ -128,6 +129,11 @@ urlpatterns = [
         "herramientas/osint/",
         herramientas_osint_view,
         name="herramientas_osint",
+    ),
+    path(
+        "herramientas/osint/exportar/",
+        exportar_fuentes_osint,
+        name="exportar_fuentes_osint",
     ),
     path(
         "herramientas/osint/crear/",
