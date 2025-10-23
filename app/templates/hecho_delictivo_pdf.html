@@ -23,6 +23,13 @@
         <p><span class="label">Categoría:</span> {{ hecho.get_categoria_display|default:"Sin categoría" }}</p>
         <p><span class="label">Ubicación:</span> {{ hecho.ubicacion }}</p>
         <p><span class="label">Calificación:</span> {{ hecho.get_calificacion_display }}</p>
+        <p><span class="label">Artículo:</span>
+            {% if articulo %}
+                #{{ articulo.id }} · {{ articulo.titulo|default:"Sin título" }}
+            {% else %}
+                Sin artículo vinculado
+            {% endif %}
+        </p>
         <p><span class="label">Creado por:</span> {{ creado_por }}</p>
     </div>
 

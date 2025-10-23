@@ -222,7 +222,7 @@ def hechos_delictivos_view(request):
 
     hechos = (
         HechoDelictivo.objects.filter(creado_por=request.user)
-        .select_related("creado_por")
+        .select_related("creado_por", "articulo")
         .prefetch_related("autor", "noticias")
         .order_by("-fecha")
     )
@@ -2425,7 +2425,7 @@ def eliminar_hecho_delictivo(request, id):
 @login_required
 def hecho_delictivo_detalle_view(request, id):
     hecho = get_object_or_404(
-        HechoDelictivo.objects.select_related("creado_por").prefetch_related(
+        HechoDelictivo.objects.select_related("creado_por", "articulo").prefetch_related(
             "autor", "noticias"
         ),
         id=id,
@@ -2450,7 +2450,7 @@ def hecho_delictivo_detalle_view(request, id):
 @login_required
 def exportar_hecho_delictivo_pdf(request, id):
     hecho = get_object_or_404(
-        HechoDelictivo.objects.select_related("creado_por").prefetch_related(
+        HechoDelictivo.objects.select_related("creado_por", "articulo").prefetch_related(
             "autor", "noticias"
         ),
         id=id,
@@ -2470,6 +2470,7 @@ def exportar_hecho_delictivo_pdf(request, id):
         "creado_por": hecho.creado_por.username if hecho.creado_por else "No registrado",
         "fecha_registro": hecho.fecha.strftime("%d/%m/%Y"),
         "generado_en": localtime(now()).strftime("%d/%m/%Y %H:%M"),
+        "articulo": hecho.articulo,
     }
 
     html = render_to_string("hecho_delictivo_pdf.html", context)

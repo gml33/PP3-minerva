@@ -52,6 +52,7 @@
                                     <th>Categoría</th>
                                     <th>Ubicación</th>
                                     <th>Calificación</th>
+                                    <th>Artículo</th>
                                     <th>Autores</th>
                                     <th class="text-end">Acciones</th>
                                 </tr>
@@ -63,6 +64,15 @@
                                     <td>{{ hecho.get_categoria_display|default:"Sin categoría" }}</td>
                                     <td>{{ hecho.ubicacion }}</td>
                                     <td>{{ hecho.get_calificacion_display }}</td>
+                                    <td>
+                                        {% if hecho.articulo %}
+                                            <a href="{% url 'exportar_articulo_pdf' hecho.articulo.id %}" target="_blank" class="text-decoration-none">
+                                                #{{ hecho.articulo.id }} · {{ hecho.articulo.titulo|default:"Sin título" }}
+                                            </a>
+                                        {% else %}
+                                            <span class="text-muted">Sin artículo</span>
+                                        {% endif %}
+                                    </td>
                                     <td>
                                         {% with autores=hecho.autor.all %}
                                             {% if autores %}
@@ -95,7 +105,6 @@
         </div>
     </div>
 </div>
-
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     document.querySelectorAll(".form-eliminar-hecho").forEach(function (form) {

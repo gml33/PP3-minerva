@@ -13,6 +13,7 @@ from .models import (
     RadioDigital,
     HechoDelictivo,
     LinkRelevante,
+    EstadoLink,
 )
 
 
@@ -122,6 +123,7 @@ class HechoDelictivoForm(forms.ModelForm):
             "categoria",
             "ubicacion",
             "calificacion",
+            "articulo",
             "autor",
             "descripcion",
             "noticias",
@@ -131,6 +133,7 @@ class HechoDelictivoForm(forms.ModelForm):
             "categoria": forms.Select(attrs={"class": "form-select"}),
             "ubicacion": forms.TextInput(attrs={"class": "form-control"}),
             "calificacion": forms.Select(attrs={"class": "form-select"}),
+            "articulo": forms.Select(attrs={"class": "form-select"}),
             "descripcion": forms.Textarea(attrs={"class": "form-control", "rows": 4}),
         }
 
@@ -138,13 +141,29 @@ class HechoDelictivoForm(forms.ModelForm):
         user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
         self.fields["categoria"].required = False
+        articulo_queryset = Articulo.objects.all().order_by("-fecha_creacion")
+        links_queryset = LinkRelevante.objects.filter(
+            estado=EstadoLink.APROBADO, revisado_clasificador=True
+        ).order_by("-fecha_carga")
+
+        autores_queryset = InformeIndividual.objects.all().order_by("apellido", "nombre")
+
         if user and not user.is_superuser:
-            self.fields["autor"].queryset = InformeIndividual.objects.filter(
-                generado_por=user
+            user_autores = autores_queryset.filter(generado_por=user)
+            self.fields["autor"].queryset = (
+                user_autores if user_autores.exists() else autores_queryset
             )
-            self.fields["noticias"].queryset = LinkRelevante.objects.filter(
-                cargado_por=user
-            )
+
+            articulo_queryset = articulo_queryset.filter(generado_por=user)
+
+            user_links = links_queryset.filter(cargado_por=user)
+            links_queryset = user_links if user_links.exists() else links_queryset
+        else:
+            self.fields["autor"].queryset = autores_queryset
+
+        self.fields["noticias"].queryset = links_queryset
+        self.fields["articulo"].queryset = articulo_queryset
+        self.fields["articulo"].required = True
 
 
 class SolicitudInfoForm(forms.ModelForm):

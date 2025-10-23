@@ -508,6 +508,13 @@ class HechoDelictivo(models.Model):
         related_name="hechos_criminales",
         blank=True,
     )
+    articulo = models.ForeignKey(
+        Articulo,
+        on_delete=models.CASCADE,
+        related_name="hechos_delictivos",
+        null=True,
+        blank=True,
+    )
 
     class Meta:
         verbose_name = "Hecho Delictivo"

@@ -139,7 +139,7 @@ class HerramientaOSINTAdmin(admin.ModelAdmin):
 
 @admin.register(HechoDelictivo)
 class HechoDelictivoAdmin(admin.ModelAdmin):
-    list_display = ("fecha", "categoria", "ubicacion", "calificacion", "creado_por")
+    list_display = ("fecha", "categoria", "ubicacion", "calificacion", "articulo", "creado_por")
     list_filter = ("fecha", "categoria", "calificacion")
     search_fields = ("descripcion", "ubicacion")
     filter_horizontal = ("autor", "noticias")

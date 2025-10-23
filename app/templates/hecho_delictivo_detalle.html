@@ -27,6 +27,17 @@
             <dt class="col-sm-3">Calificación</dt>
             <dd class="col-sm-9">{{ hecho.get_calificacion_display }}</dd>
 
+            <dt class="col-sm-3">Artículo asociado</dt>
+            <dd class="col-sm-9">
+                {% if hecho.articulo %}
+                    <a href="{% url 'exportar_articulo_pdf' hecho.articulo.id %}" target="_blank">
+                        #{{ hecho.articulo.id }} · {{ hecho.articulo.titulo|default:"Sin título" }}
+                    </a>
+                {% else %}
+                    <span class="text-muted">Sin artículo vinculado</span>
+                {% endif %}
+            </dd>
+
             <dt class="col-sm-3">Registrado por</dt>
             <dd class="col-sm-9">
                 {% if hecho.creado_por %}
