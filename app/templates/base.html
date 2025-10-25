@@ -80,6 +80,9 @@
                             <a class="nav-link" href="{% url 'exportar_fuentes_osint' %}">Exportar fuentes OSINT</a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link" href="{% url 'exportar_links_relevantes' %}">Exportar links relevantes</a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link" href="{% url 'configuraciones' %}">Configuraciones</a>
                         </li>
                         {% elif user.userprofile.rol == 'prensa' %}

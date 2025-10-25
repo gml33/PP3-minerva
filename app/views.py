@@ -59,6 +59,7 @@ from .models import (
     RedSocial,
     TvDigital,
     RadioDigital,
+    EstadoLink,
 )
 from .serializers import (
     UserProfileSerializer,
@@ -2121,6 +2122,82 @@ def exportar_fuentes_osint(request):
 
     ahora = localtime(now()).strftime("%Y%m%d_%H%M%S")
     nombre_archivo = f"fuentes_osint_{ahora}.xlsx"
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = f'attachment; filename="{nombre_archivo}"'
+    wb.save(response)
+    return response
+
+
+# ========================
+# Exportar Links Relevantes
+# ========================
+
+
+@login_required
+def exportar_links_relevantes(request):
+    if request.user.userprofile.rol != Roles.GERENTE_PRODUCCION:
+        return render(request, "403.html", status=403)
+
+    fecha_desde = request.GET.get("desde")
+    fecha_hasta = request.GET.get("hasta")
+    diario_id = request.GET.get("diario")
+    categoria_id = request.GET.get("categoria")
+
+    links = (
+        LinkRelevante.objects.filter(
+            estado=EstadoLink.APROBADO, revisado_clasificador=True
+        )
+        .select_related("diario_digital", "cargado_por")
+        .prefetch_related("categorias")
+        .order_by("-fecha_carga")
+    )
+
+    if fecha_desde:
+        links = links.filter(fecha_carga__date__gte=parse_date(fecha_desde))
+    if fecha_hasta:
+        links = links.filter(fecha_carga__date__lte=parse_date(fecha_hasta))
+    if diario_id:
+        links = links.filter(diario_digital_id=diario_id)
+    if categoria_id:
+        links = links.filter(categorias__id=categoria_id)
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Links Relevantes"
+    ws.append(
+        [
+            "Fecha de carga",
+            "URL",
+            "Estado",
+            "Diario digital",
+            "Categorías",
+            "Cargado por",
+        ]
+    )
+
+    for link in links:
+        categorias = ", ".join(cat.nombre for cat in link.categorias.all()) or "-"
+        ws.append(
+            [
+                link.fecha_carga.strftime("%Y-%m-%d %H:%M") if link.fecha_carga else "-",
+                link.url,
+                link.get_estado_display(),
+                link.diario_digital.nombre if link.diario_digital else "Sin diario",
+                categorias,
+                link.cargado_por.username if link.cargado_por else "Desconocido",
+            ]
+        )
+
+    nombre_archivo = "links_relevantes.xlsx"
+    if fecha_desde or fecha_hasta:
+        nombre_archivo = f"links_{fecha_desde or 'inicio'}_{fecha_hasta or 'hoy'}.xlsx"
+    elif diario_id:
+        nombre_archivo = f"links_diario_{diario_id}.xlsx"
+    elif categoria_id:
+        nombre_archivo = f"links_categoria_{categoria_id}.xlsx"
 
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"

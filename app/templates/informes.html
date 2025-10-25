@@ -339,7 +339,7 @@
                 <tr>
                     <td>{{ art.fecha_creacion|date:"d/m/Y H:i" }}</td>
                     <td>{{ art.titulo }}</td>
-                    <td>{{ art.categoria.nombre }}</td>
+                    <td>{{ art.categoria.nombre|default:"-" }}</td>
                     <td>{{ art.generado_por.username }}</td>
                     <td class="consultado-cell">{% if art.revisado_redactor %}✔️{% else %}-{% endif %}</td>
                     <td>
@@ -520,7 +520,7 @@
                 tr.innerHTML = `
                     <td>${art.fecha_creacion ? new Date(art.fecha_creacion).toLocaleDateString('es-ES') + ' ' + new Date(art.fecha_creacion).toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'}) : '-'}</td>
                     <td>${art.titulo || 'Sin título'}</td>
-                    <td>${art.categoria ? art.categoria.nombre : '-'}</td>
+                    <td>${art.categoria ? art.categoria.name : '-'}</td>
                     <td>${art.generado_por ? art.generado_por.username : '-'}</td>
                     <td class="consultado-cell">${art.revisado_redactor ? '✔️' : '-'}</td>
                     <td>
