@@ -475,8 +475,6 @@ class HechoDelictivo(models.Model):
 
         #quitar categorias
 
-
-
     fecha = models.DateField()
     categoria = models.CharField(
         max_length=50,
