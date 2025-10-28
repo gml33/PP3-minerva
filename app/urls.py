@@ -2,6 +2,7 @@ from django.urls import path, include
 from django.contrib import admin
 from rest_framework.routers import DefaultRouter
 from django.shortcuts import redirect
+from rest_framework.authtoken.views import obtain_auth_token
 
 from .views import (
     UserViewSet,
@@ -194,6 +195,7 @@ urlpatterns = [
     path("clasificacion/", clasificacion_view, name="clasificacion"),
     path("actividad/", actividad_view, name="actividad"),
     path("actividad_debug/", actividad_debug_view, name="actividad_debug"),
+    path("api/token/", obtain_auth_token, name="api_token_auth"),
     path("api/", include(router.urls)),
     
     # ==================== NUEVAS APIs PARA PANEL DE CLASIFICACIÓN ====================
