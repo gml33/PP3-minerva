@@ -40,6 +40,7 @@ from .models import (
     DiarioDigital,
     Categoria,
     LinkRelevante,
+    LinkRedSocial,
     Articulo,
     Actividad,
     Roles,
@@ -66,6 +67,7 @@ from .serializers import (
     DiarioDigitalSerializer,
     CategoriaSerializer,
     LinkRelevanteSerializer,
+    LinkRedSocialSerializer,
     ArticuloSerializer,
     ActividadSerializer,
     InformeIndividualSerializer,
@@ -928,6 +930,122 @@ class LinkRelevanteViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=201, headers=headers)
 
 
+class LinkRedSocialViewSet(viewsets.ModelViewSet):
+    queryset = (
+        LinkRedSocial.objects.select_related("cargado_por", "red_social")
+        .prefetch_related("categorias")
+        .order_by("-fecha_carga")
+    )
+    permission_classes = [IsAuthenticated]
+    serializer_class = LinkRedSocialSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = super().get_queryset()
+
+        if hasattr(user, "userprofile"):
+            rol = user.userprofile.rol
+            if rol == Roles.PRENSA:
+                queryset = queryset.filter(cargado_por=user)
+            elif rol in [Roles.CLIENTE, Roles.INFORMES]:
+                queryset = queryset.filter(estado=EstadoLink.APROBADO)
+
+        estado = self.request.query_params.get("estado")
+        fecha_inicio = self.request.query_params.get("fecha_inicio")
+        fecha_fin = self.request.query_params.get("fecha_fin")
+        categoria_id = self.request.query_params.get("categoria_id")
+        red_social_id = self.request.query_params.get("red_social_id")
+        solo_propios = self.request.query_params.get("solo_propios")
+
+        if estado:
+            queryset = queryset.filter(estado=estado)
+        if fecha_inicio:
+            queryset = queryset.filter(fecha_carga__date__gte=parse_date(fecha_inicio))
+        if fecha_fin:
+            queryset = queryset.filter(fecha_carga__date__lte=parse_date(fecha_fin))
+        if categoria_id:
+            queryset = queryset.filter(categorias__id=categoria_id)
+        if red_social_id:
+            queryset = queryset.filter(red_social__id=red_social_id)
+        if solo_propios:
+            queryset = queryset.filter(cargado_por=user)
+
+        return queryset.distinct()
+
+    def _resolver_red_social(self, url):
+        parsed_url = urlparse(url)
+        domain = parsed_url.netloc.lower().replace("www.", "")
+
+        for red in RedSocial.objects.all():
+            red_domain = urlparse(red.url_principal).netloc.lower().replace("www.", "")
+            if red_domain == domain or domain.endswith(f".{red_domain}"):
+                return red
+        return None
+
+    def perform_create(self, serializer):
+        url = serializer.validated_data.get("url", "")
+        red_social = serializer.validated_data.get("red_social") or self._resolver_red_social(url)
+
+        link = serializer.save(
+            cargado_por=self.request.user,
+            red_social=red_social,
+        )
+        log_actividad(
+            self.request,
+            TipoActividad.CARGA_LINK,
+            "Se cargó un nuevo link de red social: {url} (Red asignada: {red})".format(
+                url=link.url,
+                red=link.red_social.nombre if link.red_social else "Ninguna",
+            ),
+        )
+
+    def perform_update(self, serializer):
+        instance = self.get_object()
+        original_estado = instance.estado
+        original_categorias_ids = set(instance.categorias.values_list("id", flat=True))
+
+        link_instance = serializer.save()
+
+        if "url" in serializer.validated_data and "red_social" not in serializer.validated_data:
+            red_social = self._resolver_red_social(link_instance.url)
+            if link_instance.red_social != red_social:
+                link_instance.red_social = red_social
+                link_instance.save(update_fields=["red_social"])
+
+        if original_estado != link_instance.estado:
+            log_actividad(
+                self.request,
+                TipoActividad.CAMBIO_ESTADO,
+                f"Se cambió el estado del link de red social ID {link_instance.id} de '{original_estado}' a '{link_instance.estado}'. URL: {link_instance.url}",
+            )
+
+        if original_estado != EstadoLink.APROBADO and link_instance.estado == EstadoLink.APROBADO:
+            link_instance.fecha_aprobacion = datetime.now()
+            link_instance.save(update_fields=["fecha_aprobacion"])
+
+        current_categorias_ids = set(
+            link_instance.categorias.values_list("id", flat=True)
+        )
+        if original_categorias_ids != current_categorias_ids:
+            nuevas_categorias_nombres = ", ".join(
+                [c.nombre for c in link_instance.categorias.all()]
+            )
+            log_actividad(
+                self.request,
+                TipoActividad.CLASIFICACION_LINK,
+                f"Se actualizaron las categorías del link de red social ID {link_instance.id}. Nuevas categorías: [{nuevas_categorias_nombres}]. URL: {link_instance.url}",
+            )
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            logger.error("ERRORES DEL SERIALIZER (LinkRedSocial): %s", serializer.errors)
+            return Response(serializer.errors, status=400)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=201, headers=headers)
+
+
 class ArticuloViewSet(viewsets.ModelViewSet):
     queryset = (
         Articulo.objects.all()
@@ -1075,43 +1193,83 @@ def api_links_list(request):
         estado = request.GET.get('estado')
         categoria_id = request.GET.get('categoria_id')
         solo_propios = request.GET.get('solo_propios')
+        fuente = request.GET.get('fuente')
+        red_social_id = request.GET.get('red_social_id')
 
-        # Filtrar links
-        links = LinkRelevante.objects.select_related('diario_digital').prefetch_related('categorias').all()
-
-        if fecha_inicio:
-            links = links.filter(fecha_carga__gte=fecha_inicio)
-        if fecha_fin:
-            links = links.filter(fecha_carga__lte=fecha_fin)
-        if diario_id:
-            links = links.filter(diario_digital__id=diario_id)
-        if estado:
-            if estado.startswith('estado!='):
-                exclude_estado = estado.split('!=')[1]
-                links = links.exclude(estado=exclude_estado)
-            else:
-                links = links.filter(estado=estado)
-        if categoria_id:
-            links = links.filter(categorias__id=categoria_id)
-        if solo_propios:
-            links = links.filter(cargado_por=request.user)
-
-        # Preparar datos para JSON
         data = []
-        for link in links:
-            data.append({
-                'id': link.id,
-                'url': link.url,
-                'estado': getattr(link, 'estado', 'pendiente'),
-                'fecha_carga': link.fecha_carga.isoformat() if link.fecha_carga else None,
-                'revisado_clasificador': getattr(link, 'revisado_clasificador', False),
-                'diario_logo_url': link.diario_digital.logo.url if hasattr(link.diario_digital, 'logo') and link.diario_digital.logo else None,
-                'diario_nombre': link.diario_digital.nombre if link.diario_digital else 'Sin diario',
-                'red_social': None,
-                'red_social_nombre': None,
-                'categorias_info': [{'id': cat.id, 'nombre': cat.nombre} for cat in link.categorias.all()]
-            })
-        
+
+        if fuente == 'red_social':
+            links = LinkRedSocial.objects.select_related('red_social').prefetch_related('categorias').all()
+
+            if fecha_inicio:
+                links = links.filter(fecha_carga__date__gte=parse_date(fecha_inicio))
+            if fecha_fin:
+                links = links.filter(fecha_carga__date__lte=parse_date(fecha_fin))
+            if estado:
+                if estado.startswith('estado!='):
+                    exclude_estado = estado.split('!=')[1]
+                    links = links.exclude(estado=exclude_estado)
+                else:
+                    links = links.filter(estado=estado)
+            if categoria_id:
+                links = links.filter(categorias__id=categoria_id)
+            if red_social_id:
+                links = links.filter(red_social__id=red_social_id)
+            if solo_propios:
+                links = links.filter(cargado_por=request.user)
+
+            for link in links:
+                data.append({
+                    'id': link.id,
+                    'url': link.url,
+                    'estado': getattr(link, 'estado', EstadoLink.PENDIENTE),
+                    'fecha_carga': link.fecha_carga.isoformat() if link.fecha_carga else None,
+                    'revisado_clasificador': getattr(link, 'revisado_clasificador', False),
+                    'diario_logo_url': None,
+                    'diario_nombre': None,
+                    'diario_digital': None,
+                    'red_social': link.red_social.id if link.red_social else None,
+                    'red_social_nombre': link.red_social.nombre if link.red_social else 'Sin asignar',
+                    'red_social_logo_url': link.red_social.logo.url if link.red_social and getattr(link.red_social, 'logo', None) else None,
+                    'categorias_info': [{'id': cat.id, 'nombre': cat.nombre} for cat in link.categorias.all()]
+                })
+        else:
+            # Filtrar links de diarios digitales
+            links = LinkRelevante.objects.select_related('diario_digital').prefetch_related('categorias').all()
+
+            if fecha_inicio:
+                links = links.filter(fecha_carga__date__gte=parse_date(fecha_inicio))
+            if fecha_fin:
+                links = links.filter(fecha_carga__date__lte=parse_date(fecha_fin))
+            if diario_id:
+                links = links.filter(diario_digital__id=diario_id)
+            if estado:
+                if estado.startswith('estado!='):
+                    exclude_estado = estado.split('!=')[1]
+                    links = links.exclude(estado=exclude_estado)
+                else:
+                    links = links.filter(estado=estado)
+            if categoria_id:
+                links = links.filter(categorias__id=categoria_id)
+            if solo_propios:
+                links = links.filter(cargado_por=request.user)
+
+            for link in links:
+                data.append({
+                    'id': link.id,
+                    'url': link.url,
+                    'estado': getattr(link, 'estado', EstadoLink.PENDIENTE),
+                    'fecha_carga': link.fecha_carga.isoformat() if link.fecha_carga else None,
+                    'revisado_clasificador': getattr(link, 'revisado_clasificador', False),
+                    'diario_logo_url': link.diario_digital.logo.url if hasattr(link.diario_digital, 'logo') and link.diario_digital and link.diario_digital.logo else None,
+                    'diario_nombre': link.diario_digital.nombre if link.diario_digital else 'Sin diario',
+                    'diario_digital': link.diario_digital.id if link.diario_digital else None,
+                    'red_social': None,
+                    'red_social_nombre': None,
+                    'red_social_logo_url': None,
+                    'categorias_info': [{'id': cat.id, 'nombre': cat.nombre} for cat in link.categorias.all()]
+                })
+
         return JsonResponse(data, safe=False)
     
     except Exception as e:

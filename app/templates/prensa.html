@@ -177,6 +177,25 @@
         </div>
 
         <div class="card mb-4">
+            <div class="card-header">Agregar Link de Red Social</div>
+            <div class="card-body">
+                <form id="formulario-link-redes">
+                    <div class="mb-3">
+                        <label for="red_url" class="form-label">URL</label>
+                        <input type="url" class="form-control" id="red_url" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="red_social_select_form" class="form-label">Red social</label>
+                        <select id="red_social_select_form" class="form-select">
+                            <option value="">Detectar automáticamente</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Agregar Link</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span>Mis Links de Redes Sociales</span>
                 <span class="badge bg-primary" id="total-redes-count">0</span>
@@ -318,17 +337,18 @@
                 </div>
                 <div class="modal-body">
                     <input type="hidden" id="editarId">
+                    <input type="hidden" id="editarTipo">
                     <div class="mb-3">
                         <label for="editarUrl" class="form-label">URL</label>
                         <input type="url" class="form-control" id="editarUrl" required>
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-3" id="editarDiarioGroup">
                         <label for="editarDiario" class="form-label">Diario Digital</label>
                         <select id="editarDiario" class="form-select">
                             <option value="">Sin asignar</option>
                         </select>
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-3" id="editarRedSocialGroup">
                         <label for="editarRedSocial" class="form-label">Red Social</label>
                         <select id="editarRedSocial" class="form-select">
                             <option value="">Sin asignar</option>
@@ -501,6 +521,7 @@
         const container = document.getElementById("cards-redes");
         const select = document.getElementById("editarRedSocial");
         const filtroSelect = document.getElementById("red_social_filtro");
+        const formSelect = document.getElementById("red_social_select_form");
 
         if (!container) return;
 
@@ -512,6 +533,9 @@
         }
         if (filtroSelect) {
             filtroSelect.innerHTML = '<option value="">Todas</option>';
+        }
+        if (formSelect) {
+            formSelect.innerHTML = '<option value="">Detectar automáticamente</option>';
         }
 
         try {
@@ -539,6 +563,12 @@
                         optionFiltro.value = red.id;
                         optionFiltro.textContent = red.nombre;
                         filtroSelect.appendChild(optionFiltro);
+                    }
+                    if (formSelect) {
+                        const optionForm = document.createElement("option");
+                        optionForm.value = red.id;
+                        optionForm.textContent = red.nombre;
+                        formSelect.appendChild(optionForm);
                     }
                 });
             }
@@ -584,6 +614,7 @@
         
         // Cargar diarios inmediatamente (pestaña activa por defecto)
         cargarDiarios();
+        cargarRedes();
         cargarLinks(1);
         cargarLinksRedes(1);
         
@@ -636,7 +667,12 @@
             const links = await res.json();
 
             // Actualizar contador total
-            document.getElementById('total-links-count').textContent = links.length;
+            const totalLinksBadge = document.getElementById('total-links-count');
+            if (totalLinksBadge) {
+                totalLinksBadge.classList.remove('bg-danger');
+                totalLinksBadge.classList.add('bg-primary');
+                totalLinksBadge.textContent = links.length;
+            }
 
             if (links.length === 0) {
                 tabla.innerHTML = `<tr><td colspan="4" class="text-center">No hay resultados</td></tr>`;
@@ -654,21 +690,54 @@
 
             paginatedLinks.forEach(link => {
                 const row = document.createElement("tr");
-                const diarioIdLiteral = link.diario_digital !== null ? link.diario_digital : 'null';
-                const redIdLiteral = link.red_social !== null ? link.red_social : 'null';
-                row.innerHTML = `
-                    <td><a href="${link.url}" target="_blank">${link.url.length > 50 ? link.url.slice(0, 50) + '…' : link.url}</a></td>
-                    <td>${new Date(link.fecha_carga).toLocaleDateString()}</td>
-                    <td>${link.diario_nombre || 'Sin asignar'}</td>
-                    <td>
-                        <div class="d-flex gap-2">
-                            <button class="btn btn-sm btn-warning"
-                                onclick="abrirModalEditar(${link.id}, ${JSON.stringify(link.url)}, ${diarioIdLiteral}, ${redIdLiteral})">
-                                Editar
-                            </button>
-                            <button class="btn btn-sm btn-danger" onclick="eliminarLink(${link.id})">Eliminar</button>
-                        </div>
-                    </td>`;
+
+                const urlCell = document.createElement("td");
+                const linkAnchor = document.createElement("a");
+                linkAnchor.href = link.url;
+                linkAnchor.target = "_blank";
+                linkAnchor.rel = "noopener";
+                linkAnchor.textContent = link.url.length > 50 ? `${link.url.slice(0, 50)}…` : link.url;
+                urlCell.appendChild(linkAnchor);
+
+                const fechaCell = document.createElement("td");
+                fechaCell.textContent = new Date(link.fecha_carga).toLocaleDateString();
+
+                const diarioCell = document.createElement("td");
+                diarioCell.textContent = link.diario_nombre || "Sin asignar";
+
+                const accionesCell = document.createElement("td");
+                const accionesWrapper = document.createElement("div");
+                accionesWrapper.className = "d-flex gap-2";
+
+                const editarBtn = document.createElement("button");
+                editarBtn.type = "button";
+                editarBtn.className = "btn btn-sm btn-warning";
+                editarBtn.textContent = "Editar";
+                editarBtn.addEventListener("click", () =>
+                    abrirModalEditar(
+                        link.id,
+                        link.url,
+                        link.diario_digital,
+                        link.red_social,
+                        "diario"
+                    )
+                );
+
+                const eliminarBtn = document.createElement("button");
+                eliminarBtn.type = "button";
+                eliminarBtn.className = "btn btn-sm btn-danger";
+                eliminarBtn.textContent = "Eliminar";
+                eliminarBtn.addEventListener("click", () => eliminarLink(link.id, "diario"));
+
+                accionesWrapper.appendChild(editarBtn);
+                accionesWrapper.appendChild(eliminarBtn);
+                accionesCell.appendChild(accionesWrapper);
+
+                row.appendChild(urlCell);
+                row.appendChild(fechaCell);
+                row.appendChild(diarioCell);
+                row.appendChild(accionesCell);
+
                 tabla.appendChild(row);
             });
 
@@ -679,6 +748,12 @@
             console.error("Error cargando links:", error);
             tabla.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Error al cargar los datos</td></tr>`;
             mostrarToast("Error al cargar links", "danger");
+            const totalLinksBadge = document.getElementById('total-links-count');
+            if (totalLinksBadge) {
+                totalLinksBadge.classList.remove('bg-primary');
+                totalLinksBadge.classList.add('bg-danger');
+                totalLinksBadge.textContent = `Error: ${error.message || 'sin detalle'}`;
+            }
         }
     }
 
@@ -709,7 +784,12 @@
             const links = await res.json();
 
             // Actualizar contador total
-            document.getElementById('total-redes-count').textContent = links.length;
+            const totalRedesBadge = document.getElementById('total-redes-count');
+            if (totalRedesBadge) {
+                totalRedesBadge.classList.remove('bg-danger');
+                totalRedesBadge.classList.add('bg-primary');
+                totalRedesBadge.textContent = links.length;
+            }
 
             if (links.length === 0) {
                 tabla.innerHTML = `<tr><td colspan="4" class="text-center">No hay resultados</td></tr>`;
@@ -727,21 +807,54 @@
 
             paginatedLinks.forEach(link => {
                 const row = document.createElement("tr");
-                const diarioIdLiteral = link.diario_digital !== null ? link.diario_digital : 'null';
-                const redIdLiteral = link.red_social !== null ? link.red_social : 'null';
-                row.innerHTML = `
-                    <td><a href="${link.url}" target="_blank">${link.url.length > 50 ? link.url.slice(0, 50) + '…' : link.url}</a></td>
-                    <td>${new Date(link.fecha_carga).toLocaleDateString()}</td>
-                    <td>${link.red_social_nombre || 'Sin asignar'}</td>
-                    <td>
-                        <div class="d-flex gap-2">
-                            <button class="btn btn-sm btn-warning"
-                                onclick="abrirModalEditar(${link.id}, ${JSON.stringify(link.url)}, ${diarioIdLiteral}, ${redIdLiteral})">
-                                Editar
-                            </button>
-                            <button class="btn btn-sm btn-danger" onclick="eliminarLink(${link.id})">Eliminar</button>
-                        </div>
-                    </td>`;
+
+                const urlCell = document.createElement("td");
+                const linkAnchor = document.createElement("a");
+                linkAnchor.href = link.url;
+                linkAnchor.target = "_blank";
+                linkAnchor.rel = "noopener";
+                linkAnchor.textContent = link.url.length > 50 ? `${link.url.slice(0, 50)}…` : link.url;
+                urlCell.appendChild(linkAnchor);
+
+                const fechaCell = document.createElement("td");
+                fechaCell.textContent = new Date(link.fecha_carga).toLocaleDateString();
+
+                const redCell = document.createElement("td");
+                redCell.textContent = link.red_social_nombre || "Sin asignar";
+
+                const accionesCell = document.createElement("td");
+                const accionesWrapper = document.createElement("div");
+                accionesWrapper.className = "d-flex gap-2";
+
+                const editarBtn = document.createElement("button");
+                editarBtn.type = "button";
+                editarBtn.className = "btn btn-sm btn-warning";
+                editarBtn.textContent = "Editar";
+                editarBtn.addEventListener("click", () =>
+                    abrirModalEditar(
+                        link.id,
+                        link.url,
+                        link.diario_digital,
+                        link.red_social,
+                        "red_social"
+                    )
+                );
+
+                const eliminarBtn = document.createElement("button");
+                eliminarBtn.type = "button";
+                eliminarBtn.className = "btn btn-sm btn-danger";
+                eliminarBtn.textContent = "Eliminar";
+                eliminarBtn.addEventListener("click", () => eliminarLink(link.id, "red_social"));
+
+                accionesWrapper.appendChild(editarBtn);
+                accionesWrapper.appendChild(eliminarBtn);
+                accionesCell.appendChild(accionesWrapper);
+
+                row.appendChild(urlCell);
+                row.appendChild(fechaCell);
+                row.appendChild(redCell);
+                row.appendChild(accionesCell);
+
                 tabla.appendChild(row);
             });
 
@@ -752,33 +865,63 @@
             console.error("Error cargando links de redes:", error);
             tabla.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Error al cargar los datos</td></tr>`;
             mostrarToast("Error al cargar links de redes", "danger");
+            const totalRedesBadge = document.getElementById('total-redes-count');
+            if (totalRedesBadge) {
+                totalRedesBadge.classList.remove('bg-primary');
+                totalRedesBadge.classList.add('bg-danger');
+                totalRedesBadge.textContent = `Error: ${error.message || 'sin detalle'}`;
+            }
         }
     }
 
-    function abrirModalEditar(id, urlActual, diarioIdActual, redSocialIdActual) {
-        document.getElementById("editarId").value = id;
-        document.getElementById("editarUrl").value = urlActual;
-        document.getElementById("editarDiario").value = diarioIdActual || "";
-        document.getElementById("editarRedSocial").value = redSocialIdActual || "";
-        let modal = new bootstrap.Modal(document.getElementById("modalEditar"));
-        modal.show();
+    function abrirModalEditar(id, urlActual, diarioIdActual, redSocialIdActual, tipo = 'diario') {
+        const modalEl = document.getElementById("modalEditar");
+        const aplicarValores = () => {
+            document.getElementById("editarId").value = id;
+            document.getElementById("editarTipo").value = tipo;
+            document.getElementById("editarUrl").value = urlActual;
+            document.getElementById("editarDiario").value = normalizarValorSelect(diarioIdActual);
+            document.getElementById("editarRedSocial").value = normalizarValorSelect(redSocialIdActual);
+            document.getElementById("editarDiarioGroup").classList.toggle("d-none", tipo !== 'diario');
+            document.getElementById("editarRedSocialGroup").classList.toggle("d-none", tipo !== 'red_social');
+            document.getElementById("modalEditarLabel").textContent = tipo === 'red_social' ? 'Editar Link de Red Social' : 'Editar Link';
+            let modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+        };
+
+        const necesitaRedes = tipo === 'red_social' && document.getElementById("editarRedSocial").options.length <= 1;
+        if (necesitaRedes) {
+            cargarRedes().then(aplicarValores).catch(() => aplicarValores());
+        } else {
+            aplicarValores();
+        }
     }
 
     document.getElementById("formEditar").addEventListener("submit", async e => {
         e.preventDefault();
         const id = document.getElementById("editarId").value;
         const url = document.getElementById("editarUrl").value;
+        const tipo = document.getElementById("editarTipo").value || 'diario';
         const diario = document.getElementById("editarDiario").value || null;
         const redSocial = document.getElementById("editarRedSocial").value || null;
+        const payload = { url };
+
+        if (tipo === 'diario') {
+            payload.diario_digital = diario;
+        } else if (tipo === 'red_social') {
+            payload.red_social = redSocial;
+        }
+
+        const endpointBase = tipo === 'red_social' ? "/api/links_red_social/" : "/api/links/";
 
         try {
-            const res = await fetch(`/api/links/${id}/`, {
+            const res = await fetch(`${endpointBase}${id}/`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
                     "X-CSRFToken": getCookie("csrftoken")
                 },
-                body: JSON.stringify({ url, diario_digital: diario, red_social: redSocial })
+                body: JSON.stringify(payload)
             });
             if (!res.ok) throw new Error("No se pudo editar el link");
             bootstrap.Modal.getInstance(document.getElementById("modalEditar")).hide();
@@ -791,7 +934,7 @@
         }
     });
 
-    async function eliminarLink(id) {
+    async function eliminarLink(id, tipo = 'diario') {
         const result = await Swal.fire({
             title: '¿Estás seguro?',
             text: "¡Esto eliminará el link permanentemente!",
@@ -805,7 +948,8 @@
 
         if (result.isConfirmed) {
             try {
-                const res = await fetch(`/api/links/${id}/`, {
+                const endpointBase = tipo === 'red_social' ? "/api/links_red_social/" : "/api/links/";
+                const res = await fetch(`${endpointBase}${id}/`, {
                     method: "DELETE",
                     headers: { "X-CSRFToken": getCookie("csrftoken") }
                 });
@@ -829,28 +973,70 @@
         toast.show();
     }
 
-    document.getElementById("formulario-link").addEventListener("submit", async e => {
-        e.preventDefault();
-        const urlInput = document.getElementById("url");
-        try {
-            const res = await fetch("/api/links/", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": getCookie("csrftoken")
-                },
-                body: JSON.stringify({ url: urlInput.value })
-            });
-            if (!res.ok) throw new Error("No se pudo agregar el link");
-            urlInput.value = "";
-            mostrarToast("Link agregado correctamente", "success");
-            cargarLinks(currentPageLinks);
-            cargarLinksRedes(currentPageRedes);
-        } catch (error) {
-            console.error("Error agregando link:", error);
-            mostrarToast("Error al agregar el link", "danger");
+    function normalizarValorSelect(valor) {
+        if (valor === null || valor === undefined || valor === "null") {
+            return "";
         }
-    });
+        return valor;
+    }
+
+    const formularioLinkDiarios = document.getElementById("formulario-link");
+    if (formularioLinkDiarios) {
+        formularioLinkDiarios.addEventListener("submit", async e => {
+            e.preventDefault();
+            const urlInput = document.getElementById("url");
+            try {
+                const res = await fetch("/api/links/", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": getCookie("csrftoken")
+                    },
+                    body: JSON.stringify({ url: urlInput.value })
+                });
+                if (!res.ok) throw new Error("No se pudo agregar el link");
+                urlInput.value = "";
+                mostrarToast("Link agregado correctamente", "success");
+                cargarLinks(currentPageLinks);
+                cargarLinksRedes(currentPageRedes);
+            } catch (error) {
+                console.error("Error agregando link:", error);
+                mostrarToast("Error al agregar el link", "danger");
+            }
+        });
+    }
+
+    const formularioLinkRedes = document.getElementById("formulario-link-redes");
+    if (formularioLinkRedes) {
+        formularioLinkRedes.addEventListener("submit", async e => {
+            e.preventDefault();
+            const urlInput = document.getElementById("red_url");
+            const redSocialSelect = document.getElementById("red_social_select_form");
+            const payload = { url: urlInput.value };
+            if (redSocialSelect.value) {
+                payload.red_social = redSocialSelect.value;
+            }
+            try {
+                const res = await fetch("/api/links_red_social/", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": getCookie("csrftoken")
+                    },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) throw new Error("No se pudo agregar el link de red social");
+                urlInput.value = "";
+                redSocialSelect.value = "";
+                mostrarToast("Link de red social agregado correctamente", "success");
+                cargarLinksRedes(currentPageRedes);
+                cargarLinks(currentPageLinks);
+            } catch (error) {
+                console.error("Error agregando link de red social:", error);
+                mostrarToast("Error al agregar el link de red social", "danger");
+            }
+        });
+    }
 
     function getCookie(name) {
         let cookieValue = null;

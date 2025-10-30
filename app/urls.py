@@ -9,6 +9,7 @@ from .views import (
     DiarioDigitalViewSet,
     CategoriaViewSet,
     LinkRelevanteViewSet,
+    LinkRedSocialViewSet,
     ArticuloViewSet,
     RedSocialViewSet,
     TvDigitalViewSet,
@@ -87,6 +88,7 @@ router.register(r"usuarios", UserViewSet, basename="usuario")
 router.register(r"diarios", DiarioDigitalViewSet)
 router.register(r"categorias", CategoriaViewSet)
 router.register(r"links", LinkRelevanteViewSet, basename="link")
+router.register(r"links_red_social", LinkRedSocialViewSet, basename="linkredsocial")
 router.register(r"articulos", ArticuloViewSet)
 router.register(r"actividades", ActividadViewSet, basename="actividad")
 router.register(r"informes", InformeIndividualViewSet, basename="informe")

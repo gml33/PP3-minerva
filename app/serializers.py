@@ -4,6 +4,7 @@ from .models import (
     Categoria,
     DiarioDigital,
     LinkRelevante,
+    LinkRedSocial,
     Articulo,
     InformeIndividual,
     Domicilio,
@@ -131,6 +132,60 @@ class LinkRelevanteSerializer(serializers.ModelSerializer):
 
     def get_red_social_logo_url(self, obj):
         red = getattr(obj, "red_social", None)
+        if red and getattr(red, "logo", None):
+            return red.logo.url
+        return None
+
+    def get_categorias_info(self, obj):
+        return [{"id": cat.id, "nombre": cat.nombre} for cat in obj.categorias.all()]
+
+    def update(self, instance, validated_data):
+        categorias = validated_data.pop("categorias", None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        if categorias is not None:
+            instance.categorias.set(categorias)
+        return instance
+
+
+class LinkRedSocialSerializer(serializers.ModelSerializer):
+    categorias = serializers.PrimaryKeyRelatedField(
+        queryset=Categoria.objects.all(), many=True, write_only=True, required=False
+    )
+    categorias_info = serializers.SerializerMethodField(read_only=True)
+    red_social_nombre = serializers.CharField(
+        source="red_social.nombre", read_only=True
+    )
+    red_social_logo_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = LinkRedSocial
+        fields = [
+            "id",
+            "url",
+            "fecha_carga",
+            "cargado_por",
+            "red_social",
+            "red_social_nombre",
+            "red_social_logo_url",
+            "estado",
+            "fecha_aprobacion",
+            "categorias",
+            "categorias_info",
+            "revisado_clasificador",
+            "revisado_editor",
+            "revisado_redactor",
+        ]
+        read_only_fields = [
+            "fecha_carga",
+            "fecha_aprobacion",
+            "cargado_por",
+            "red_social_nombre",
+        ]
+
+    def get_red_social_logo_url(self, obj):
+        red = obj.red_social
         if red and getattr(red, "logo", None):
             return red.logo.url
         return None
