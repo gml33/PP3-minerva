@@ -6,6 +6,7 @@ from .models import (
     LinkRelevante,
     LinkRedSocial,
     LinkTvDigital,
+    LinkRadioDigital,
     Articulo,
     InformeIndividual,
     Domicilio,
@@ -243,6 +244,60 @@ class LinkTvDigitalSerializer(serializers.ModelSerializer):
         tv = obj.tv_digital
         if tv and getattr(tv, "logo", None):
             return tv.logo.url
+        return None
+
+    def get_categorias_info(self, obj):
+        return [{"id": cat.id, "nombre": cat.nombre} for cat in obj.categorias.all()]
+
+    def update(self, instance, validated_data):
+        categorias = validated_data.pop("categorias", None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        if categorias is not None:
+            instance.categorias.set(categorias)
+        return instance
+
+
+class LinkRadioDigitalSerializer(serializers.ModelSerializer):
+    categorias = serializers.PrimaryKeyRelatedField(
+        queryset=Categoria.objects.all(), many=True, write_only=True, required=False
+    )
+    categorias_info = serializers.SerializerMethodField(read_only=True)
+    radio_digital_nombre = serializers.CharField(
+        source="radio_digital.nombre", read_only=True
+    )
+    radio_digital_logo_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = LinkRadioDigital
+        fields = [
+            "id",
+            "url",
+            "fecha_carga",
+            "cargado_por",
+            "radio_digital",
+            "radio_digital_nombre",
+            "radio_digital_logo_url",
+            "estado",
+            "fecha_aprobacion",
+            "categorias",
+            "categorias_info",
+            "revisado_clasificador",
+            "revisado_editor",
+            "revisado_redactor",
+        ]
+        read_only_fields = [
+            "fecha_carga",
+            "fecha_aprobacion",
+            "cargado_por",
+            "radio_digital_nombre",
+        ]
+
+    def get_radio_digital_logo_url(self, obj):
+        radio = obj.radio_digital
+        if radio and getattr(radio, "logo", None):
+            return radio.logo.url
         return None
 
     def get_categorias_info(self, obj):

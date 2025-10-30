@@ -11,6 +11,7 @@ from .views import (
     LinkRelevanteViewSet,
     LinkRedSocialViewSet,
     LinkTvDigitalViewSet,
+    LinkRadioDigitalViewSet,
     ArticuloViewSet,
     RedSocialViewSet,
     TvDigitalViewSet,
@@ -91,6 +92,7 @@ router.register(r"categorias", CategoriaViewSet)
 router.register(r"links", LinkRelevanteViewSet, basename="link")
 router.register(r"links_red_social", LinkRedSocialViewSet, basename="linkredsocial")
 router.register(r"links_tv_digital", LinkTvDigitalViewSet, basename="linktvdigital")
+router.register(r"links_radio_digital", LinkRadioDigitalViewSet, basename="linkradiodigital")
 router.register(r"articulos", ArticuloViewSet)
 router.register(r"actividades", ActividadViewSet, basename="actividad")
 router.register(r"informes", InformeIndividualViewSet, basename="informe")

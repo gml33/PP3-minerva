@@ -62,6 +62,7 @@ from .models import (
     RadioDigital,
     EstadoLink,
     LinkTvDigital,
+    LinkRadioDigital,
 )
 from .serializers import (
     UserProfileSerializer,
@@ -84,6 +85,7 @@ from .serializers import (
     TvDigitalSerializer,
     RadioDigitalSerializer,
     LinkTvDigitalSerializer,
+    LinkRadioDigitalSerializer,
 )
 from .forms import (
     InformeIndividualForm,
@@ -1164,6 +1166,122 @@ class LinkTvDigitalViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=201, headers=headers)
 
 
+class LinkRadioDigitalViewSet(viewsets.ModelViewSet):
+    queryset = (
+        LinkRadioDigital.objects.select_related("cargado_por", "radio_digital")
+        .prefetch_related("categorias")
+        .order_by("-fecha_carga")
+    )
+    permission_classes = [IsAuthenticated]
+    serializer_class = LinkRadioDigitalSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = super().get_queryset()
+
+        if hasattr(user, "userprofile"):
+            rol = user.userprofile.rol
+            if rol == Roles.PRENSA:
+                queryset = queryset.filter(cargado_por=user)
+            elif rol in [Roles.CLIENTE, Roles.INFORMES]:
+                queryset = queryset.filter(estado=EstadoLink.APROBADO)
+
+        estado = self.request.query_params.get("estado")
+        fecha_inicio = self.request.query_params.get("fecha_inicio")
+        fecha_fin = self.request.query_params.get("fecha_fin")
+        categoria_id = self.request.query_params.get("categoria_id")
+        radio_digital_id = self.request.query_params.get("radio_digital_id")
+        solo_propios = self.request.query_params.get("solo_propios")
+
+        if estado:
+            queryset = queryset.filter(estado=estado)
+        if fecha_inicio:
+            queryset = queryset.filter(fecha_carga__date__gte=parse_date(fecha_inicio))
+        if fecha_fin:
+            queryset = queryset.filter(fecha_carga__date__lte=parse_date(fecha_fin))
+        if categoria_id:
+            queryset = queryset.filter(categorias__id=categoria_id)
+        if radio_digital_id:
+            queryset = queryset.filter(radio_digital__id=radio_digital_id)
+        if solo_propios:
+            queryset = queryset.filter(cargado_por=user)
+
+        return queryset.distinct()
+
+    def _resolver_radio_digital(self, url):
+        parsed_url = urlparse(url)
+        domain = parsed_url.netloc.lower().replace("www.", "")
+
+        for radio in RadioDigital.objects.all():
+            radio_domain = urlparse(radio.url_principal).netloc.lower().replace("www.", "")
+            if radio_domain == domain or domain.endswith(f".{radio_domain}"):
+                return radio
+        return None
+
+    def perform_create(self, serializer):
+        url = serializer.validated_data.get("url", "")
+        radio_digital = serializer.validated_data.get("radio_digital") or self._resolver_radio_digital(url)
+
+        link = serializer.save(
+            cargado_por=self.request.user,
+            radio_digital=radio_digital,
+        )
+        log_actividad(
+            self.request,
+            TipoActividad.CARGA_LINK,
+            "Se cargó un nuevo link de Radio digital: {url} (Fuente asignada: {radio})".format(
+                url=link.url,
+                radio=link.radio_digital.nombre if link.radio_digital else "Ninguna",
+            ),
+        )
+
+    def perform_update(self, serializer):
+        instance = self.get_object()
+        original_estado = instance.estado
+        original_categorias_ids = set(instance.categorias.values_list("id", flat=True))
+
+        link_instance = serializer.save()
+
+        if "url" in serializer.validated_data and "radio_digital" not in serializer.validated_data:
+            radio_digital = self._resolver_radio_digital(link_instance.url)
+            if link_instance.radio_digital != radio_digital:
+                link_instance.radio_digital = radio_digital
+                link_instance.save(update_fields=["radio_digital"])
+
+        if original_estado != link_instance.estado:
+            log_actividad(
+                self.request,
+                TipoActividad.CAMBIO_ESTADO,
+                f"Se cambió el estado del link de Radio digital ID {link_instance.id} de '{original_estado}' a '{link_instance.estado}'. URL: {link_instance.url}",
+            )
+
+        if original_estado != EstadoLink.APROBADO and link_instance.estado == EstadoLink.APROBADO:
+            link_instance.fecha_aprobacion = datetime.now()
+            link_instance.save(update_fields=["fecha_aprobacion"])
+
+        current_categorias_ids = set(
+            link_instance.categorias.values_list("id", flat=True)
+        )
+        if original_categorias_ids != current_categorias_ids:
+            nuevas_categorias_nombres = ", ".join(
+                [c.nombre for c in link_instance.categorias.all()]
+            )
+            log_actividad(
+                self.request,
+                TipoActividad.CLASIFICACION_LINK,
+                f"Se actualizaron las categorías del link de Radio digital ID {link_instance.id}. Nuevas categorías: [{nuevas_categorias_nombres}]. URL: {link_instance.url}",
+            )
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            logger.error("ERRORES DEL SERIALIZER (LinkRadioDigital): %s", serializer.errors)
+            return Response(serializer.errors, status=400)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=201, headers=headers)
+
+
 class ArticuloViewSet(viewsets.ModelViewSet):
     queryset = (
         Articulo.objects.all()
@@ -1314,6 +1432,7 @@ def api_links_list(request):
         fuente = request.GET.get('fuente')
         red_social_id = request.GET.get('red_social_id')
         tv_digital_id = request.GET.get('tv_digital_id')
+        radio_digital_id = request.GET.get('radio_digital_id')
 
         data = []
 
@@ -1391,6 +1510,50 @@ def api_links_list(request):
                     'tv_digital': link.tv_digital.id if link.tv_digital else None,
                     'tv_digital_nombre': link.tv_digital.nombre if link.tv_digital else 'Sin asignar',
                     'tv_digital_logo_url': link.tv_digital.logo.url if link.tv_digital and getattr(link.tv_digital, 'logo', None) else None,
+                    'radio_digital': None,
+                    'radio_digital_nombre': None,
+                    'radio_digital_logo_url': None,
+                    'categorias_info': [{'id': cat.id, 'nombre': cat.nombre} for cat in link.categorias.all()]
+                })
+        elif fuente == 'radio_digital':
+            links = LinkRadioDigital.objects.select_related('radio_digital').prefetch_related('categorias').all()
+
+            if fecha_inicio:
+                links = links.filter(fecha_carga__date__gte=parse_date(fecha_inicio))
+            if fecha_fin:
+                links = links.filter(fecha_carga__date__lte=parse_date(fecha_fin))
+            if estado:
+                if estado.startswith('estado!='):
+                    exclude_estado = estado.split('!=')[1]
+                    links = links.exclude(estado=exclude_estado)
+                else:
+                    links = links.filter(estado=estado)
+            if categoria_id:
+                links = links.filter(categorias__id=categoria_id)
+            if radio_digital_id:
+                links = links.filter(radio_digital__id=radio_digital_id)
+            if solo_propios:
+                links = links.filter(cargado_por=request.user)
+
+            for link in links:
+                data.append({
+                    'id': link.id,
+                    'url': link.url,
+                    'estado': getattr(link, 'estado', EstadoLink.PENDIENTE),
+                    'fecha_carga': link.fecha_carga.isoformat() if link.fecha_carga else None,
+                    'revisado_clasificador': getattr(link, 'revisado_clasificador', False),
+                    'diario_logo_url': None,
+                    'diario_nombre': None,
+                    'diario_digital': None,
+                    'red_social': None,
+                    'red_social_nombre': None,
+                    'red_social_logo_url': None,
+                    'tv_digital': None,
+                    'tv_digital_nombre': None,
+                    'tv_digital_logo_url': None,
+                    'radio_digital': link.radio_digital.id if link.radio_digital else None,
+                    'radio_digital_nombre': link.radio_digital.nombre if link.radio_digital else 'Sin asignar',
+                    'radio_digital_logo_url': link.radio_digital.logo.url if link.radio_digital and getattr(link.radio_digital, 'logo', None) else None,
                     'categorias_info': [{'id': cat.id, 'nombre': cat.nombre} for cat in link.categorias.all()]
                 })
         else:
@@ -1430,6 +1593,9 @@ def api_links_list(request):
                     'tv_digital': None,
                     'tv_digital_nombre': None,
                     'tv_digital_logo_url': None,
+                    'radio_digital': None,
+                    'radio_digital_nombre': None,
+                    'radio_digital_logo_url': None,
                     'categorias_info': [{'id': cat.id, 'nombre': cat.nombre} for cat in link.categorias.all()]
                 })
 

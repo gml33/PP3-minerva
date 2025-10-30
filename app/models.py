@@ -273,6 +273,42 @@ class LinkTvDigital(models.Model):
         super().save(*args, **kwargs)
 
 
+class LinkRadioDigital(models.Model):
+    url = models.URLField(unique=True)
+    fecha_carga = models.DateTimeField(auto_now_add=True)
+    cargado_por = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="links_radio_digital_cargados"
+    )
+    radio_digital = models.ForeignKey(
+        RadioDigital, on_delete=models.SET_NULL, null=True, blank=True, related_name="links"
+    )
+    estado = models.CharField(
+        max_length=20, choices=EstadoLink.choices, default=EstadoLink.PENDIENTE
+    )
+    fecha_aprobacion = models.DateTimeField(null=True, blank=True)
+    categorias = models.ManyToManyField(
+        Categoria, blank=True, related_name="links_radio_digital"
+    )
+    revisado_clasificador = models.BooleanField(default=False)
+    revisado_editor = models.BooleanField(default=False)
+    revisado_redactor = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name = "Link de Radio Digital"
+        verbose_name_plural = "Links de Radio Digital"
+        ordering = ["-fecha_carga"]
+
+    def __str__(self):
+        return self.url
+
+    def save(self, *args, **kwargs):
+        if self.estado == EstadoLink.APROBADO and not self.fecha_aprobacion:
+            self.fecha_aprobacion = timezone.now()
+        elif self.estado != EstadoLink.APROBADO and self.fecha_aprobacion:
+            self.fecha_aprobacion = None
+        super().save(*args, **kwargs)
+
+
 class Domicilio(models.Model):
     calle = models.CharField(max_length=200, blank=True)
     altura = models.IntegerField(blank=True)

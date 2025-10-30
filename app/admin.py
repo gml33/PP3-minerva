@@ -29,6 +29,7 @@ from .models import (
     RedSocial,
     TvDigital,
     RadioDigital,
+    LinkRadioDigital,
 )
 
 # Opcional: para personalizar visualización
@@ -73,6 +74,13 @@ class LinkRedSocialAdmin(ImportExportModelAdmin):
 
 @admin.register(LinkTvDigital)
 class LinkTvDigitalAdmin(ImportExportModelAdmin):
+    list_display = ("url", "estado", "cargado_por", "fecha_carga")
+    list_filter = ("estado", "fecha_carga", "cargado_por")
+    search_fields = ("url", "cargado_por__username")
+
+
+@admin.register(LinkRadioDigital)
+class LinkRadioDigitalAdmin(ImportExportModelAdmin):
     list_display = ("url", "estado", "cargado_por", "fecha_carga")
     list_filter = ("estado", "fecha_carga", "cargado_por")
     search_fields = ("url", "cargado_por__username")
