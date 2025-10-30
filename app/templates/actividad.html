@@ -43,23 +43,48 @@
         </div>
     </form>
 
-    <table class="table table-bordered table-striped table-sm">
-        <thead class="table-light">
-            <tr>
-                <th>Fecha</th>
-                <th>Usuario</th>
-                <th>Tipo</th>
-                <th>Descripción</th>
-            </tr>
-        </thead>
-        <tbody id="tabla-actividad">
-            <!-- Aquí se renderizan las actividades con JS -->
-        </tbody>
-    </table>
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped table-sm mb-3">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Usuario</th>
+                            <th>Tipo</th>
+                            <th>Descripción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-actividad">
+                        <!-- Aquí se renderizan las actividades con JS -->
+                    </tbody>
+                </table>
+            </div>
 
-    <nav aria-label="Paginación de actividades">
-        <ul class="pagination justify-content-center" id="paginacion-actividad"></ul>
-    </nav>
+            <nav aria-label="Paginación de actividades">
+                <ul class="pagination justify-content-center" id="paginacion-actividad"></ul>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row mt-4" id="resumen-actividad">
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">Actividades por Tipo</div>
+                <div class="card-body">
+                    <canvas id="grafico-por-tipo" height="240"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">Actividades por Usuario</div>
+                <div class="card-body">
+                    <canvas id="grafico-por-usuario" height="240"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -198,18 +223,29 @@
                     return;
                 }
 
+                const resumenTipos = {};
+                const resumenUsuarios = {};
+
                 actividades.forEach(act => {
                     const row = document.createElement("tr");
+                    const nombreUsuario = act.usuario_nombre || act.usuario || "(anónimo)";
                     row.innerHTML = `
                         <td>${new Date(act.fecha_hora).toLocaleString()}</td>
-                        <td>${act.usuario || "(anónimo)"}</td>
+                        <td>${nombreUsuario}</td>
                         <td>${(act.tipo || "").replaceAll("_", " ")}</td>
                         <td>${act.descripcion}</td>
                     `;
                     tablaBody.appendChild(row);
+
+                    const claveTipo = (act.tipo || "otro").toLowerCase();
+                    resumenTipos[claveTipo] = (resumenTipos[claveTipo] || 0) + 1;
+
+                    const claveUsuario = nombreUsuario;
+                    resumenUsuarios[claveUsuario] = (resumenUsuarios[claveUsuario] || 0) + 1;
                 });
 
                 generarPaginacion(totalActividades, currentPage, pageSize);
+                actualizarGraficos(resumenTipos, resumenUsuarios);
             } catch (error) {
                 console.error("Error cargando actividades:", error);
                 tablaBody.innerHTML = `
@@ -260,7 +296,86 @@
 
             crearItem("»", Math.min(totalPaginas, paginaActual + 1), paginaActual === totalPaginas);
         }
+
+        let graficoPorTipo;
+        let graficoPorUsuario;
+
+        function actualizarGraficos(tipos, usuarios) {
+            const ctxTipos = document.getElementById("grafico-por-tipo");
+            const ctxUsuarios = document.getElementById("grafico-por-usuario");
+
+            if (!ctxTipos || !ctxUsuarios) return;
+
+            const labelsTipos = Object.keys(tipos);
+            const dataTipos = Object.values(tipos);
+
+            const labelsUsuarios = Object.keys(usuarios);
+            const dataUsuarios = Object.values(usuarios);
+
+            if (graficoPorTipo) graficoPorTipo.destroy();
+            if (graficoPorUsuario) graficoPorUsuario.destroy();
+
+            graficoPorTipo = new Chart(ctxTipos, {
+                type: labelsTipos.length > 6 ? "bar" : "doughnut",
+                data: {
+                    labels: labelsTipos.map((t) => t.replaceAll("_", " ")),
+                    datasets: [{
+                        label: "Actividades",
+                        data: dataTipos,
+                        backgroundColor: [
+                            "#2563eb", "#16a34a", "#f97316", "#dc2626", "#8b5cf6",
+                            "#0ea5e9", "#10b981", "#f59e0b", "#ec4899"
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: "bottom" },
+                        title: {
+                            display: labelsTipos.length === 0,
+                            text: labelsTipos.length === 0 ? "Sin datos" : ""
+                        }
+                    }
+                }
+            });
+
+            graficoPorUsuario = new Chart(ctxUsuarios, {
+                type: labelsUsuarios.length > 6 ? "bar" : "pie",
+                data: {
+                    labels: labelsUsuarios,
+                    datasets: [{
+                        label: "Actividades",
+                        data: dataUsuarios,
+                        backgroundColor: [
+                            "#6366f1", "#f97316", "#22c55e", "#ef4444", "#3b82f6",
+                            "#14b8a6", "#facc15", "#ec4899", "#8b5cf6"
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: "bottom" },
+                        title: {
+                            display: labelsUsuarios.length === 0,
+                            text: labelsUsuarios.length === 0 ? "Sin datos" : ""
+                        }
+                    },
+                    scales: labelsUsuarios.length > 6 ? {
+                        x: {
+                            ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 }
+                        },
+                        y: { beginAtZero: true }
+                    } : {}
+                }
+            });
+        }
     });
 </script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 
 {% endblock %}

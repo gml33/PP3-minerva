@@ -593,8 +593,15 @@ class ActividadSerializer(serializers.ModelSerializer):
     usuario = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(), allow_null=True
     )
+    usuario_nombre = serializers.SerializerMethodField()
 
     class Meta:
         model = Actividad
         fields = "__all__"
         read_only_fields = ["fecha_hora"]
+
+    def get_usuario_nombre(self, obj):
+        if obj.usuario:
+            nombre = obj.usuario.get_full_name()
+            return nombre.strip() if nombre and nombre.strip() else obj.usuario.username
+        return None
