@@ -12,9 +12,15 @@
 {% endif %}
 
 <div class="card mb-4">
-    <div class="card-header">Crear nueva solicitud</div>
+    <div class="card-header">
+        {% if modo_edicion %}
+            Editar solicitud #{{ solicitud_en_edicion.id }}
+        {% else %}
+            Crear nueva solicitud
+        {% endif %}
+    </div>
     <div class="card-body">
-        <form method="post" novalidate>
+        <form method="post" action="{{ form_action|default:'' }}" novalidate>
             {% csrf_token %}
             <div class="mb-3">
                 {{ form.descripcion.label_tag }}
@@ -106,7 +112,14 @@
                     Seleccioná uno o más artículos que se relacionen con esta solicitud (opcional).
                 </div>
             </div>
-            <button type="submit" class="btn btn-warning">Enviar solicitud</button>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-warning">
+                    {% if modo_edicion %}Guardar cambios{% else %}Enviar solicitud{% endif %}
+                </button>
+                {% if modo_edicion %}
+                <a href="{% url 'solicitud_info_portal' %}" class="btn btn-outline-secondary">Cancelar</a>
+                {% endif %}
+            </div>
         </form>
     </div>
 </div>
@@ -179,6 +192,9 @@
                         <td class="text-end">
                             <a class="btn btn-sm btn-outline-primary" href="{% url 'solicitud_info_portal_detalle' solicitud.pk %}">
                                 Ver detalle
+                            </a>
+                            <a class="btn btn-sm btn-outline-secondary" href="{% url 'solicitud_info_portal_editar' solicitud.pk %}">
+                                Editar
                             </a>
                             <form method="post" action="{% url 'solicitud_info_portal_eliminar' solicitud.pk %}" class="d-inline form-eliminar-solicitud">
                                 {% csrf_token %}
