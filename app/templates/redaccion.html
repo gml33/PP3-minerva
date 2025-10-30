@@ -224,7 +224,7 @@
                                                     {% for articulo in articulos %}
                                                         <div>
                                                             <a href="{% url 'articulo_editar' articulo.id %}" class="link-primary">
-                                                                {{ articulo.titulo|default:"Sin título" }}
+                                                                #{{ articulo.id }} - {{ articulo.titulo|default:"Sin título" }}
                                                             </a>
                                                         </div>
                                                     {% endfor %}
