@@ -32,6 +32,8 @@ from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.pagination import PageNumberPagination
 
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
@@ -1350,10 +1352,17 @@ class ArticuloViewSet(viewsets.ModelViewSet):
         return Response({"status": "ok", "articulo": serializer.data})
 
 
+class ActividadPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+
 class ActividadViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Actividad.objects.select_related("usuario").order_by("-fecha_hora")
     serializer_class = ActividadSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = ActividadPagination
 
     def get_queryset(self):
         qs = super().get_queryset()

@@ -56,10 +56,13 @@
             <!-- Aquí se renderizan las actividades con JS -->
         </tbody>
     </table>
+
+    <nav aria-label="Paginación de actividades">
+        <ul class="pagination justify-content-center" id="paginacion-actividad"></ul>
+    </nav>
 </div>
 
 <script>
-
     document.addEventListener("DOMContentLoaded", () => {
         const tablaBody = document.getElementById("tabla-actividad");
         const filtroForm = document.getElementById("filtro-actividad");
@@ -67,6 +70,10 @@
         const tipoSelect = document.getElementById("tipo");
         const desdeInput = document.getElementById("desde");
         const hastaInput = document.getElementById("hasta");
+        const paginacion = document.getElementById("paginacion-actividad");
+        let currentPage = 1;
+        const pageSize = 20;
+        let totalActividades = 0;
 
         cargarUsuarios();
         cargarTipos();
@@ -74,15 +81,14 @@
 
         filtroForm.addEventListener("submit", e => {
             e.preventDefault();
-            cargarActividades();
+            cargarActividades(1);
         });
 
         document.getElementById("btnExportar").addEventListener("click", () => {
-            // ⚠️ Leer los valores dentro del evento
-            const usuario = document.getElementById("usuario")?.value || "";
-            const tipo = document.getElementById("tipo")?.value || "";
-            const desde = document.getElementById("desde")?.value || "";
-            const hasta = document.getElementById("hasta")?.value || "";
+            const usuario = usuarioSelect.value || "";
+            const tipo = tipoSelect.value || "";
+            const desde = desdeInput.value || "";
+            const hasta = hastaInput.value || "";
 
             let url = "/actividades/exportar_excel/";
             const filtros = [];
@@ -96,36 +102,38 @@
                 url += "?" + filtros.join("&");
             }
 
-            console.log("📤 URL final de exportación:", url);
             window.open(url, "_blank");
         });
 
-
         document.getElementById("btnExportarPDF").addEventListener("click", () => {
-            let url = "/actividades/exportar_pdf/?";
-
             const filtros = [];
             if (usuarioSelect.value) filtros.push(`usuario=${usuarioSelect.value}`);
             if (tipoSelect.value) filtros.push(`tipo=${tipoSelect.value}`);
             if (desdeInput.value) filtros.push(`desde=${desdeInput.value}`);
             if (hastaInput.value) filtros.push(`hasta=${hastaInput.value}`);
 
+            let url = "/actividades/exportar_pdf/";
             if (filtros.length > 0) {
-                url += filtros.join("&");
+                url += "?" + filtros.join("&");
             }
 
             window.open(url, "_blank");
         });
 
         async function cargarUsuarios() {
-            const res = await fetch("/api/usuarios/");
-            const data = await res.json();
-            data.forEach(user => {
-                const option = document.createElement("option");
-                option.value = user.username;
-                option.textContent = `${user.username}`;
-                usuarioSelect.appendChild(option);
-            });
+            try {
+                const res = await fetch("/api/usuarios/");
+                if (!res.ok) throw new Error("No se pudieron obtener los usuarios");
+                const data = await res.json();
+                data.forEach(user => {
+                    const option = document.createElement("option");
+                    option.value = user.username;
+                    option.textContent = user.username;
+                    usuarioSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error("Error cargando usuarios:", error);
+            }
         }
 
         function cargarTipos() {
@@ -138,53 +146,119 @@
                 creacion_articulo: "Creación de Artículo",
                 otro: "Otro"
             };
-            for (let key in tipos) {
+            Object.entries(tipos).forEach(([clave, label]) => {
                 const option = document.createElement("option");
-                option.value = key;
-                option.textContent = tipos[key];
+                option.value = clave;
+                option.textContent = label;
                 tipoSelect.appendChild(option);
-            }
+            });
         }
 
-        async function cargarActividades() {
+        async function cargarActividades(page = 1) {
+            currentPage = page;
             tablaBody.innerHTML = "";
+            paginacion.innerHTML = "";
 
-            let url = "/api/actividades/?";
+            const loadingRow = document.createElement("tr");
+            loadingRow.innerHTML = `
+                <td colspan="4" class="text-center text-muted">
+                    <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                    Cargando actividades...
+                </td>
+            `;
+            tablaBody.appendChild(loadingRow);
 
             const filtros = [];
             if (usuarioSelect.value) filtros.push(`usuario=${usuarioSelect.value}`);
             if (tipoSelect.value) filtros.push(`tipo=${tipoSelect.value}`);
             if (desdeInput.value) filtros.push(`desde=${desdeInput.value}`);
             if (hastaInput.value) filtros.push(`hasta=${hastaInput.value}`);
+            filtros.push(`page=${page}`);
+            filtros.push(`page_size=${pageSize}`);
 
-            if (filtros.length > 0) {
-                url += filtros.join("&");
-            }
+            const url = `/api/actividades/?${filtros.join("&")}`;
 
-            const res = await fetch(url);
-            const data = await res.json();
+            try {
+                const res = await fetch(url);
+                if (!res.ok) throw new Error("No se pudo cargar el historial");
+                const data = await res.json();
 
-            console.log("Actividades recibidas:", data);
+                const actividades = Array.isArray(data.results) ? data.results : data;
+                totalActividades = data.count ?? actividades.length;
 
-            if (data.length === 0) {
+                tablaBody.innerHTML = "";
+
+                if (actividades.length === 0) {
+                    tablaBody.innerHTML = `
+                        <tr>
+                            <td colspan="4" class="text-center text-muted">No se encontraron actividades con los filtros aplicados.</td>
+                        </tr>
+                    `;
+                    paginacion.innerHTML = "";
+                    return;
+                }
+
+                actividades.forEach(act => {
+                    const row = document.createElement("tr");
+                    row.innerHTML = `
+                        <td>${new Date(act.fecha_hora).toLocaleString()}</td>
+                        <td>${act.usuario || "(anónimo)"}</td>
+                        <td>${(act.tipo || "").replaceAll("_", " ")}</td>
+                        <td>${act.descripcion}</td>
+                    `;
+                    tablaBody.appendChild(row);
+                });
+
+                generarPaginacion(totalActividades, currentPage, pageSize);
+            } catch (error) {
+                console.error("Error cargando actividades:", error);
                 tablaBody.innerHTML = `
-                <tr>
-                    <td colspan="4" class="text-center text-muted">No se encontraron actividades con los filtros aplicados.</td>
-                </tr>
-            `;
+                    <tr>
+                        <td colspan="4" class="text-center text-danger">No se pudieron cargar las actividades.</td>
+                    </tr>
+                `;
+                paginacion.innerHTML = "";
+            }
+        }
+
+        function generarPaginacion(total, paginaActual, limite) {
+            const totalPaginas = Math.max(1, Math.ceil(total / limite));
+
+            if (totalPaginas <= 1) {
+                paginacion.innerHTML = "";
                 return;
             }
 
-            data.forEach(act => {
-                const row = document.createElement("tr");
-                row.innerHTML = `
-                <td>${new Date(act.fecha_hora).toLocaleString()}</td>
-                <td>${act.usuario || '(anónimo)'}</td>
-                <td>${act.tipo.replaceAll('_', ' ')}</td>
-                <td>${act.descripcion}</td>
-            `;
-                tablaBody.appendChild(row);
-            });
+            paginacion.innerHTML = "";
+
+            const crearItem = (label, page, disabled = false, active = false) => {
+                const li = document.createElement("li");
+                li.className = `page-item${disabled ? " disabled" : ""}${active ? " active" : ""}`;
+
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = "page-link";
+                button.textContent = label;
+                button.disabled = disabled;
+                if (!disabled && !active) {
+                    button.addEventListener("click", () => cargarActividades(page));
+                }
+
+                li.appendChild(button);
+                paginacion.appendChild(li);
+            };
+
+            crearItem("«", Math.max(1, paginaActual - 1), paginaActual === 1);
+
+            const ventana = 2;
+            const inicio = Math.max(1, paginaActual - ventana);
+            const fin = Math.min(totalPaginas, paginaActual + ventana);
+
+            for (let i = inicio; i <= fin; i++) {
+                crearItem(i, i, false, i === paginaActual);
+            }
+
+            crearItem("»", Math.min(totalPaginas, paginaActual + 1), paginaActual === totalPaginas);
         }
     });
 </script>
