@@ -5,6 +5,7 @@ from .models import (
     DiarioDigital,
     LinkRelevante,
     LinkRedSocial,
+    LinkTvDigital,
     Articulo,
     InformeIndividual,
     Domicilio,
@@ -188,6 +189,60 @@ class LinkRedSocialSerializer(serializers.ModelSerializer):
         red = obj.red_social
         if red and getattr(red, "logo", None):
             return red.logo.url
+        return None
+
+    def get_categorias_info(self, obj):
+        return [{"id": cat.id, "nombre": cat.nombre} for cat in obj.categorias.all()]
+
+    def update(self, instance, validated_data):
+        categorias = validated_data.pop("categorias", None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        if categorias is not None:
+            instance.categorias.set(categorias)
+        return instance
+
+
+class LinkTvDigitalSerializer(serializers.ModelSerializer):
+    categorias = serializers.PrimaryKeyRelatedField(
+        queryset=Categoria.objects.all(), many=True, write_only=True, required=False
+    )
+    categorias_info = serializers.SerializerMethodField(read_only=True)
+    tv_digital_nombre = serializers.CharField(
+        source="tv_digital.nombre", read_only=True
+    )
+    tv_digital_logo_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = LinkTvDigital
+        fields = [
+            "id",
+            "url",
+            "fecha_carga",
+            "cargado_por",
+            "tv_digital",
+            "tv_digital_nombre",
+            "tv_digital_logo_url",
+            "estado",
+            "fecha_aprobacion",
+            "categorias",
+            "categorias_info",
+            "revisado_clasificador",
+            "revisado_editor",
+            "revisado_redactor",
+        ]
+        read_only_fields = [
+            "fecha_carga",
+            "fecha_aprobacion",
+            "cargado_por",
+            "tv_digital_nombre",
+        ]
+
+    def get_tv_digital_logo_url(self, obj):
+        tv = obj.tv_digital
+        if tv and getattr(tv, "logo", None):
+            return tv.logo.url
         return None
 
     def get_categorias_info(self, obj):

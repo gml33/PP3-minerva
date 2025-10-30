@@ -61,6 +61,7 @@ from .models import (
     TvDigital,
     RadioDigital,
     EstadoLink,
+    LinkTvDigital,
 )
 from .serializers import (
     UserProfileSerializer,
@@ -82,6 +83,7 @@ from .serializers import (
     RedSocialSerializer,
     TvDigitalSerializer,
     RadioDigitalSerializer,
+    LinkTvDigitalSerializer,
 )
 from .forms import (
     InformeIndividualForm,
@@ -1046,6 +1048,122 @@ class LinkRedSocialViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=201, headers=headers)
 
 
+class LinkTvDigitalViewSet(viewsets.ModelViewSet):
+    queryset = (
+        LinkTvDigital.objects.select_related("cargado_por", "tv_digital")
+        .prefetch_related("categorias")
+        .order_by("-fecha_carga")
+    )
+    permission_classes = [IsAuthenticated]
+    serializer_class = LinkTvDigitalSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = super().get_queryset()
+
+        if hasattr(user, "userprofile"):
+            rol = user.userprofile.rol
+            if rol == Roles.PRENSA:
+                queryset = queryset.filter(cargado_por=user)
+            elif rol in [Roles.CLIENTE, Roles.INFORMES]:
+                queryset = queryset.filter(estado=EstadoLink.APROBADO)
+
+        estado = self.request.query_params.get("estado")
+        fecha_inicio = self.request.query_params.get("fecha_inicio")
+        fecha_fin = self.request.query_params.get("fecha_fin")
+        categoria_id = self.request.query_params.get("categoria_id")
+        tv_digital_id = self.request.query_params.get("tv_digital_id")
+        solo_propios = self.request.query_params.get("solo_propios")
+
+        if estado:
+            queryset = queryset.filter(estado=estado)
+        if fecha_inicio:
+            queryset = queryset.filter(fecha_carga__date__gte=parse_date(fecha_inicio))
+        if fecha_fin:
+            queryset = queryset.filter(fecha_carga__date__lte=parse_date(fecha_fin))
+        if categoria_id:
+            queryset = queryset.filter(categorias__id=categoria_id)
+        if tv_digital_id:
+            queryset = queryset.filter(tv_digital__id=tv_digital_id)
+        if solo_propios:
+            queryset = queryset.filter(cargado_por=user)
+
+        return queryset.distinct()
+
+    def _resolver_tv_digital(self, url):
+        parsed_url = urlparse(url)
+        domain = parsed_url.netloc.lower().replace("www.", "")
+
+        for tv in TvDigital.objects.all():
+            tv_domain = urlparse(tv.url_principal).netloc.lower().replace("www.", "")
+            if tv_domain == domain or domain.endswith(f".{tv_domain}"):
+                return tv
+        return None
+
+    def perform_create(self, serializer):
+        url = serializer.validated_data.get("url", "")
+        tv_digital = serializer.validated_data.get("tv_digital") or self._resolver_tv_digital(url)
+
+        link = serializer.save(
+            cargado_por=self.request.user,
+            tv_digital=tv_digital,
+        )
+        log_actividad(
+            self.request,
+            TipoActividad.CARGA_LINK,
+            "Se cargó un nuevo link de TV digital: {url} (Fuente asignada: {tv})".format(
+                url=link.url,
+                tv=link.tv_digital.nombre if link.tv_digital else "Ninguna",
+            ),
+        )
+
+    def perform_update(self, serializer):
+        instance = self.get_object()
+        original_estado = instance.estado
+        original_categorias_ids = set(instance.categorias.values_list("id", flat=True))
+
+        link_instance = serializer.save()
+
+        if "url" in serializer.validated_data and "tv_digital" not in serializer.validated_data:
+            tv_digital = self._resolver_tv_digital(link_instance.url)
+            if link_instance.tv_digital != tv_digital:
+                link_instance.tv_digital = tv_digital
+                link_instance.save(update_fields=["tv_digital"])
+
+        if original_estado != link_instance.estado:
+            log_actividad(
+                self.request,
+                TipoActividad.CAMBIO_ESTADO,
+                f"Se cambió el estado del link de TV digital ID {link_instance.id} de '{original_estado}' a '{link_instance.estado}'. URL: {link_instance.url}",
+            )
+
+        if original_estado != EstadoLink.APROBADO and link_instance.estado == EstadoLink.APROBADO:
+            link_instance.fecha_aprobacion = datetime.now()
+            link_instance.save(update_fields=["fecha_aprobacion"])
+
+        current_categorias_ids = set(
+            link_instance.categorias.values_list("id", flat=True)
+        )
+        if original_categorias_ids != current_categorias_ids:
+            nuevas_categorias_nombres = ", ".join(
+                [c.nombre for c in link_instance.categorias.all()]
+            )
+            log_actividad(
+                self.request,
+                TipoActividad.CLASIFICACION_LINK,
+                f"Se actualizaron las categorías del link de TV digital ID {link_instance.id}. Nuevas categorías: [{nuevas_categorias_nombres}]. URL: {link_instance.url}",
+            )
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            logger.error("ERRORES DEL SERIALIZER (LinkTvDigital): %s", serializer.errors)
+            return Response(serializer.errors, status=400)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=201, headers=headers)
+
+
 class ArticuloViewSet(viewsets.ModelViewSet):
     queryset = (
         Articulo.objects.all()
@@ -1195,6 +1313,7 @@ def api_links_list(request):
         solo_propios = request.GET.get('solo_propios')
         fuente = request.GET.get('fuente')
         red_social_id = request.GET.get('red_social_id')
+        tv_digital_id = request.GET.get('tv_digital_id')
 
         data = []
 
@@ -1231,6 +1350,47 @@ def api_links_list(request):
                     'red_social': link.red_social.id if link.red_social else None,
                     'red_social_nombre': link.red_social.nombre if link.red_social else 'Sin asignar',
                     'red_social_logo_url': link.red_social.logo.url if link.red_social and getattr(link.red_social, 'logo', None) else None,
+                    'tv_digital': None,
+                    'tv_digital_nombre': None,
+                    'tv_digital_logo_url': None,
+                    'categorias_info': [{'id': cat.id, 'nombre': cat.nombre} for cat in link.categorias.all()]
+                })
+        elif fuente == 'tv_digital':
+            links = LinkTvDigital.objects.select_related('tv_digital').prefetch_related('categorias').all()
+
+            if fecha_inicio:
+                links = links.filter(fecha_carga__date__gte=parse_date(fecha_inicio))
+            if fecha_fin:
+                links = links.filter(fecha_carga__date__lte=parse_date(fecha_fin))
+            if estado:
+                if estado.startswith('estado!='):
+                    exclude_estado = estado.split('!=')[1]
+                    links = links.exclude(estado=exclude_estado)
+                else:
+                    links = links.filter(estado=estado)
+            if categoria_id:
+                links = links.filter(categorias__id=categoria_id)
+            if tv_digital_id:
+                links = links.filter(tv_digital__id=tv_digital_id)
+            if solo_propios:
+                links = links.filter(cargado_por=request.user)
+
+            for link in links:
+                data.append({
+                    'id': link.id,
+                    'url': link.url,
+                    'estado': getattr(link, 'estado', EstadoLink.PENDIENTE),
+                    'fecha_carga': link.fecha_carga.isoformat() if link.fecha_carga else None,
+                    'revisado_clasificador': getattr(link, 'revisado_clasificador', False),
+                    'diario_logo_url': None,
+                    'diario_nombre': None,
+                    'diario_digital': None,
+                    'red_social': None,
+                    'red_social_nombre': None,
+                    'red_social_logo_url': None,
+                    'tv_digital': link.tv_digital.id if link.tv_digital else None,
+                    'tv_digital_nombre': link.tv_digital.nombre if link.tv_digital else 'Sin asignar',
+                    'tv_digital_logo_url': link.tv_digital.logo.url if link.tv_digital and getattr(link.tv_digital, 'logo', None) else None,
                     'categorias_info': [{'id': cat.id, 'nombre': cat.nombre} for cat in link.categorias.all()]
                 })
         else:
@@ -1267,6 +1427,9 @@ def api_links_list(request):
                     'red_social': None,
                     'red_social_nombre': None,
                     'red_social_logo_url': None,
+                    'tv_digital': None,
+                    'tv_digital_nombre': None,
+                    'tv_digital_logo_url': None,
                     'categorias_info': [{'id': cat.id, 'nombre': cat.nombre} for cat in link.categorias.all()]
                 })
 

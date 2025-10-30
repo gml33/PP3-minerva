@@ -11,6 +11,7 @@ from .models import (
     Categoria,
     LinkRelevante,
     LinkRedSocial,
+    LinkTvDigital,
     Domicilio,
     Vehiculo,
     Telefono,
@@ -65,6 +66,13 @@ class LinkRelevanteResource(resources.ModelResource):
 
 @admin.register(LinkRedSocial)
 class LinkRedSocialAdmin(ImportExportModelAdmin):
+    list_display = ("url", "estado", "cargado_por", "fecha_carga")
+    list_filter = ("estado", "fecha_carga", "cargado_por")
+    search_fields = ("url", "cargado_por__username")
+
+
+@admin.register(LinkTvDigital)
+class LinkTvDigitalAdmin(ImportExportModelAdmin):
     list_display = ("url", "estado", "cargado_por", "fecha_carga")
     list_filter = ("estado", "fecha_carga", "cargado_por")
     search_fields = ("url", "cargado_por__username")
