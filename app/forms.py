@@ -12,6 +12,7 @@ from .models import (
     TvDigital,
     RadioDigital,
     HechoDelictivo,
+    BandaCriminal,
     LinkRelevante,
     EstadoLink,
 )
@@ -99,6 +100,29 @@ class RadioDigitalForm(forms.ModelForm):
             "nombre": forms.TextInput(attrs={"class": "form-control"}),
             "url_principal": forms.URLInput(attrs={"class": "form-control"}),
             "logo": forms.ClearableFileInput(attrs={"class": "form-control"}),
+        }
+
+
+class BandaCriminalForm(forms.ModelForm):
+    lideres = forms.ModelMultipleChoiceField(
+        queryset=InformeIndividual.objects.all().order_by("apellido", "nombre"),
+        required=False,
+        widget=forms.SelectMultiple(attrs={"class": "form-select", "size": 8}),
+        label="Líderes",
+    )
+    miembros = forms.ModelMultipleChoiceField(
+        queryset=InformeIndividual.objects.all().order_by("apellido", "nombre"),
+        required=False,
+        widget=forms.SelectMultiple(attrs={"class": "form-select", "size": 8}),
+        label="Miembros",
+    )
+
+    class Meta:
+        model = BandaCriminal
+        fields = ["nombres", "lideres", "miembros", "territorio_operacion"]
+        widgets = {
+            "nombres": forms.TextInput(attrs={"class": "form-control"}),
+            "territorio_operacion": forms.TextInput(attrs={"class": "form-control"}),
         }
 
 

@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% block title %}Bandas Criminales{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Bandas Criminales</h1>
+
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+{% endif %}
+
+<div class="row">
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                {% if modo_edicion %}
+                    Editar banda criminal
+                {% else %}
+                    Nueva banda criminal
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% if modo_edicion and banda_actual %}
+                    <div class="alert alert-info py-2">
+                        Estás editando <strong>{{ banda_actual.nombres }}</strong>.
+                    </div>
+                {% endif %}
+                <form method="post" action="{{ form_action|default:request.path }}">
+                    {% csrf_token %}
+                    {% for field in form %}
+                        <div class="mb-3">
+                            {{ field.label_tag }}
+                            {{ field }}
+                            {% if field.help_text %}
+                                <div class="form-text">{{ field.help_text }}</div>
+                            {% endif %}
+                            {% if field.errors %}
+                                <div class="text-danger small">
+                                    {% for error in field.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            {% if modo_edicion %}Guardar cambios{% else %}Crear banda{% endif %}
+                        </button>
+                        {% if modo_edicion %}
+                            <a href="{% url 'bandas_criminales' %}" class="btn btn-secondary">Cancelar</a>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">Listado de bandas criminales</div>
+            <div class="card-body p-0">
+                {% if bandas %}
+                    <div class="table-responsive">
+                        <table class="table table-striped mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Territorio</th>
+                                    <th>Líderes</th>
+                                    <th>Miembros</th>
+                                    <th class="text-end">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for banda in bandas %}
+                                <tr {% if banda_actual and banda.pk == banda_actual.pk %}class="table-info"{% endif %}>
+                                    <td>{{ banda.nombres }}</td>
+                                    <td>{{ banda.territorio_operacion }}</td>
+                                    <td>
+                                        {% with lideres=banda.lideres.all %}
+                                            {% if lideres %}
+                                                {% for lider in lideres %}
+                                                    {{ lider }}{% if not forloop.last %}, {% endif %}
+                                                {% endfor %}
+                                            {% else %}
+                                                <span class="text-muted">Sin líderes</span>
+                                            {% endif %}
+                                        {% endwith %}
+                                    </td>
+                                    <td>
+                                        {% with miembros=banda.miembros.all %}
+                                            {% if miembros %}
+                                                {% for miembro in miembros %}
+                                                    {{ miembro }}{% if not forloop.last %}, {% endif %}
+                                                {% endfor %}
+                                            {% else %}
+                                                <span class="text-muted">Sin miembros</span>
+                                            {% endif %}
+                                        {% endwith %}
+                                    </td>
+                                    <td class="text-end">
+                                        <a href="{% url 'banda_criminal_editar' banda.pk %}" class="btn btn-sm btn-outline-primary">Editar</a>
+                                        <form method="post" action="{% url 'banda_criminal_eliminar' banda.pk %}" class="d-inline form-eliminar-banda">
+                                            {% csrf_token %}
+                                            <button type="button" class="btn btn-sm btn-outline-danger btn-eliminar-banda">Eliminar</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="mb-0 text-muted p-3">Todavía no hay bandas registradas.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ block.super }}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll(".form-eliminar-banda").forEach(function (form) {
+        const btn = form.querySelector(".btn-eliminar-banda");
+        if (!btn) {
+            return;
+        }
+        btn.addEventListener("click", function (event) {
+            event.preventDefault();
+            Swal.fire({
+                title: "¿Eliminar banda criminal?",
+                text: "Esta acción no se puede deshacer.",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#d33",
+                cancelButtonColor: "#6c757d",
+                confirmButtonText: "Sí, eliminar",
+                cancelButtonText: "Cancelar",
+            }).then(function (result) {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

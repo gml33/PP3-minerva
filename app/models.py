@@ -597,23 +597,23 @@ class HechoDelictivo(models.Model):
 
 
 class BandaCriminal(models.Model):
-    nombre = models.CharField(max_length=150, unique=True)
-    descripcion = models.TextField(blank=True)
-    integrantes = models.ManyToManyField(
+    nombres = models.CharField(max_length=150, unique=True)
+    lideres = models.ManyToManyField(
         InformeIndividual,
-        related_name="bandas_criminales",
+        related_name="bandas_lideradas",
         blank=True,
     )
-    hechos = models.ManyToManyField(
-        HechoDelictivo,
-        related_name="bandas_involucradas",
+    miembros = models.ManyToManyField(
+        InformeIndividual,
+        related_name="bandas_miembro",
         blank=True,
     )
+    territorio_operacion = models.CharField(max_length=255)
 
     class Meta:
         verbose_name = "Banda Criminal"
         verbose_name_plural = "Bandas Criminales"
-        ordering = ["nombre"]
+        ordering = ["nombres"]
 
     def __str__(self):
-        return self.nombre
+        return self.nombres

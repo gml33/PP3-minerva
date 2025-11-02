@@ -49,6 +49,7 @@ from .views import (
     lista_links,
     api_links,
     hechos_delictivos_view,
+    bandas_criminales_view,
     exportar_links_relevantes,
     solicitud_info_portal_view,
     solicitud_info_portal_detalle_view,
@@ -77,6 +78,8 @@ from .views import (
     eliminar_hecho_delictivo,
     hecho_delictivo_detalle_view,
     exportar_hecho_delictivo_pdf,
+    banda_criminal_editar_view,
+    banda_criminal_eliminar_view,
     articulo_editar_view,
     # NUEVAS APIs PARA PANEL DE CLASIFICACIÓN
     api_links_list,
@@ -198,6 +201,21 @@ urlpatterns = [
         "hechos/delictivos/<int:id>/exportar_pdf/",
         exportar_hecho_delictivo_pdf,
         name="exportar_hecho_delictivo_pdf",
+    ),
+    path(
+        "bandas/criminales/",
+        bandas_criminales_view,
+        name="bandas_criminales",
+    ),
+    path(
+        "bandas/criminales/<int:pk>/editar/",
+        banda_criminal_editar_view,
+        name="banda_criminal_editar",
+    ),
+    path(
+        "bandas/criminales/<int:pk>/eliminar/",
+        banda_criminal_eliminar_view,
+        name="banda_criminal_eliminar",
     ),
     path(
         "links/exportar/",

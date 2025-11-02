@@ -27,6 +27,7 @@ import plotly.express as px
 from collections import defaultdict
 from django.utils.text import slugify
 from django.utils.timezone import localtime, now
+from django.urls import reverse
 
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
@@ -102,6 +103,7 @@ from .forms import (
     TvDigitalForm,
     RadioDigitalForm,
     HechoDelictivoForm,
+    BandaCriminalForm,
 )
 
 # Asegúrate de que esta utilidad exista en tu proyecto
@@ -245,6 +247,113 @@ def hechos_delictivos_view(request):
             "hechos": hechos,
         },
     )
+
+
+@login_required
+def bandas_criminales_view(request):
+    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.ADMIN]:
+        return render(request, "403.html", status=403)
+
+    bandas = (
+        BandaCriminal.objects.all()
+        .prefetch_related("lideres", "miembros")
+        .order_by("nombres")
+    )
+
+    if request.method == "POST":
+        form = BandaCriminalForm(request.POST)
+        if form.is_valid():
+            banda = form.save()
+            log_actividad(
+                request,
+                TipoActividad.OTRO,
+                f"Banda criminal creada (ID {banda.pk}).",
+            )
+            messages.success(request, "Banda criminal creada correctamente.")
+            return redirect("bandas_criminales")
+        messages.error(
+            request,
+            "No se pudo crear la banda criminal. Revisá los datos ingresados.",
+        )
+    else:
+        form = BandaCriminalForm()
+
+    return render(
+        request,
+        "bandas_criminales.html",
+        {
+            "form": form,
+            "bandas": bandas,
+            "modo_edicion": False,
+            "form_action": reverse("bandas_criminales"),
+        },
+    )
+
+
+@login_required
+def banda_criminal_editar_view(request, pk):
+    banda = get_object_or_404(BandaCriminal, pk=pk)
+
+    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.ADMIN]:
+        return render(request, "403.html", status=403)
+
+    if request.method == "POST":
+        form = BandaCriminalForm(request.POST, instance=banda)
+        if form.is_valid():
+            banda = form.save()
+            log_actividad(
+                request,
+                TipoActividad.OTRO,
+                f"Banda criminal actualizada (ID {banda.pk}).",
+            )
+            messages.success(request, "Banda criminal actualizada correctamente.")
+            return redirect("bandas_criminales")
+        messages.error(
+            request,
+            "No se pudo actualizar la banda criminal. Revisá los datos ingresados.",
+        )
+    else:
+        form = BandaCriminalForm(instance=banda)
+
+    bandas = (
+        BandaCriminal.objects.all()
+        .prefetch_related("lideres", "miembros")
+        .order_by("nombres")
+    )
+
+    return render(
+        request,
+        "bandas_criminales.html",
+        {
+            "form": form,
+            "bandas": bandas,
+            "modo_edicion": True,
+            "banda_actual": banda,
+            "form_action": reverse("banda_criminal_editar", args=[banda.pk]),
+        },
+    )
+
+
+@login_required
+def banda_criminal_eliminar_view(request, pk):
+    banda = get_object_or_404(BandaCriminal, pk=pk)
+
+    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.ADMIN]:
+        return render(request, "403.html", status=403)
+
+    if request.method == "POST":
+        nombre = banda.nombres
+        banda.delete()
+        log_actividad(
+            request,
+            TipoActividad.OTRO,
+            f"Banda criminal eliminada (ID {pk}, {nombre}).",
+        )
+        messages.success(request, "Banda criminal eliminada correctamente.")
+        return redirect("bandas_criminales")
+
+    messages.error(request, "Método no permitido para eliminar bandas criminales.")
+    return redirect("bandas_criminales")
 
 
 @login_required
