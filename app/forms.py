@@ -121,13 +121,14 @@ class BandaCriminalForm(forms.ModelForm):
 
     class Meta:
         model = BandaCriminal
-        fields = ["nombres", "lideres", "miembros", "territorio_operacion"]
+        fields = ["nombres", "zonas_influencia", "lideres", "miembros"]
         widgets = {
             "nombres": forms.HiddenInput(),
-            "territorio_operacion": forms.TextInput(attrs={"class": "form-control"}),
+            "zonas_influencia": forms.HiddenInput(),
         }
         labels = {
             "nombres": "Nombres o alias",
+            "zonas_influencia": "Zonas de influencia",
         }
 
     def __init__(self, *args, **kwargs):
@@ -140,6 +141,13 @@ class BandaCriminalForm(forms.ModelForm):
                 except json.JSONDecodeError:
                     valores = [valores] if valores else []
             self.fields["nombres"].initial = json.dumps(valores or [], ensure_ascii=False)
+            zonas = getattr(self.instance, "zonas_influencia", []) or []
+            if isinstance(zonas, str):
+                try:
+                    zonas = json.loads(zonas)
+                except json.JSONDecodeError:
+                    zonas = []
+            self.fields["zonas_influencia"].initial = json.dumps(zonas or [], ensure_ascii=False)
 
     def clean_nombres(self):
         raw = self.cleaned_data.get("nombres")
@@ -164,6 +172,45 @@ class BandaCriminalForm(forms.ModelForm):
         if not nombres_limpios:
             raise forms.ValidationError("Ingresá al menos un nombre para la banda.")
         return nombres_limpios
+
+    def clean_zonas_influencia(self):
+        raw = self.cleaned_data.get("zonas_influencia")
+        if isinstance(raw, list):
+            zonas = raw
+        else:
+            if not raw:
+                zonas = []
+            else:
+                try:
+                    zonas = json.loads(raw)
+                except json.JSONDecodeError as exc:
+                    raise forms.ValidationError(
+                        "No se pudieron procesar las zonas de influencia."
+                    ) from exc
+
+        zonas_limpias = []
+        for zona in zonas:
+            if not isinstance(zona, dict):
+                continue
+            barrio = zona.get("barrio", "").strip()
+            localidad = zona.get("localidad", "").strip()
+            ciudad = zona.get("ciudad", "").strip()
+            provincia = zona.get("provincia", "").strip()
+            if any([barrio, localidad, ciudad, provincia]):
+                zonas_limpias.append(
+                    {
+                        "barrio": barrio,
+                        "localidad": localidad,
+                        "ciudad": ciudad,
+                        "provincia": provincia,
+                    }
+                )
+
+        if not zonas_limpias:
+            raise forms.ValidationError(
+                "Ingresá al menos una zona de influencia con algún dato."
+            )
+        return zonas_limpias
 
 
 class ArticuloForm(forms.ModelForm):

@@ -163,13 +163,22 @@ class HechoDelictivoAdmin(admin.ModelAdmin):
 
 @admin.register(BandaCriminal)
 class BandaCriminalAdmin(admin.ModelAdmin):
-    list_display = ("nombres_resumen", "territorio_operacion", "cantidad_lideres", "cantidad_miembros")
-    search_fields = ("territorio_operacion",)
+    list_display = (
+        "nombres_resumen",
+        "zonas_admin_resumen",
+        "cantidad_lideres",
+        "cantidad_miembros",
+    )
+    search_fields = ("nombres",)
     filter_horizontal = ("lideres", "miembros")
 
     @admin.display(description="Nombres / alias")
     def nombres_resumen(self, obj):
         return obj.nombres_como_texto or "Sin nombre"
+
+    @admin.display(description="Zonas de influencia")
+    def zonas_admin_resumen(self, obj):
+        return obj.zonas_resumen or "Sin zonas"
 
     @admin.display(description="Líderes")
     def cantidad_lideres(self, obj):
@@ -183,6 +192,7 @@ class BandaCriminalAdmin(admin.ModelAdmin):
         queryset, use_distinct = super().get_search_results(request, queryset, search_term)
         if search_term:
             queryset |= self.model.objects.filter(nombres__icontains=search_term)
+            queryset |= self.model.objects.filter(zonas_influencia__icontains=search_term)
         return queryset, use_distinct
 
 

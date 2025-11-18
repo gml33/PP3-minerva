@@ -1,3 +1,5 @@
+import json
+
 from django.contrib.auth.models import User
 from django.db import models
 from django.utils import timezone
@@ -607,6 +609,11 @@ class BandaCriminal(models.Model):
         db_column="nombre",
         help_text="Lista de nombres o alias asociados a la banda.",
     )
+    zonas_influencia = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Listado de zonas con barrio, localidad, ciudad y provincia donde opera la banda.",
+    )
     lideres = models.ManyToManyField(
         InformeIndividual,
         related_name="bandas_lideradas",
@@ -617,8 +624,6 @@ class BandaCriminal(models.Model):
         related_name="bandas_miembro",
         blank=True,
     )
-    territorio_operacion = models.CharField(max_length=255)
-
     class Meta:
         verbose_name = "Banda Criminal"
         verbose_name_plural = "Bandas Criminales"
@@ -642,3 +647,44 @@ class BandaCriminal(models.Model):
         if isinstance(self.nombres, str):
             return self.nombres
         return ""
+
+    def _zonas_influencia_list(self):
+        data = self.zonas_influencia or []
+        if isinstance(data, str):
+            try:
+                data = json.loads(data)
+            except json.JSONDecodeError:
+                data = []
+        if not isinstance(data, list):
+            return []
+        zonas = []
+        for zona in data:
+            if isinstance(zona, dict):
+                zonas.append(
+                    {
+                        "barrio": zona.get("barrio", "").strip(),
+                        "localidad": zona.get("localidad", "").strip(),
+                        "ciudad": zona.get("ciudad", "").strip(),
+                        "provincia": zona.get("provincia", "").strip(),
+                    }
+                )
+        return zonas
+
+    @property
+    def zonas_influencia_detalle(self):
+        return self._zonas_influencia_list()
+
+    @property
+    def zonas_resumen(self):
+        textos = []
+        for zona in self._zonas_influencia_list():
+            partes = [
+                zona.get("barrio") or "",
+                zona.get("localidad") or "",
+                zona.get("ciudad") or "",
+                zona.get("provincia") or "",
+            ]
+            texto = ", ".join([p for p in partes if p])
+            if texto:
+                textos.append(texto)
+        return " / ".join(textos)

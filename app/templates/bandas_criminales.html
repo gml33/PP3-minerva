@@ -23,7 +23,7 @@
             <div class="card-body">
                 {% if modo_edicion and banda_actual %}
                     <div class="alert alert-info py-2">
-                        Estás editando <strong>{{ banda_actual.nombres|join:", " }}</strong>.
+                        Estás editando <strong>{{ banda_actual.nombres_como_texto }}</strong>.
                     </div>
                 {% endif %}
                 <form method="post" action="{{ form_action|default:request.path }}">
@@ -39,6 +39,25 @@
                                 </button>
                                 <div class="form-text">
                                     Cargá uno o más nombres/alias para esta banda. Podés agregar y quitar campos con los botones.
+                                </div>
+                                {% if field.errors %}
+                                    <div class="text-danger small mt-2">
+                                        {% for error in field.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% elif field.name == "zonas_influencia" %}
+                            <div class="mb-3">
+                                <label class="form-label" for="id_zonas_control">Zonas de influencia</label>
+                                {{ field }}
+                                <div id="zonas-dynamic-list" class="d-flex flex-column gap-3"></div>
+                                <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="btn-agregar-zona">
+                                    Agregar zona
+                                </button>
+                                <div class="form-text">
+                                    Definí una o varias zonas indicando barrio, localidad, ciudad y provincia. Podés dejar vacíos los campos que no correspondan.
                                 </div>
                                 {% if field.errors %}
                                     <div class="text-danger small mt-2">
@@ -88,7 +107,7 @@
                             <thead>
                                 <tr>
                                     <th>Nombres / Alias</th>
-                                    <th>Territorio</th>
+                                    <th>Zonas de influencia</th>
                                     <th>Líderes</th>
                                     <th>Miembros</th>
                                     <th class="text-end">Acciones</th>
@@ -106,7 +125,22 @@
                                             <span class="text-muted">Sin nombre</span>
                                         {% endif %}
                                     </td>
-                                    <td>{{ banda.territorio_operacion }}</td>
+                                    <td>
+                                        {% if banda.zonas_influencia_detalle %}
+                                            <ul class="mb-0 ps-3">
+                                                {% for zona in banda.zonas_influencia_detalle %}
+                                                    <li>
+                                                        {% if zona.barrio %}<strong>Barrio:</strong> {{ zona.barrio }}{% endif %}
+                                                        {% if zona.localidad %}{% if zona.barrio %} · {% endif %}<strong>Localidad:</strong> {{ zona.localidad }}{% endif %}
+                                                        {% if zona.ciudad %}{% if zona.barrio or zona.localidad %} · {% endif %}<strong>Ciudad:</strong> {{ zona.ciudad }}{% endif %}
+                                                        {% if zona.provincia %}{% if zona.barrio or zona.localidad or zona.ciudad %} · {% endif %}<strong>Provincia:</strong> {{ zona.provincia }}{% endif %}
+                                                    </li>
+                                                {% endfor %}
+                                            </ul>
+                                        {% else %}
+                                            <span class="text-muted">Sin zonas registradas</span>
+                                        {% endif %}
+                                    </td>
                                     <td>
                                         {% with lideres=banda.lideres.all %}
                                             {% if lideres %}
@@ -155,6 +189,7 @@
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     inicializarCamposNombres();
+    inicializarZonasInfluencia();
 
     document.querySelectorAll(".form-eliminar-banda").forEach(function (form) {
         const btn = form.querySelector(".btn-eliminar-banda");
@@ -252,6 +287,128 @@ function inicializarCamposNombres() {
         }
     } catch (error) {
         crearFila("");
+    }
+
+    sincronizarHidden();
+}
+
+function inicializarZonasInfluencia() {
+    const hiddenField = document.getElementById("id_zonas_influencia");
+    const listContainer = document.getElementById("zonas-dynamic-list");
+    const addButton = document.getElementById("btn-agregar-zona");
+
+    if (!hiddenField || !listContainer || !addButton) {
+        return;
+    }
+
+    const crearZona = (data = {}) => {
+        const wrapper = document.createElement("div");
+        wrapper.className = "border rounded p-3 zona-item";
+
+        const row1 = document.createElement("div");
+        row1.className = "row g-2";
+
+        const colBarrio = document.createElement("div");
+        colBarrio.className = "col-md-3";
+        const inputBarrio = document.createElement("input");
+        inputBarrio.type = "text";
+        inputBarrio.className = "form-control";
+        inputBarrio.placeholder = "Barrio";
+        inputBarrio.value = data.barrio || "";
+        colBarrio.appendChild(inputBarrio);
+
+        const colLocalidad = document.createElement("div");
+        colLocalidad.className = "col-md-3";
+        const inputLocalidad = document.createElement("input");
+        inputLocalidad.type = "text";
+        inputLocalidad.className = "form-control";
+        inputLocalidad.placeholder = "Localidad";
+        inputLocalidad.value = data.localidad || "";
+        colLocalidad.appendChild(inputLocalidad);
+
+        const colCiudad = document.createElement("div");
+        colCiudad.className = "col-md-3";
+        const inputCiudad = document.createElement("input");
+        inputCiudad.type = "text";
+        inputCiudad.className = "form-control";
+        inputCiudad.placeholder = "Ciudad";
+        inputCiudad.value = data.ciudad || "";
+        colCiudad.appendChild(inputCiudad);
+
+        const colProvincia = document.createElement("div");
+        colProvincia.className = "col-md-3";
+        const inputProvincia = document.createElement("input");
+        inputProvincia.type = "text";
+        inputProvincia.className = "form-control";
+        inputProvincia.placeholder = "Provincia";
+        inputProvincia.value = data.provincia || "";
+        colProvincia.appendChild(inputProvincia);
+
+        row1.appendChild(colBarrio);
+        row1.appendChild(colLocalidad);
+        row1.appendChild(colCiudad);
+        row1.appendChild(colProvincia);
+
+        const actions = document.createElement("div");
+        actions.className = "text-end mt-2";
+
+        const btnRemove = document.createElement("button");
+        btnRemove.type = "button";
+        btnRemove.className = "btn btn-sm btn-outline-danger btn-remove-zona";
+        btnRemove.textContent = "Quitar zona";
+        actions.appendChild(btnRemove);
+
+        wrapper.appendChild(row1);
+        wrapper.appendChild(actions);
+
+        listContainer.appendChild(wrapper);
+    };
+
+    const sincronizarHidden = () => {
+        const zonas = [];
+        listContainer.querySelectorAll(".zona-item").forEach((zona) => {
+            const inputs = zona.querySelectorAll("input");
+            const [barrio, localidad, ciudad, provincia] = Array.from(inputs).map((input) =>
+                input.value.trim()
+            );
+            if (barrio || localidad || ciudad || provincia) {
+                zonas.push({ barrio, localidad, ciudad, provincia });
+            }
+        });
+        hiddenField.value = JSON.stringify(zonas);
+    };
+
+    addButton.addEventListener("click", () => {
+        crearZona();
+        sincronizarHidden();
+    });
+
+    listContainer.addEventListener("input", () => {
+        sincronizarHidden();
+    });
+
+    listContainer.addEventListener("click", (event) => {
+        if (event.target.matches(".btn-remove-zona")) {
+            const zona = event.target.closest(".zona-item");
+            if (zona) {
+                zona.remove();
+                if (listContainer.querySelectorAll(".zona-item").length === 0) {
+                    crearZona();
+                }
+                sincronizarHidden();
+            }
+        }
+    });
+
+    try {
+        const zonasIniciales = JSON.parse(hiddenField.value || "[]");
+        if (Array.isArray(zonasIniciales) && zonasIniciales.length) {
+            zonasIniciales.forEach((zona) => crearZona(zona));
+        } else {
+            crearZona();
+        }
+    } catch (error) {
+        crearZona();
     }
 
     sincronizarHidden();
