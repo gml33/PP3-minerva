@@ -239,12 +239,48 @@
 
 <section class="mb-5">
     <div class="card">
+        <div class="card-header">Antecedentes personalizados</div>
+        <div class="card-body">
+            {% if informe.antecedentes %}
+                <div class="d-flex flex-column gap-3">
+                    {% for antecedente in informe.antecedentes %}
+                        <div>
+                            <strong>{{ antecedente.titulo|default:"Sin título" }}</strong>
+                            <p class="mb-0">{{ antecedente.descripcion|default:"Sin descripción"|linebreaks }}</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-muted mb-0">No se registraron antecedentes personalizados.</p>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<section class="mb-5">
+    <div class="card">
         <div class="card-header">Posible evolución</div>
         <div class="card-body">
             {% if informe.posible_evolucion %}
                 <p class="mb-0">{{ informe.posible_evolucion|linebreaks }}</p>
             {% else %}
                 <p class="text-muted mb-0">Sin observaciones sobre la evolución.</p>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<section class="mb-5">
+    <div class="card">
+        <div class="card-header">Desarrollo</div>
+        <div class="card-body">
+            {% if informe.desarrollo_titulo %}
+                <h5>{{ informe.desarrollo_titulo }}</h5>
+            {% endif %}
+            {% if informe.desarrollo_contenido %}
+                <p class="mb-0">{{ informe.desarrollo_contenido|linebreaks }}</p>
+            {% else %}
+                <p class="text-muted mb-0">Sin desarrollo registrado.</p>
             {% endif %}
         </div>
     </div>

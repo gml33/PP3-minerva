@@ -611,28 +611,25 @@ def informe_banda_exportar_view(request, pk):
         for hecho in hechos_relacionados:
             autores_texto = ", ".join([str(autor) for autor in hecho.autor.all()])
             antecedentes_contenido.append(
-                f"- {hecho.fecha.strftime('%d/%m/%Y')} · {hecho.get_categoria_display() or 'Sin categoría'} · {hecho.ubicacion} · Calificación {hecho.get_calificacion_display()} · Autores: {autores_texto or ('Autor no identificado' if hecho.autor_desconocido else 'Sin autores')}"
+                f"- {hecho.fecha.strftime('%d/%m/%Y')} · {hecho.get_categoria_display() or 'Sin categoría'} · {hecho.ubicacion_texto} · Calificación {hecho.get_calificacion_display()} · Autores: {autores_texto or ('Autor no identificado' if hecho.autor_desconocido else 'Sin autores')}"
             )
     else:
         antecedentes_contenido.append("No se registraron hechos delictivos asociados.")
+    if informe.antecedentes:
+        antecedentes_contenido.append("")
+        antecedentes_contenido.append("Antecedentes personalizados:")
+        for antecedente in informe.antecedentes:
+            titulo = antecedente.get("titulo") if isinstance(antecedente, dict) else ""
+            descripcion = (
+                antecedente.get("descripcion") if isinstance(antecedente, dict) else ""
+            )
+            linea = f"{titulo or 'Sin título'}: {descripcion or 'Sin descripción'}"
+            antecedentes_contenido.append(linea.strip())
     add_anexo(3, "Antecedentes", antecedentes_contenido)
 
-    desarrollo_lineas = []
-    if lideres:
-        desarrollo_lineas.append("Líderes identificados:")
-        for lider in lideres:
-            desarrollo_lineas.append(
-                f"- {lider} · Documento: {lider.documento or '-'} · Rol interno: {lider.get_rol_display() or '-'}"
-            )
-    if lugartenientes:
-        desarrollo_lineas.append("Lugartenientes identificados:")
-        for lugarteniente in lugartenientes:
-            desarrollo_lineas.append(
-                f"- {lugarteniente} · Documento: {lugarteniente.documento or '-'} · Situación: {lugarteniente.get_situacion_display() or '-'}"
-            )
-    if not desarrollo_lineas:
-        desarrollo_lineas = ["No se registraron jerarquías en el informe."]
-    add_anexo(4, "Desarrollo", desarrollo_lineas)
+    desarrollo_contenido = informe.desarrollo_contenido or "No se registró contenido para el desarrollo."
+    desarrollo_titulo = informe.desarrollo_titulo or "Desarrollo"
+    add_anexo(4, desarrollo_titulo, desarrollo_contenido)
 
     add_anexo(
         5,

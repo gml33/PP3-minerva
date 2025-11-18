@@ -21,7 +21,7 @@
     <div class="info">
         <p><span class="label">Fecha:</span> {{ fecha_registro }}</p>
         <p><span class="label">Categoría:</span> {{ hecho.get_categoria_display|default:"Sin categoría" }}</p>
-        <p><span class="label">Ubicación:</span> {{ hecho.ubicacion }}</p>
+        <p><span class="label">Ubicación:</span> {{ hecho.ubicacion_texto }}</p>
         <p><span class="label">Calificación:</span> {{ hecho.get_calificacion_display }}</p>
         <p><span class="label">Artículo:</span>
             {% if articulo %}

@@ -84,6 +84,22 @@
             </div>
         </div>
 
+        <div class="card mt-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Antecedentes personalizados (Anexo 3)</span>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="btn-agregar-antecedente">
+                    Agregar antecedente
+                </button>
+            </div>
+            <div class="card-body">
+                {{ form.antecedentes_json }}
+                <div id="antecedentes-dynamic-list" class="d-flex flex-column gap-3"></div>
+                <div class="form-text">
+                    Sumá tantos antecedentes como necesites. Cada antecedente tiene un título y una descripción que se incluirán en el anexo 3 del informe.
+                </div>
+            </div>
+        </div>
+
         <div class="row g-4 mt-4">
             <div class="col-md-6">
                 <div class="card h-100">
@@ -127,6 +143,22 @@
             <label class="form-label">{{ form.posible_evolucion.label }}</label>
             {{ form.posible_evolucion }}
             {% for error in form.posible_evolucion.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">{{ form.desarrollo_titulo.label }}</label>
+            {{ form.desarrollo_titulo }}
+            {% for error in form.desarrollo_titulo.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">{{ form.desarrollo_contenido.label }}</label>
+            {{ form.desarrollo_contenido }}
+            {% for error in form.desarrollo_contenido.errors %}
                 <div class="text-danger small">{{ error }}</div>
             {% endfor %}
         </div>
@@ -321,6 +353,80 @@
 
             selectBanda.addEventListener('change', actualizarPaneles);
             actualizarPaneles();
+        })();
+        (function () {
+            const hiddenField = document.getElementById("id_antecedentes_json");
+            const container = document.getElementById("antecedentes-dynamic-list");
+            const addButton = document.getElementById("btn-agregar-antecedente");
+            if (!hiddenField || !container || !addButton) {
+                return;
+            }
+
+            const crearItem = (titulo = "", descripcion = "") => {
+                const wrapper = document.createElement("div");
+                wrapper.className = "border rounded p-3 antecedente-item";
+                wrapper.innerHTML = `
+                    <div class="mb-3">
+                        <label class="form-label">Título</label>
+                        <input type="text" class="form-control antecedente-titulo" value="${titulo.replace(/"/g, "&quot;")}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Descripción</label>
+                        <textarea class="form-control antecedente-descripcion" rows="3">${descripcion}</textarea>
+                    </div>
+                    <div class="text-end">
+                        <button type="button" class="btn btn-sm btn-outline-danger btn-remove-antecedente">Eliminar</button>
+                    </div>
+                `;
+                container.appendChild(wrapper);
+            };
+
+            const sincronizarHidden = () => {
+                const datos = [];
+                container.querySelectorAll(".antecedente-item").forEach((item) => {
+                    const titulo = item.querySelector(".antecedente-titulo").value.trim();
+                    const descripcion = item
+                        .querySelector(".antecedente-descripcion")
+                        .value.trim();
+                    if (titulo || descripcion) {
+                        datos.push({ titulo, descripcion });
+                    }
+                });
+                hiddenField.value = JSON.stringify(datos);
+            };
+
+            addButton.addEventListener("click", () => {
+                crearItem();
+                sincronizarHidden();
+            });
+
+            container.addEventListener("input", sincronizarHidden);
+            container.addEventListener("click", (event) => {
+                if (event.target.matches(".btn-remove-antecedente")) {
+                    const item = event.target.closest(".antecedente-item");
+                    if (item) {
+                        item.remove();
+                        if (!container.querySelector(".antecedente-item")) {
+                            crearItem();
+                        }
+                        sincronizarHidden();
+                    }
+                }
+            });
+
+            try {
+                const iniciales = JSON.parse(hiddenField.value || "[]");
+                if (Array.isArray(iniciales) && iniciales.length) {
+                    iniciales.forEach((item) =>
+                        crearItem(item.titulo || "", item.descripcion || "")
+                    );
+                } else {
+                    crearItem();
+                }
+            } catch (error) {
+                crearItem();
+            }
+            sincronizarHidden();
         })();
     </script>
 {% endblock %}

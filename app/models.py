@@ -561,7 +561,11 @@ class HechoDelictivo(models.Model):
         null=True,
         blank=True,
     )
-    ubicacion = models.CharField(max_length=255)
+    ubicacion = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Detalle de ubicación con barrio, localidad, ciudad y provincia.",
+    )
     calificacion = models.CharField(
         max_length=20,
         choices=Calificacion.choices,
@@ -611,6 +615,39 @@ class HechoDelictivo(models.Model):
     def __str__(self):
         categoria = self.get_categoria_display() if self.categoria else "Sin categoría"
         return f"{self.fecha} - {categoria}"
+
+    def _ubicacion_dict(self):
+        data = self.ubicacion or {}
+        if isinstance(data, str):
+            try:
+                data = json.loads(data)
+            except json.JSONDecodeError:
+                data = {
+                    "barrio": "",
+                    "localidad": "",
+                    "ciudad": data,
+                    "provincia": "",
+                }
+        if not isinstance(data, dict):
+            data = {}
+        return {
+            "barrio": data.get("barrio", ""),
+            "localidad": data.get("localidad", ""),
+            "ciudad": data.get("ciudad", ""),
+            "provincia": data.get("provincia", ""),
+        }
+
+    @property
+    def ubicacion_texto(self):
+        data = self._ubicacion_dict()
+        partes = [
+            data.get("barrio", "").strip(),
+            data.get("localidad", "").strip(),
+            data.get("ciudad", "").strip(),
+            data.get("provincia", "").strip(),
+        ]
+        partes = [p for p in partes if p]
+        return ", ".join(partes) if partes else "Ubicación no registrada"
 
 
 class BandaCriminal(models.Model):
@@ -752,6 +789,20 @@ class InformeBandaCriminal(models.Model):
     posible_evolucion = models.TextField(
         blank=True,
         help_text="Hipótesis u observaciones sobre la evolución de la banda.",
+    )
+    antecedentes = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Lista de antecedentes personalizados que incluye título y descripción.",
+    )
+    desarrollo_titulo = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Título del apartado de desarrollo.",
+    )
+    desarrollo_contenido = models.TextField(
+        blank=True,
+        help_text="Contenido redactado manualmente para el desarrollo.",
     )
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
