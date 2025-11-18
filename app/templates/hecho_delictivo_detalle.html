@@ -82,6 +82,22 @@
     </div>
     <div class="col-md-6">
         <div class="card mb-4">
+            <div class="card-header">Bandas asociadas</div>
+            <div class="card-body">
+                {% with bandas=hecho.bandas.all %}
+                    {% if bandas %}
+                        <ul class="mb-0">
+                            {% for banda in bandas %}
+                                <li>{{ banda.nombre_principal|default:banda }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="mb-0 text-muted">Sin bandas asociadas.</p>
+                    {% endif %}
+                {% endwith %}
+            </div>
+        </div>
+        <div class="card mb-4">
             <div class="card-header">Noticias asociadas</div>
             <div class="card-body">
                 {% with noticias=hecho.noticias.all %}

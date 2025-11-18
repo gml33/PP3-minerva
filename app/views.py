@@ -601,21 +601,20 @@ def informe_banda_exportar_view(request, pk):
     add_anexo(2, "Introducción", introduccion_contenido)
 
     antecedentes_contenido = []
-    if zonas_listado:
-        antecedentes_contenido.append("Zonas de influencia conocidas:")
-        antecedentes_contenido.extend(zonas_listado)
-    if bandas_aliadas:
-        antecedentes_contenido.append(
-            "Bandas aliadas registradas: "
-            + ", ".join([aliada.nombre_principal or "-" for aliada in bandas_aliadas])
-        )
-    if bandas_rivales:
-        antecedentes_contenido.append(
-            "Bandas rivales registradas: "
-            + ", ".join([rival.nombre_principal or "-" for rival in bandas_rivales])
-        )
-    if not antecedentes_contenido:
-        antecedentes_contenido = ["No se cargaron antecedentes para esta banda."]
+    antecedentes_contenido.append("Hechos delictivos asociados a la banda:")
+    hechos_relacionados = (
+        banda.hechos_delictivos.select_related("articulo")
+        .prefetch_related("autor")
+        .order_by("-fecha")
+    )
+    if hechos_relacionados:
+        for hecho in hechos_relacionados:
+            autores_texto = ", ".join([str(autor) for autor in hecho.autor.all()])
+            antecedentes_contenido.append(
+                f"- {hecho.fecha.strftime('%d/%m/%Y')} · {hecho.get_categoria_display() or 'Sin categoría'} · {hecho.ubicacion} · Calificación {hecho.get_calificacion_display()} · Autores: {autores_texto or ('Autor no identificado' if hecho.autor_desconocido else 'Sin autores')}"
+            )
+    else:
+        antecedentes_contenido.append("No se registraron hechos delictivos asociados.")
     add_anexo(3, "Antecedentes", antecedentes_contenido)
 
     desarrollo_lineas = []

@@ -54,6 +54,7 @@
                                     <th>Calificación</th>
                                     <th>Artículo</th>
                                     <th>Autores</th>
+                                    <th>Bandas</th>
                                     <th class="text-end">Acciones</th>
                                 </tr>
                             </thead>
@@ -87,6 +88,17 @@
                                                 {% endif %}
                                             {% endwith %}
                                         {% endif %}
+                                    </td>
+                                    <td>
+                                        {% with bandas=hecho.bandas.all %}
+                                            {% if bandas %}
+                                                {% for banda in bandas %}
+                                                    {{ banda.nombre_principal|default:banda }}{% if not forloop.last %}, {% endif %}
+                                                {% endfor %}
+                                            {% else %}
+                                                <span class="text-muted">Sin bandas asociadas</span>
+                                            {% endif %}
+                                        {% endwith %}
                                     </td>
                                     <td class="text-end">
                                         <a class="btn btn-sm btn-outline-info" href="{% url 'hecho_delictivo_detalle' hecho.id %}">Ver</a>

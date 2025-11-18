@@ -359,6 +359,13 @@ class HechoDelictivoForm(forms.ModelForm):
         widget=forms.SelectMultiple(attrs={"class": "form-select", "size": 8}),
         label="Noticias relacionadas",
     )
+    bandas = forms.ModelMultipleChoiceField(
+        queryset=BandaCriminal.objects.all(),
+        required=False,
+        widget=forms.SelectMultiple(attrs={"class": "form-select", "size": 8}),
+        label="Bandas involucradas",
+        help_text="Seleccioná las bandas relacionadas con el hecho, si corresponde.",
+    )
 
     class Meta:
         model = HechoDelictivo
@@ -372,6 +379,7 @@ class HechoDelictivoForm(forms.ModelForm):
             "autor_desconocido",
             "descripcion",
             "noticias",
+            "bandas",
         ]
         widgets = {
             "fecha": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
@@ -407,6 +415,7 @@ class HechoDelictivoForm(forms.ModelForm):
             self.fields["autor"].queryset = autores_queryset
 
         self.fields["noticias"].queryset = links_queryset
+        self.fields["bandas"].queryset = BandaCriminal.objects.order_by("nombres")
         self.fields["articulo"].queryset = articulo_queryset
         self.fields["articulo"].required = True
 

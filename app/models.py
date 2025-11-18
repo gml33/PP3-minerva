@@ -589,6 +589,12 @@ class HechoDelictivo(models.Model):
         related_name="hechos_criminales",
         blank=True,
     )
+    bandas = models.ManyToManyField(
+        "BandaCriminal",
+        related_name="hechos_delictivos",
+        blank=True,
+        help_text="Bandas criminales relacionadas con el hecho.",
+    )
     articulo = models.ForeignKey(
         Articulo,
         on_delete=models.CASCADE,
