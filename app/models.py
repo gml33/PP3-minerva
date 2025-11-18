@@ -602,7 +602,11 @@ class HechoDelictivo(models.Model):
 
 
 class BandaCriminal(models.Model):
-    nombres = models.CharField(max_length=150, unique=True, db_column="nombre")
+    nombres = models.JSONField(
+        default=list,
+        db_column="nombre",
+        help_text="Lista de nombres o alias asociados a la banda.",
+    )
     lideres = models.ManyToManyField(
         InformeIndividual,
         related_name="bandas_lideradas",
@@ -621,4 +625,20 @@ class BandaCriminal(models.Model):
         ordering = ["nombres"]
 
     def __str__(self):
-        return self.nombres
+        return self.nombre_principal or "Banda sin nombre"
+
+    @property
+    def nombre_principal(self):
+        if isinstance(self.nombres, list) and self.nombres:
+            return self.nombres[0]
+        if isinstance(self.nombres, str):
+            return self.nombres
+        return ""
+
+    @property
+    def nombres_como_texto(self):
+        if isinstance(self.nombres, list):
+            return ", ".join(self.nombres)
+        if isinstance(self.nombres, str):
+            return self.nombres
+        return ""

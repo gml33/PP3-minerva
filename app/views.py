@@ -254,10 +254,13 @@ def bandas_criminales_view(request):
     if request.user.userprofile.rol not in [Roles.REDACCION, Roles.ADMIN]:
         return render(request, "403.html", status=403)
 
-    bandas = (
+    bandas_queryset = (
         BandaCriminal.objects.all()
         .prefetch_related("lideres", "miembros")
-        .order_by("nombres")
+    )
+    bandas = sorted(
+        bandas_queryset,
+        key=lambda banda: (banda.nombre_principal or "").lower(),
     )
 
     if request.method == "POST":
@@ -315,10 +318,13 @@ def banda_criminal_editar_view(request, pk):
     else:
         form = BandaCriminalForm(instance=banda)
 
-    bandas = (
+    bandas_queryset = (
         BandaCriminal.objects.all()
         .prefetch_related("lideres", "miembros")
-        .order_by("nombres")
+    )
+    bandas = sorted(
+        bandas_queryset,
+        key=lambda banda: (banda.nombre_principal or "").lower(),
     )
 
     return render(
@@ -342,7 +348,7 @@ def banda_criminal_eliminar_view(request, pk):
         return render(request, "403.html", status=403)
 
     if request.method == "POST":
-        nombre = banda.nombres
+        nombre = banda.nombres_como_texto or "Sin nombre"
         banda.delete()
         log_actividad(
             request,

@@ -1,3 +1,5 @@
+import json
+
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm
 from captcha.fields import CaptchaField
@@ -121,9 +123,47 @@ class BandaCriminalForm(forms.ModelForm):
         model = BandaCriminal
         fields = ["nombres", "lideres", "miembros", "territorio_operacion"]
         widgets = {
-            "nombres": forms.TextInput(attrs={"class": "form-control"}),
+            "nombres": forms.HiddenInput(),
             "territorio_operacion": forms.TextInput(attrs={"class": "form-control"}),
         }
+        labels = {
+            "nombres": "Nombres o alias",
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.is_bound:
+            valores = self.instance.nombres if getattr(self.instance, "nombres", None) else []
+            if isinstance(valores, str):
+                try:
+                    valores = json.loads(valores)
+                except json.JSONDecodeError:
+                    valores = [valores] if valores else []
+            self.fields["nombres"].initial = json.dumps(valores or [], ensure_ascii=False)
+
+    def clean_nombres(self):
+        raw = self.cleaned_data.get("nombres")
+        if isinstance(raw, list):
+            nombres = raw
+        else:
+            if not raw:
+                nombres = []
+            else:
+                try:
+                    nombres = json.loads(raw)
+                except json.JSONDecodeError as exc:
+                    raise forms.ValidationError(
+                        "No se pudieron procesar los nombres ingresados."
+                    ) from exc
+        nombres_limpios = []
+        for nombre in nombres:
+            if isinstance(nombre, str):
+                valor = nombre.strip()
+                if valor:
+                    nombres_limpios.append(valor)
+        if not nombres_limpios:
+            raise forms.ValidationError("Ingresá al menos un nombre para la banda.")
+        return nombres_limpios
 
 
 class ArticuloForm(forms.ModelForm):

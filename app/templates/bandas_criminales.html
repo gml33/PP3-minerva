@@ -23,26 +23,47 @@
             <div class="card-body">
                 {% if modo_edicion and banda_actual %}
                     <div class="alert alert-info py-2">
-                        Estás editando <strong>{{ banda_actual.nombres }}</strong>.
+                        Estás editando <strong>{{ banda_actual.nombres|join:", " }}</strong>.
                     </div>
                 {% endif %}
                 <form method="post" action="{{ form_action|default:request.path }}">
                     {% csrf_token %}
                     {% for field in form %}
-                        <div class="mb-3">
-                            {{ field.label_tag }}
-                            {{ field }}
-                            {% if field.help_text %}
-                                <div class="form-text">{{ field.help_text }}</div>
-                            {% endif %}
-                            {% if field.errors %}
-                                <div class="text-danger small">
-                                    {% for error in field.errors %}
-                                        {{ error }}
-                                    {% endfor %}
+                        {% if field.name == "nombres" %}
+                            <div class="mb-3">
+                                <label class="form-label" for="id_nombres_control">Nombres o alias</label>
+                                {{ field }}
+                                <div id="nombres-dynamic-list" class="d-flex flex-column gap-2"></div>
+                                <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="btn-agregar-nombre">
+                                    Agregar otro nombre
+                                </button>
+                                <div class="form-text">
+                                    Cargá uno o más nombres/alias para esta banda. Podés agregar y quitar campos con los botones.
                                 </div>
-                            {% endif %}
-                        </div>
+                                {% if field.errors %}
+                                    <div class="text-danger small mt-2">
+                                        {% for error in field.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            <div class="mb-3">
+                                {{ field.label_tag }}
+                                {{ field }}
+                                {% if field.help_text %}
+                                    <div class="form-text">{{ field.help_text }}</div>
+                                {% endif %}
+                                {% if field.errors %}
+                                    <div class="text-danger small">
+                                        {% for error in field.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endif %}
                     {% endfor %}
                     <div class="d-grid gap-2">
                         <button type="submit" class="btn btn-primary">
@@ -66,7 +87,7 @@
                         <table class="table table-striped mb-0">
                             <thead>
                                 <tr>
-                                    <th>Nombre</th>
+                                    <th>Nombres / Alias</th>
                                     <th>Territorio</th>
                                     <th>Líderes</th>
                                     <th>Miembros</th>
@@ -76,7 +97,15 @@
                             <tbody>
                                 {% for banda in bandas %}
                                 <tr {% if banda_actual and banda.pk == banda_actual.pk %}class="table-info"{% endif %}>
-                                    <td>{{ banda.nombres }}</td>
+                                    <td>
+                                        {% if banda.nombres %}
+                                            {% for alias in banda.nombres %}
+                                                <span class="badge bg-light text-dark border">{{ alias }}</span>{% if not forloop.last %} {% endif %}
+                                            {% endfor %}
+                                        {% else %}
+                                            <span class="text-muted">Sin nombre</span>
+                                        {% endif %}
+                                    </td>
                                     <td>{{ banda.territorio_operacion }}</td>
                                     <td>
                                         {% with lideres=banda.lideres.all %}
@@ -125,6 +154,8 @@
 {{ block.super }}
 <script>
 document.addEventListener("DOMContentLoaded", function () {
+    inicializarCamposNombres();
+
     document.querySelectorAll(".form-eliminar-banda").forEach(function (form) {
         const btn = form.querySelector(".btn-eliminar-banda");
         if (!btn) {
@@ -149,5 +180,81 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 });
+
+function inicializarCamposNombres() {
+    const hiddenField = document.getElementById("id_nombres");
+    const listContainer = document.getElementById("nombres-dynamic-list");
+    const addButton = document.getElementById("btn-agregar-nombre");
+
+    if (!hiddenField || !listContainer || !addButton) {
+        return;
+    }
+
+    const crearFila = (valor = "") => {
+        const wrapper = document.createElement("div");
+        wrapper.className = "input-group";
+
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "form-control";
+        input.placeholder = "Alias o denominación";
+        input.value = valor || "";
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn btn-outline-danger btn-remove-nombre";
+        btn.textContent = "Quitar";
+
+        wrapper.appendChild(input);
+        wrapper.appendChild(btn);
+        listContainer.appendChild(wrapper);
+    };
+
+    const sincronizarHidden = () => {
+        const valores = [];
+        listContainer.querySelectorAll("input").forEach((input) => {
+            const valor = input.value.trim();
+            if (valor) {
+                valores.push(valor);
+            }
+        });
+        hiddenField.value = JSON.stringify(valores);
+    };
+
+    addButton.addEventListener("click", () => {
+        crearFila("");
+        sincronizarHidden();
+    });
+
+    listContainer.addEventListener("input", () => {
+        sincronizarHidden();
+    });
+
+    listContainer.addEventListener("click", (event) => {
+        if (event.target.matches(".btn-remove-nombre")) {
+            const wrapper = event.target.closest(".input-group");
+            if (wrapper) {
+                wrapper.remove();
+                if (listContainer.querySelectorAll(".input-group").length === 0) {
+                    crearFila("");
+                }
+                sincronizarHidden();
+            }
+        }
+    });
+
+    try {
+        const iniciales = JSON.parse(hiddenField.value || "[]");
+        if (Array.isArray(iniciales) && iniciales.length) {
+            iniciales.forEach((nombre) => crearFila(nombre));
+        } else {
+            crearFila("");
+        }
+    } catch (error) {
+        crearFila("");
+    }
+
+    sincronizarHidden();
+}
 </script>
 {% endblock %}

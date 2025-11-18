@@ -163,9 +163,13 @@ class HechoDelictivoAdmin(admin.ModelAdmin):
 
 @admin.register(BandaCriminal)
 class BandaCriminalAdmin(admin.ModelAdmin):
-    list_display = ("nombres", "territorio_operacion", "cantidad_lideres", "cantidad_miembros")
-    search_fields = ("nombres", "territorio_operacion")
+    list_display = ("nombres_resumen", "territorio_operacion", "cantidad_lideres", "cantidad_miembros")
+    search_fields = ("territorio_operacion",)
     filter_horizontal = ("lideres", "miembros")
+
+    @admin.display(description="Nombres / alias")
+    def nombres_resumen(self, obj):
+        return obj.nombres_como_texto or "Sin nombre"
 
     @admin.display(description="Líderes")
     def cantidad_lideres(self, obj):
@@ -174,6 +178,12 @@ class BandaCriminalAdmin(admin.ModelAdmin):
     @admin.display(description="Miembros")
     def cantidad_miembros(self, obj):
         return obj.miembros.count()
+
+    def get_search_results(self, request, queryset, search_term):
+        queryset, use_distinct = super().get_search_results(request, queryset, search_term)
+        if search_term:
+            queryset |= self.model.objects.filter(nombres__icontains=search_term)
+        return queryset, use_distinct
 
 
 @admin.register(RedSocial)
