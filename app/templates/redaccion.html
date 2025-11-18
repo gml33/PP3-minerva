@@ -45,9 +45,15 @@
     <div class="card-header">Nuevo Artículo</div>
     <div class="card-body">
         <form id="formArticulo">
-            <div class="mb-3">
-                <label class="form-label">Título</label>
-                <input type="text" class="form-control" id="titulo" required>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Título</label>
+                    <input type="text" class="form-control" id="titulo" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Fecha del Hecho</label>
+                    <input type="date" class="form-control" id="fecha_hecho" required> <!-- CAMBIADO: id="fecha" → id="fecha_hecho" -->
+                </div>
             </div>
             <div class="mb-3">
                 <label class="form-label">Descripción</label>
@@ -59,6 +65,38 @@
                     <option value="">Seleccione una categoría</option>
                 </select>
             </div>
+            
+            <!-- NUEVO CAMPO: UBICACIÓN -->
+            <div class="mb-3">
+                <label class="form-label">Ubicación</label>
+                <div class="ubicacion-group">
+                    <div class="row mb-2">
+                        <div class="col-md-3">
+                            <input type="text" id="ubicacion_calle" placeholder="Calle" class="form-control">
+                        </div>
+                        <div class="col-md-2">
+                            <input type="number" id="ubicacion_numero" placeholder="N°" class="form-control">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" id="ubicacion_barrio" placeholder="Barrio" class="form-control">
+                        </div>
+                        <div class="col-md-4">
+                            <input type="text" id="ubicacion_localidad" placeholder="Localidad" class="form-control">
+                        </div>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-sm btn-secondary" onclick="agregarUbicacion()">Agregar otra ubicación</button>
+            </div>
+
+            <!-- NUEVO CAMPO: AUTORES -->
+            <div class="mb-3">
+                <label class="form-label">Autores</label>
+                <select id="autores" class="form-select" multiple>
+                    <!-- Los usuarios se cargarán dinámicamente -->
+                </select>
+                <small class="form-text text-muted">Mantén presionado Ctrl (Windows) o Command (Mac) para seleccionar múltiples autores.</small>
+            </div>
+
             <div class="mb-3">
                 <label class="form-label">Estado</label>
                 <select id="estado" class="form-select" required>
@@ -81,9 +119,15 @@
             </div>
             <div class="modal-body">
                 <form id="formEditarArticulo">
-                    <div class="mb-3">
-                        <label class="form-label" for="edit-titulo">Título</label>
-                        <input type="text" class="form-control" id="edit-titulo" required>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label" for="edit-titulo">Título</label>
+                            <input type="text" class="form-control" id="edit-titulo" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="edit-fecha_hecho">Fecha del Hecho</label> <!-- CAMBIADO: for="edit-fecha" → for="edit-fecha_hecho" -->
+                            <input type="date" class="form-control" id="edit-fecha_hecho" required> <!-- CAMBIADO: id="edit-fecha" → id="edit-fecha_hecho" -->
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label" for="edit-descripcion">Descripción</label>
@@ -95,6 +139,25 @@
                             <option value="">Seleccione una categoría</option>
                         </select>
                     </div>
+                    
+                    <!-- NUEVO CAMPO: UBICACIÓN EN EDICIÓN -->
+                    <div class="mb-3">
+                        <label class="form-label">Ubicación</label>
+                        <div class="ubicacion-edit-group">
+                            <!-- Las ubicaciones se cargarán dinámicamente -->
+                        </div>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="agregarUbicacionEdicion()">Agregar otra ubicación</button>
+                    </div>
+
+                    <!-- NUEVO CAMPO: AUTORES EN EDICIÓN -->
+                    <div class="mb-3">
+                        <label class="form-label" for="edit-autores">Autores</label>
+                        <select id="edit-autores" class="form-select" multiple>
+                            <!-- Los usuarios se cargarán dinámicamente -->
+                        </select>
+                        <small class="form-text text-muted">Mantén presionado Ctrl (Windows) o Command (Mac) para seleccionar múltiples autores.</small>
+                    </div>
+
                     <div class="mb-3">
                         <label class="form-label" for="edit-estado">Estado</label>
                         <select id="edit-estado" class="form-select" required>
@@ -118,6 +181,7 @@
     </div>
 </div>
 
+<!-- El resto del código se mantiene igual -->
 <div class="accordion mb-4" id="accordionRedaccion">
     <div class="accordion-item">
         <h2 class="accordion-header" id="headingLinks">
@@ -285,9 +349,9 @@
                                 <tr>
                                     <th>ID</th>
                                     <th>Título</th>
+                                    <th>Fecha del Hecho</th> <!-- CAMBIADO: "Fecha" → "Fecha del Hecho" -->
                                     <th>Categoría</th>
                                     <th>Estado</th>
-                                    <th>Fecha</th>
                                     <th>Autor</th>
                                     <th>Acciones</th>
                                 </tr>
@@ -322,9 +386,12 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
+                <p><strong>Fecha del Hecho:</strong> <span id="modalVerFecha"></span></p> <!-- CAMBIADO: "Fecha" → "Fecha del Hecho" -->
                 <p><strong>Descripción:</strong> <span id="modalVerDescripcion"></span></p>
                 <p><strong>Estado:</strong> <span id="modalVerEstado"></span></p>
                 <p><strong>Categoría:</strong> <span id="modalVerCategoria"></span></p>
+                <p><strong>Ubicación:</strong> <span id="modalVerUbicacion"></span></p>
+                <p><strong>Autores:</strong> <span id="modalVerAutores"></span></p>
                 <hr>
                 <h6>Links asociados</h6>
                 <ul id="modalVerLinks"></ul>
@@ -389,6 +456,14 @@
         cargarCategorias();
         cargarDiarios();
         cargarLinksAprobados();
+        cargarUsuarios(); // Nueva función para cargar usuarios/autores
+        
+        // Establecer fecha actual por defecto
+        const fechaInput = document.getElementById('fecha_hecho'); // CAMBIADO: 'fecha' → 'fecha_hecho'
+        if (fechaInput) {
+            const today = new Date().toISOString().split('T')[0];
+            fechaInput.value = today;
+        }
         
         // Cargar artículos con retardo para evitar conflictos
         setTimeout(() => {
@@ -397,6 +472,160 @@
         
         configurarAcordeonRedaccion();
     });
+
+    // NUEVA FUNCIÓN: Cargar usuarios para el campo de autores
+    async function cargarUsuarios() {
+        try {
+            const res = await fetch("/api/usuarios/");
+            const usuarios = await res.json();
+            const selects = [
+                document.getElementById("autores"),
+                document.getElementById("edit-autores")
+            ].filter(Boolean);
+            
+            selects.forEach(select => {
+                usuarios.forEach(usuario => {
+                    const option = new Option(usuario.username, usuario.id);
+                    select.add(option);
+                });
+            });
+        } catch (e) {
+            console.error("Error cargando usuarios:", e);
+        }
+    }
+
+    // FUNCIONES PARA MANEJAR UBICACIONES MÚLTIPLES
+    function agregarUbicacion() {
+        const container = document.querySelector('.ubicacion-group');
+        const newInput = document.createElement('div');
+        newInput.className = 'row mb-2';
+        newInput.innerHTML = `
+            <div class="col-md-3">
+                <input type="text" placeholder="Calle" class="form-control ubicacion-campo">
+            </div>
+            <div class="col-md-2">
+                <input type="number" placeholder="N°" class="form-control ubicacion-campo">
+            </div>
+            <div class="col-md-3">
+                <input type="text" placeholder="Barrio" class="form-control ubicacion-campo">
+            </div>
+            <div class="col-md-3">
+                <input type="text" placeholder="Localidad" class="form-control ubicacion-campo">
+            </div>
+            <div class="col-md-1">
+                <button type="button" class="btn btn-outline-danger" onclick="this.parentElement.parentElement.remove()">X</button>
+            </div>
+        `;
+        container.appendChild(newInput);
+    }
+
+    function agregarUbicacionEdicion() {
+        const container = document.querySelector('.ubicacion-edit-group');
+        const newInput = document.createElement('div');
+        newInput.className = 'row mb-2';
+        newInput.innerHTML = `
+            <div class="col-md-3">
+                <input type="text" placeholder="Calle" class="form-control ubicacion-edit-campo">
+            </div>
+            <div class="col-md-2">
+                <input type="number" placeholder="N°" class="form-control ubicacion-edit-campo">
+            </div>
+            <div class="col-md-3">
+                <input type="text" placeholder="Barrio" class="form-control ubicacion-edit-campo">
+            </div>
+            <div class="col-md-3">
+                <input type="text" placeholder="Localidad" class="form-control ubicacion-edit-campo">
+            </div>
+            <div class="col-md-1">
+                <button type="button" class="btn btn-outline-danger" onclick="this.parentElement.parentElement.remove()">X</button>
+            </div>
+        `;
+        container.appendChild(newInput);
+    }
+
+    // FUNCIONES PARA OBTENER DATOS DE UBICACIONES
+    function obtenerUbicaciones() {
+        const ubicaciones = [];
+        const primeraUbicacion = {
+            calle: document.getElementById('ubicacion_calle')?.value || '',
+            numero: document.getElementById('ubicacion_numero')?.value || '',
+            barrio: document.getElementById('ubicacion_barrio')?.value || '',
+            localidad: document.getElementById('ubicacion_localidad')?.value || ''
+        };
+        
+        if (primeraUbicacion.calle || primeraUbicacion.numero || primeraUbicacion.barrio || primeraUbicacion.localidad) {
+            ubicaciones.push(primeraUbicacion);
+        }
+
+        // Agregar ubicaciones adicionales
+        document.querySelectorAll('.ubicacion-group .row.mb-2').forEach((row, index) => {
+            if (index > 0) { // Saltar la primera que ya está en los campos principales
+                const inputs = row.querySelectorAll('.ubicacion-campo');
+                const ubicacion = {
+                    calle: inputs[0]?.value || '',
+                    numero: inputs[1]?.value || '',
+                    barrio: inputs[2]?.value || '',
+                    localidad: inputs[3]?.value || ''
+                };
+                if (ubicacion.calle || ubicacion.numero || ubicacion.barrio || ubicacion.localidad) {
+                    ubicaciones.push(ubicacion);
+                }
+            }
+        });
+
+        return ubicaciones;
+    }
+
+    function obtenerUbicacionesEdicion() {
+        const ubicaciones = [];
+        document.querySelectorAll('.ubicacion-edit-group .row.mb-2').forEach(row => {
+            const inputs = row.querySelectorAll('.ubicacion-edit-campo');
+            const ubicacion = {
+                calle: inputs[0]?.value || '',
+                numero: inputs[1]?.value || '',
+                barrio: inputs[2]?.value || '',
+                localidad: inputs[3]?.value || ''
+            };
+            if (ubicacion.calle || ubicacion.numero || ubicacion.barrio || ubicacion.localidad) {
+                ubicaciones.push(ubicacion);
+            }
+        });
+        return ubicaciones;
+    }
+
+    // FUNCIONES PARA CARGAR UBICACIONES EN EDICIÓN
+    function cargarUbicacionesEdicion(ubicaciones) {
+        const container = document.querySelector('.ubicacion-edit-group');
+        container.innerHTML = '';
+        
+        if (ubicaciones && ubicaciones.length > 0) {
+            ubicaciones.forEach(ubicacion => {
+                const newInput = document.createElement('div');
+                newInput.className = 'row mb-2';
+                newInput.innerHTML = `
+                    <div class="col-md-3">
+                        <input type="text" placeholder="Calle" class="form-control ubicacion-edit-campo" value="${ubicacion.calle || ''}">
+                    </div>
+                    <div class="col-md-2">
+                        <input type="number" placeholder="N°" class="form-control ubicacion-edit-campo" value="${ubicacion.numero || ''}">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" placeholder="Barrio" class="form-control ubicacion-edit-campo" value="${ubicacion.barrio || ''}">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" placeholder="Localidad" class="form-control ubicacion-edit-campo" value="${ubicacion.localidad || ''}">
+                    </div>
+                    <div class="col-md-1">
+                        <button type="button" class="btn btn-outline-danger" onclick="this.parentElement.parentElement.remove()">X</button>
+                    </div>
+                `;
+                container.appendChild(newInput);
+            });
+        } else {
+            // Agregar una ubicación vacía por defecto
+            agregarUbicacionEdicion();
+        }
+    }
 
     function configurarAcordeonRedaccion() {
         const botones = document.querySelectorAll('#accordionRedaccion .accordion-button');
@@ -593,18 +822,27 @@
     document.getElementById("formArticulo").addEventListener("submit", async e => {
         e.preventDefault();
         const titulo = document.getElementById("titulo").value;
+        const fecha_hecho = document.getElementById("fecha_hecho").value; // CAMBIADO: fecha → fecha_hecho
         const descripcion = document.getElementById("descripcion").value;
         const categoria = document.getElementById("categoria").value;
         const estado = document.getElementById("estado").value;
         const links = [...document.querySelectorAll('input[name="link_seleccionado"]:checked')]
             .map(cb => parseInt(cb.value));
+        
+        // NUEVOS CAMPOS: Obtener ubicaciones y autores
+        const ubicaciones = obtenerUbicaciones();
+        const autoresSelect = document.getElementById("autores");
+        const autores = Array.from(autoresSelect.selectedOptions).map(option => parseInt(option.value));
 
         const payload = JSON.stringify({
             titulo,
+            fecha_hecho, // CAMBIADO: fecha → fecha_hecho
             descripcion,
             categoria,
             estado,
             links_incluidos: links,
+            ubicaciones: ubicaciones, // Nuevo campo
+            autores: autores // Nuevo campo
         });
 
         try {
@@ -625,6 +863,14 @@
             }
 
             e.target.reset();
+            
+            // Restablecer fecha actual
+            const fechaInput = document.getElementById('fecha_hecho'); // CAMBIADO: 'fecha' → 'fecha_hecho'
+            if (fechaInput) {
+                const today = new Date().toISOString().split('T')[0];
+                fechaInput.value = today;
+            }
+            
             articuloEditandoId = null;
             cargarLinksAprobados();
             cargarArticulosAcordeon();
@@ -643,13 +889,28 @@
             }
 
             const titulo = document.getElementById("edit-titulo").value;
+            const fecha_hecho = document.getElementById("edit-fecha_hecho").value; // CAMBIADO: fecha → fecha_hecho
             const descripcion = document.getElementById("edit-descripcion").value;
             const categoria = document.getElementById("edit-categoria").value;
             const estado = document.getElementById("edit-estado").value;
             const links = [...document.querySelectorAll('input[name="link_seleccionado"]:checked')]
                 .map(cb => parseInt(cb.value));
+            
+            // NUEVOS CAMPOS: Obtener ubicaciones y autores en edición
+            const ubicaciones = obtenerUbicacionesEdicion();
+            const autoresSelect = document.getElementById("edit-autores");
+            const autores = Array.from(autoresSelect.selectedOptions).map(option => parseInt(option.value));
 
-            const payload = JSON.stringify({ titulo, descripcion, categoria, estado, links_incluidos: links });
+            const payload = JSON.stringify({ 
+                titulo, 
+                fecha_hecho, // CAMBIADO: fecha → fecha_hecho
+                descripcion, 
+                categoria, 
+                estado, 
+                links_incluidos: links,
+                ubicaciones: ubicaciones, // Nuevo campo
+                autores: autores // Nuevo campo
+            });
 
             try {
                 const resp = await fetch(`/api/articulos/${articuloEditandoId}/`, {
@@ -811,13 +1072,17 @@
             const estadoNombre = art.estado
                 ? art.estado.charAt(0).toUpperCase() + art.estado.slice(1)
                 : "-";
+            
+            // CAMBIADO: Usar fecha_hecho en lugar de fecha
+            const fechaHecho = art.fecha_hecho ? new Date(art.fecha_hecho).toLocaleDateString('es-ES') : '-';
+            
             const tr = document.createElement("tr");
             tr.innerHTML = `
                 <td>${art.id}</td>
                 <td>${art.titulo || 'Sin título'}</td>
+                <td>${fechaHecho}</td> <!-- CAMBIADO: fechaArticulo → fechaHecho -->
                 <td>${categoriaNombre}</td>
                 <td>${estadoNombre}</td>
-                <td>${art.fecha_creacion ? new Date(art.fecha_creacion).toLocaleDateString() : '-'}</td>
                 <td>${autorNombre}</td>
                 <td>
                     <button class="btn btn-sm btn-primary" onclick="editarArticulo(${art.id})">Editar</button>
@@ -895,9 +1160,28 @@
             }
 
             document.getElementById("edit-titulo").value = art.titulo || "";
+            document.getElementById("edit-fecha_hecho").value = art.fecha_hecho || ""; // CAMBIADO: fecha → fecha_hecho
             document.getElementById("edit-descripcion").value = art.descripcion || "";
             document.getElementById("edit-categoria").value = categoriaId || "";
             document.getElementById("edit-estado").value = art.estado || "en redaccion";
+
+            // NUEVO: Cargar ubicaciones en edición
+            if (art.ubicaciones && Array.isArray(art.ubicaciones)) {
+                cargarUbicacionesEdicion(art.ubicaciones);
+            } else {
+                cargarUbicacionesEdicion([]);
+            }
+
+            // NUEVO: Cargar autores en edición
+            const editAutoresSelect = document.getElementById("edit-autores");
+            if (editAutoresSelect && art.autores && Array.isArray(art.autores)) {
+                Array.from(editAutoresSelect.options).forEach(option => {
+                    const autorId = parseInt(option.value);
+                    option.selected = art.autores.some(autor => 
+                        (typeof autor === "object" ? autor.id : autor) === autorId
+                    );
+                });
+            }
 
             document.querySelectorAll('input[name="link_seleccionado"]').forEach(cb => {
                 const linkId = parseInt(cb.value);
@@ -946,9 +1230,30 @@
             const estadoNombre = art.estado
                 ? art.estado.charAt(0).toUpperCase() + art.estado.slice(1)
                 : "-";
+            
+            // CAMBIADO: Usar fecha_hecho en lugar de fecha
+            const fechaHecho = art.fecha_hecho ? new Date(art.fecha_hecho).toLocaleDateString('es-ES') : 'No especificada';
+            
+            document.getElementById("modalVerFecha").textContent = fechaHecho; // CAMBIADO: fechaArticulo → fechaHecho
             document.getElementById("modalVerCategoria").textContent = categoriaNombre;
             document.getElementById("modalVerEstado").textContent = estadoNombre;
             document.getElementById("modalVerDescripcion").textContent = art.descripcion;
+
+            // Mostrar ubicaciones
+            const ubicacionesTexto = art.ubicaciones && Array.isArray(art.ubicaciones) && art.ubicaciones.length > 0
+                ? art.ubicaciones.map(ubicacion => 
+                    `${ubicacion.calle || ''} ${ubicacion.numero || ''} ${ubicacion.barrio || ''} ${ubicacion.localidad || ''}`
+                  ).filter(text => text.trim()).join(', ')
+                : 'No especificada';
+            document.getElementById("modalVerUbicacion").textContent = ubicacionesTexto || 'No especificada';
+
+            // Mostrar autores
+            const autoresTexto = art.autores && Array.isArray(art.autores) && art.autores.length > 0
+                ? art.autores.map(autor => 
+                    typeof autor === "object" ? autor.username : autor
+                  ).join(', ')
+                : 'No especificados';
+            document.getElementById("modalVerAutores").textContent = autoresTexto;
 
             document.getElementById("modalVerLinks").innerHTML = Array.isArray(art.links_incluidos) && art.links_incluidos.length
                 ? art.links_incluidos.map(l => {

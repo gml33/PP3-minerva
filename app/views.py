@@ -386,6 +386,63 @@ def solicitud_info_portal_detalle_view(request, pk):
     )
 
 
+# NUEVA VISTA: Editar solicitud de información
+@login_required
+def solicitud_info_portal_editar_view(request, pk):
+    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.ADMIN]:
+        return render(request, "403.html", status=403)
+
+    solicitud = get_object_or_404(
+        SolicitudInfo.objects.select_related("usuario_creador", "respondido_por").prefetch_related("articulos"),
+        pk=pk,
+    )
+
+    if request.user.userprofile.rol == Roles.REDACCION and solicitud.usuario_creador != request.user:
+        return render(request, "403.html", status=403)
+
+    if request.method == "POST":
+        form = SolicitudInfoForm(request.POST, instance=solicitud, user=request.user)
+        if form.is_valid():
+            solicitud = form.save(commit=False)
+            solicitud.save()
+            articulos_relacionados = form.cleaned_data.get("articulos")
+            if articulos_relacionados is not None:
+                solicitud.articulos.set(articulos_relacionados)
+            log_actividad(
+                request,
+                TipoActividad.OTRO,
+                f"Solicitud de información editada (# {solicitud.pk}).",
+            )
+            messages.success(request, "Solicitud actualizada correctamente.")
+            return redirect("solicitud_info_portal")
+        messages.error(
+            request,
+            "No se pudo actualizar la solicitud. Por favor, revisá los campos destacados.",
+        )
+    else:
+        form = SolicitudInfoForm(instance=solicitud, user=request.user)
+
+    articulos_queryset = form.fields["articulos"].queryset.select_related("categoria")
+    categorias_articulos = (
+        articulos_queryset.exclude(categoria__isnull=True)
+        .values_list("categoria__nombre", flat=True)
+        .distinct()
+        .order_by("categoria__nombre")
+    )
+
+    return render(
+        request,
+        "solicitud_info_portal_editar.html",
+        {
+            "form": form,
+            "solicitud": solicitud,
+            "articulos_disponibles": articulos_queryset,
+            "categorias_articulos": list(categorias_articulos),
+            "estados_articulo": Articulo.Estado.choices,
+        },
+    )
+
+
 @login_required
 def solicitud_info_portal_eliminar_view(request, pk):
     if request.user.userprofile.rol not in [Roles.REDACCION, Roles.ADMIN]:

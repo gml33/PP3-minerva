@@ -49,6 +49,7 @@ from .views import (
     solicitud_info_portal_view,
     solicitud_info_portal_detalle_view,
     solicitud_info_portal_eliminar_view,
+    solicitud_info_portal_editar_view,  # NUEVA IMPORTACIÓN
     solicitud_info_crear_view,
     solicitudes_info_list_view,
     solicitud_info_detalle_view,
@@ -109,6 +110,11 @@ urlpatterns = [
         "solicitud/informacion/<int:pk>/eliminar/",
         solicitud_info_portal_eliminar_view,
         name="solicitud_info_portal_eliminar",
+    ),
+    path(
+        "solicitud/informacion/<int:pk>/editar/",  # NUEVA RUTA PARA EDITAR
+        solicitud_info_portal_editar_view,
+        name="solicitud_info_portal_editar",
     ),
     path(
         "solicitud/informacion/<int:pk>/",

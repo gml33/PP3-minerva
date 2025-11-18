@@ -298,8 +298,6 @@ class HechoDestacado(models.Model):
 
 
 # Artículo generado con links incluidos
-
-
 class Articulo(models.Model):
     class Estado(models.TextChoices):
         EN_REDACCION = "en redaccion", "En redacción"
@@ -311,6 +309,13 @@ class Articulo(models.Model):
 
     titulo = models.CharField(max_length=200)
     fecha = models.DateField(null=True, blank=True)
+    # ⚠️ CAMPO NUEVO AGREGADO: Fecha del Hecho
+    fecha_hecho = models.DateField(
+        null=True, 
+        blank=True, 
+        verbose_name="Fecha del Hecho",
+        help_text="Fecha en que ocurrió el hecho"
+    )
     lugar = models.CharField(max_length=200, blank=True)
     descripcion = models.TextField()
     categoria = models.ForeignKey(
@@ -337,7 +342,7 @@ class Articulo(models.Model):
     fecha_redactado_por_prensa = models.DateTimeField(null=True, blank=True)
     fecha_leido_por_redaccion = models.DateTimeField(null=True, blank=True)
     fecha_aprobado_por_redaccion = models.DateTimeField(null=True, blank=True)
-    aprobacion=models.BooleanField(default=False)
+    aprobacion = models.BooleanField(default=False)
     
     class Meta:
         verbose_name_plural = "Artículos"
