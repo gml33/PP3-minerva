@@ -108,6 +108,14 @@
         <hr class="my-4">
 
         <div class="mb-3">
+            <label class="form-label">{{ form.introduccion_descripcion.label }}</label>
+            {{ form.introduccion_descripcion }}
+            {% for error in form.introduccion_descripcion.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
             <label class="form-label">{{ form.conclusion_relevante.label }}</label>
             {{ form.conclusion_relevante }}
             {% for error in form.conclusion_relevante.errors %}

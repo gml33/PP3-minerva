@@ -28,6 +28,15 @@
 
 <section class="mb-5">
     <div class="card">
+        <div class="card-header">Introducción</div>
+        <div class="card-body">
+            <p class="mb-0">{{ informe.introduccion_descripcion|default:"Sin introducción registrada"|linebreaks }}</p>
+        </div>
+    </div>
+</section>
+
+<section class="mb-5">
+    <div class="card">
         <div class="card-header">Integrantes</div>
         <div class="card-body">
             <h3 class="h6 text-uppercase text-muted">Líderes</h3>

@@ -218,17 +218,20 @@ class InformeBandaCriminalForm(forms.ModelForm):
         model = InformeBandaCriminal
         fields = [
             "banda",
+            "introduccion_descripcion",
             "conclusion_relevante",
             "posible_evolucion",
         ]
         widgets = {
             "banda": forms.Select(attrs={"class": "form-select"}),
+            "introduccion_descripcion": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
             "conclusion_relevante": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
             "posible_evolucion": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["introduccion_descripcion"].required = False
         self.fields["conclusion_relevante"].required = False
         self.fields["posible_evolucion"].required = False
         self._bandas_aliadas_auto = []

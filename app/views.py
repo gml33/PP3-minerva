@@ -594,15 +594,11 @@ def informe_banda_exportar_view(request, pk):
 
     add_anexo(1, "Resumen ejecutivo", anexo1_contenido)
 
-    add_anexo(
-        2,
-        "Introducción",
-        [
-            "Este informe compila la información disponible dentro de la plataforma Minerva.",
-            f"Nombres y alias registrados: {banda.nombres_como_texto or 'Sin alias registrados'}.",
-            f"Informe generado por: {request.user.username}",
-        ],
+    introduccion_contenido = (
+        informe.introduccion_descripcion
+        or "No se registró una descripción de introducción para este informe."
     )
+    add_anexo(2, "Introducción", introduccion_contenido)
 
     antecedentes_contenido = []
     if zonas_listado:

@@ -718,6 +718,10 @@ class InformeBandaCriminal(models.Model):
         related_name="informes_banda_criminal",
         blank=True,
     )
+    introduccion_descripcion = models.TextField(
+        blank=True,
+        help_text="Descripción de la introducción del informe.",
+    )
     zonas_influencia = models.JSONField(
         default=list,
         blank=True,
