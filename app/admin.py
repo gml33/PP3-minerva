@@ -163,9 +163,17 @@ class HechoDelictivoAdmin(admin.ModelAdmin):
 
 @admin.register(BandaCriminal)
 class BandaCriminalAdmin(admin.ModelAdmin):
-    list_display = ("nombre",)
-    search_fields = ("nombre", "descripcion")
-    filter_horizontal = ("integrantes", "hechos")
+    list_display = ("nombres", "territorio_operacion", "cantidad_lideres", "cantidad_miembros")
+    search_fields = ("nombres", "territorio_operacion")
+    filter_horizontal = ("lideres", "miembros")
+
+    @admin.display(description="Líderes")
+    def cantidad_lideres(self, obj):
+        return obj.lideres.count()
+
+    @admin.display(description="Miembros")
+    def cantidad_miembros(self, obj):
+        return obj.miembros.count()
 
 
 @admin.register(RedSocial)
