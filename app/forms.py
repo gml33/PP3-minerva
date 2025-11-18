@@ -290,13 +290,15 @@ class InformeBandaCriminalForm(forms.ModelForm):
             self.save_m2m()
         return informe
 
-    def save_m2m(self):
-        super().save_m2m()
+    def _save_m2m(self):
+        lideres = list(self.cleaned_data.get("lideres", []))
+        lugartenientes = list(self.cleaned_data.get("lugartenientes", []))
+        super()._save_m2m()
         informe = getattr(self, "instance", None)
         if informe and informe.pk:
             informe.jerarquias.all().delete()
             relaciones = []
-            for miembro in self.cleaned_data.get("lideres", []):
+            for miembro in lideres:
                 relaciones.append(
                     JerarquiaPrincipal(
                         informe=informe,
@@ -304,7 +306,7 @@ class InformeBandaCriminalForm(forms.ModelForm):
                         rol=JerarquiaPrincipal.Rol.LIDER,
                     )
                 )
-            for miembro in self.cleaned_data.get("lugartenientes", []):
+            for miembro in lugartenientes:
                 relaciones.append(
                     JerarquiaPrincipal(
                         informe=informe,
