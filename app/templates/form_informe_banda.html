@@ -54,6 +54,55 @@
             </div>
         </div>
 
+        <div class="alert alert-info mt-3">
+            Los integrantes, jerarquías, zonas y relaciones se completan automáticamente según la banda seleccionada.
+        </div>
+
+        <div class="row g-4 mt-1">
+            <div class="col-lg-6">
+                <div class="card h-100">
+                    <div class="card-header">Líderes detectados</div>
+                    <div class="card-body" id="info-lideres">
+                        <span class="text-muted">Seleccioná una banda para ver los líderes registrados.</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card h-100">
+                    <div class="card-header">Lugartenientes detectados</div>
+                    <div class="card-body" id="info-lugartenientes">
+                        <span class="text-muted">Seleccioná una banda para ver los lugartenientes registrados.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">Integrantes de la banda</div>
+            <div class="card-body" id="info-miembros">
+                <span class="text-muted">Seleccioná una banda para ver los integrantes asociados.</span>
+            </div>
+        </div>
+
+        <div class="row g-4 mt-4">
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header">Bandas aliadas (automático)</div>
+                    <div class="card-body" id="info-aliadas">
+                        <span class="text-muted">Sin datos disponibles.</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header">Bandas rivales (automático)</div>
+                    <div class="card-body" id="info-rivales">
+                        <span class="text-muted">Sin datos disponibles.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <hr class="my-4">
 
         <div class="mb-3">
@@ -62,48 +111,6 @@
             {% for error in form.resumen_ejecutivo.errors %}
                 <div class="text-danger small">{{ error }}</div>
             {% endfor %}
-        </div>
-
-        <div class="row g-4">
-            <div class="col-md-6">
-                <label class="form-label">{{ form.lideres.label }}</label>
-                {{ form.lideres }}
-                {% if form.lideres.help_text %}
-                    <div class="form-text">{{ form.lideres.help_text }}</div>
-                {% endif %}
-                {% for error in form.lideres.errors %}
-                    <div class="text-danger small">{{ error }}</div>
-                {% endfor %}
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">{{ form.lugartenientes.label }}</label>
-                {{ form.lugartenientes }}
-                {% if form.lugartenientes.help_text %}
-                    <div class="form-text">{{ form.lugartenientes.help_text }}</div>
-                {% endif %}
-                {% for error in form.lugartenientes.errors %}
-                    <div class="text-danger small">{{ error }}</div>
-                {% endfor %}
-            </div>
-        </div>
-
-        <hr class="my-4">
-
-        <div class="row g-4">
-            <div class="col-md-6">
-                <label class="form-label">{{ form.bandas_aliadas.label }}</label>
-                {{ form.bandas_aliadas }}
-                {% for error in form.bandas_aliadas.errors %}
-                    <div class="text-danger small">{{ error }}</div>
-                {% endfor %}
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">{{ form.bandas_rivales.label }}</label>
-                {{ form.bandas_rivales }}
-                {% for error in form.bandas_rivales.errors %}
-                    <div class="text-danger small">{{ error }}</div>
-                {% endfor %}
-            </div>
         </div>
 
         <hr class="my-4">
@@ -192,6 +199,11 @@
             const bandasInfo = JSON.parse('{{ bandas_info|default:"[]"|escapejs }}');
             const zonasDisplay = document.getElementById('zonas-influencia-display');
             const selectBanda = document.getElementById('id_banda');
+            const lideresDisplay = document.getElementById('info-lideres');
+            const lugartenientesDisplay = document.getElementById('info-lugartenientes');
+            const miembrosDisplay = document.getElementById('info-miembros');
+            const aliadasDisplay = document.getElementById('info-aliadas');
+            const rivalesDisplay = document.getElementById('info-rivales');
             if (!selectBanda || !zonasDisplay) {
                 return;
             }
@@ -210,11 +222,73 @@
                 return partes.join(', ');
             }
 
-            function actualizarZonas() {
+            function renderPersonas(lista, contenedor, emptyText) {
+                if (!contenedor) return;
+                if (!lista || !lista.length) {
+                    contenedor.innerHTML = `<span class="text-muted">${emptyText}</span>`;
+                    return;
+                }
+                const fragment = document.createElement('div');
+                lista.forEach((persona) => {
+                    const block = document.createElement('div');
+                    block.className = 'mb-3 pb-2 border-bottom border-secondary';
+                    const alias = persona.alias && persona.alias.length ? `<br><small>Alias: ${persona.alias.join(', ')}</small>` : '';
+                    const telefonos = persona.telefonos && persona.telefonos.length ? `<br><small>Teléfonos: ${persona.telefonos.join(', ')}</small>` : '';
+                    block.innerHTML = `<strong>${persona.nombre || 'Sin nombre'}</strong><br>
+                        <small>Documento: ${persona.documento || '-'}</small><br>
+                        <small>Rol: ${persona.rol || '-'}</small><br>
+                        <small>Situación: ${persona.situacion || '-'}</small>${alias}${telefonos}`;
+                    fragment.appendChild(block);
+                });
+                contenedor.innerHTML = '';
+                contenedor.appendChild(fragment);
+            }
+
+            function renderListadoSimple(lista, contenedor, emptyText) {
+                if (!contenedor) return;
+                if (!lista || !lista.length) {
+                    contenedor.innerHTML = `<span class="text-muted">${emptyText}</span>`;
+                    return;
+                }
+                const ul = document.createElement('ul');
+                ul.className = 'mb-0';
+                lista.forEach((item) => {
+                    const li = document.createElement('li');
+                    li.textContent = item.nombre || 'Sin nombre';
+                    ul.appendChild(li);
+                });
+                contenedor.innerHTML = '';
+                contenedor.appendChild(ul);
+            }
+
+            function renderMiembros(lista) {
+                if (!miembrosDisplay) return;
+                if (!lista || !lista.length) {
+                    miembrosDisplay.innerHTML = '<span class="text-muted">No hay integrantes registrados.</span>';
+                    return;
+                }
+                const ul = document.createElement('ul');
+                ul.className = 'mb-0';
+                lista.forEach((persona) => {
+                    const datos = [persona.nombre, persona.rol].filter(Boolean).join(' · ');
+                    const li = document.createElement('li');
+                    li.textContent = datos || 'Integrante sin datos disponibles';
+                    ul.appendChild(li);
+                });
+                miembrosDisplay.innerHTML = '';
+                miembrosDisplay.appendChild(ul);
+            }
+
+            function actualizarPaneles() {
                 const id = parseInt(selectBanda.value, 10);
                 const data = bandasMap[id];
                 if (!data) {
                     zonasDisplay.innerHTML = '<span class="text-muted">Seleccioná una banda para ver sus zonas.</span>';
+                    if (lideresDisplay) lideresDisplay.innerHTML = '<span class="text-muted">Seleccioná una banda.</span>';
+                    if (lugartenientesDisplay) lugartenientesDisplay.innerHTML = '<span class="text-muted">Seleccioná una banda.</span>';
+                    if (miembrosDisplay) miembrosDisplay.innerHTML = '<span class="text-muted">Seleccioná una banda.</span>';
+                    if (aliadasDisplay) aliadasDisplay.innerHTML = '<span class="text-muted">Seleccioná una banda.</span>';
+                    if (rivalesDisplay) rivalesDisplay.innerHTML = '<span class="text-muted">Seleccioná una banda.</span>';
                     return;
                 }
                 const zonas = Array.isArray(data.zonas) ? data.zonas : [];
@@ -234,10 +308,27 @@
                 });
                 zonasDisplay.innerHTML = '';
                 zonasDisplay.appendChild(list);
+                renderPersonas(data.lideres, lideresDisplay, 'No se registraron líderes para esta banda.');
+                renderPersonas(
+                    data.lugartenientes,
+                    lugartenientesDisplay,
+                    'No se registraron lugartenientes para esta banda.'
+                );
+                renderMiembros(data.miembros);
+                renderListadoSimple(
+                    data.bandas_aliadas,
+                    aliadasDisplay,
+                    'No se registraron bandas aliadas.'
+                );
+                renderListadoSimple(
+                    data.bandas_rivales,
+                    rivalesDisplay,
+                    'No se registraron bandas rivales.'
+                );
             }
 
-            selectBanda.addEventListener('change', actualizarZonas);
-            actualizarZonas();
+            selectBanda.addEventListener('change', actualizarPaneles);
+            actualizarPaneles();
         })();
     </script>
 {% endblock %}

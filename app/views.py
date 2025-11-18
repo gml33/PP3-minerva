@@ -6,7 +6,7 @@ from django.http import QueryDict
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET
 from django.utils.dateparse import parse_date
-from django.db.models import Count, F, ExpressionWrapper, DurationField, Avg
+from django.db.models import Count, F, ExpressionWrapper, DurationField, Avg, Prefetch
 from django.conf import settings
 from django.template.loader import render_to_string
 import json
@@ -224,13 +224,63 @@ def redaccion_view(request):
 
 
 def _bandas_info_payload():
+    def persona_payload(persona):
+        alias = list(persona.alias.values_list("nombre", flat=True))
+        telefonos = list(persona.telefono.values_list("numero", flat=True))
+        return {
+            "id": persona.id,
+            "nombre": f"{persona.apellido}, {persona.nombre}".strip(", "),
+            "documento": persona.documento or "",
+            "rol": persona.get_rol_display() if persona.rol else "",
+            "situacion": persona.get_situacion_display() if persona.situacion else "",
+            "actividad": persona.actividad or "",
+            "banda": persona.banda or "",
+            "alias": alias,
+            "telefonos": telefonos,
+        }
+
+    personas_prefetch = InformeIndividual.objects.prefetch_related("alias", "telefono")
+    bandas = (
+        BandaCriminal.objects.all()
+        .prefetch_related(
+            "bandas_aliadas",
+            "bandas_rivales",
+            Prefetch("lideres", queryset=personas_prefetch, to_attr="prefetched_lideres"),
+            Prefetch("miembros", queryset=personas_prefetch, to_attr="prefetched_miembros"),
+        )
+        .order_by("nombres")
+    )
+
     datos = []
-    for banda in BandaCriminal.objects.all().order_by("nombres"):
+    for banda in bandas:
+        lideres = getattr(banda, "prefetched_lideres", banda.lideres.all())
+        miembros = getattr(banda, "prefetched_miembros", banda.miembros.all())
+        lugartenientes = [
+            miembro
+            for miembro in miembros
+            if (miembro.rol or "").lower() == "lugarteniente"
+        ]
+        if not lugartenientes:
+            lideres_ids = {miembro.pk for miembro in lideres}
+            lugartenientes = [
+                miembro for miembro in miembros if miembro.pk not in lideres_ids
+            ]
         datos.append(
             {
                 "id": banda.id,
                 "nombre": banda.nombre_principal,
                 "zonas": banda.zonas_influencia_detalle,
+                "lideres": [persona_payload(persona) for persona in lideres],
+                "lugartenientes": [persona_payload(persona) for persona in lugartenientes],
+                "miembros": [persona_payload(persona) for persona in miembros],
+                "bandas_aliadas": [
+                    {"id": aliada.id, "nombre": aliada.nombre_principal}
+                    for aliada in banda.bandas_aliadas.all()
+                ],
+                "bandas_rivales": [
+                    {"id": rival.id, "nombre": rival.nombre_principal}
+                    for rival in banda.bandas_rivales.all()
+                ],
             }
         )
     return datos
@@ -290,11 +340,18 @@ def informe_banda_detalle_view(request, pk):
     if request.user.userprofile.rol not in [Roles.REDACCION, Roles.ADMIN]:
         return render(request, "403.html", status=403)
 
+    jerarquias_prefetch = Prefetch(
+        "jerarquias",
+        queryset=JerarquiaPrincipal.objects.select_related("miembro").prefetch_related(
+            "miembro__alias",
+            "miembro__telefono",
+        ),
+    )
     informe = get_object_or_404(
         InformeBandaCriminal.objects.select_related("banda").prefetch_related(
             "bandas_aliadas",
             "bandas_rivales",
-            "jerarquias__miembro",
+            jerarquias_prefetch,
         ),
         pk=pk,
     )
