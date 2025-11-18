@@ -69,6 +69,8 @@ from .models import (
     EstadoLink,
     LinkTvDigital,
     LinkRadioDigital,
+    InformeBandaCriminal,
+    JerarquiaPrincipal,
 )
 from .serializers import (
     UserProfileSerializer,
@@ -107,6 +109,7 @@ from .forms import (
     RadioDigitalForm,
     HechoDelictivoForm,
     BandaCriminalForm,
+    InformeBandaCriminalForm,
 )
 
 # Asegúrate de que esta utilidad exista en tu proyecto
@@ -218,6 +221,174 @@ def redaccion_view(request):
             "solicitudes_usuario": solicitudes_usuario,
         },
     )
+
+
+def _bandas_info_payload():
+    datos = []
+    for banda in BandaCriminal.objects.all().order_by("nombres"):
+        datos.append(
+            {
+                "id": banda.id,
+                "nombre": banda.nombre_principal,
+                "zonas": banda.zonas_influencia_detalle,
+            }
+        )
+    return datos
+
+
+def _informes_banda_queryset():
+    return (
+        InformeBandaCriminal.objects.select_related("banda")
+        .prefetch_related(
+            "bandas_aliadas",
+            "bandas_rivales",
+            "jerarquias__miembro",
+        )
+        .order_by("-creado_en")
+    )
+
+
+@login_required
+def informe_banda_crear_view(request):
+    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.ADMIN]:
+        return render(request, "403.html", status=403)
+
+    if request.method == "POST":
+        form = InformeBandaCriminalForm(request.POST)
+        if form.is_valid():
+            informe = form.save()
+            log_actividad(
+                request,
+                TipoActividad.OTRO,
+                f"Informe de banda criminal creado (ID {informe.pk}).",
+            )
+            messages.success(request, "Informe de banda creado correctamente.")
+            return redirect("redaccion")
+        messages.error(
+            request,
+            "Revisá los campos del formulario. Hay errores que deben corregirse.",
+        )
+    else:
+        form = InformeBandaCriminalForm()
+
+    return render(
+        request,
+        "form_informe_banda.html",
+        {
+            "form": form,
+            "bandas_info": json.dumps(_bandas_info_payload(), ensure_ascii=False),
+            "informes": _informes_banda_queryset(),
+            "titulo_pagina": "Nuevo informe de banda criminal",
+            "descripcion_pagina": "Completá la información solicitada para registrar el informe.",
+            "volver_url": reverse("redaccion"),
+        },
+    )
+
+
+@login_required
+def informe_banda_detalle_view(request, pk):
+    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.ADMIN]:
+        return render(request, "403.html", status=403)
+
+    informe = get_object_or_404(
+        InformeBandaCriminal.objects.select_related("banda").prefetch_related(
+            "bandas_aliadas",
+            "bandas_rivales",
+            "jerarquias__miembro",
+        ),
+        pk=pk,
+    )
+    lideres = [
+        jerarquia.miembro
+        for jerarquia in informe.jerarquias.all()
+        if jerarquia.rol == JerarquiaPrincipal.Rol.LIDER
+    ]
+    lugartenientes = [
+        jerarquia.miembro
+        for jerarquia in informe.jerarquias.all()
+        if jerarquia.rol == JerarquiaPrincipal.Rol.LUGARTENIENTE
+    ]
+    return render(
+        request,
+        "informe_banda_detalle.html",
+        {
+            "informe": informe,
+            "lideres": lideres,
+            "lugartenientes": lugartenientes,
+        },
+    )
+
+
+@login_required
+def informe_banda_editar_view(request, pk):
+    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.ADMIN]:
+        return render(request, "403.html", status=403)
+
+    informe = get_object_or_404(InformeBandaCriminal, pk=pk)
+    if request.method == "POST":
+        form = InformeBandaCriminalForm(request.POST, instance=informe)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Informe de banda actualizado correctamente.")
+            log_actividad(
+                request,
+                TipoActividad.OTRO,
+                f"Informe de banda criminal actualizado (ID {informe.pk}).",
+            )
+            return redirect("detalle_informe_banda", pk=informe.pk)
+        messages.error(
+            request,
+            "Revisá los campos del formulario. Hay errores que deben corregirse.",
+        )
+    else:
+        form = InformeBandaCriminalForm(instance=informe)
+
+    return render(
+        request,
+        "form_informe_banda.html",
+        {
+            "form": form,
+            "bandas_info": json.dumps(_bandas_info_payload(), ensure_ascii=False),
+            "titulo_pagina": "Editar informe de banda criminal",
+            "descripcion_pagina": f"Banda: {informe.banda.nombre_principal}",
+            "volver_url": reverse("detalle_informe_banda", args=[informe.pk]),
+        },
+    )
+
+
+@login_required
+def informe_banda_eliminar_view(request, pk):
+    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.ADMIN]:
+        return render(request, "403.html", status=403)
+
+    informe = get_object_or_404(InformeBandaCriminal, pk=pk)
+    if request.method == "POST":
+        nombre_banda = informe.banda.nombre_principal
+        informe.delete()
+        messages.success(
+            request,
+            f"Informe de la banda {nombre_banda or 'sin nombre'} fue eliminado.",
+        )
+        log_actividad(
+            request,
+            TipoActividad.OTRO,
+            f"Informe de banda criminal eliminado (ID {pk}).",
+        )
+        return redirect("crear_informe_banda")
+    messages.error(request, "Acción inválida para eliminar el informe.")
+    return redirect("detalle_informe_banda", pk=pk)
+
+
+@login_required
+def informe_banda_exportar_view(request, pk):
+    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.ADMIN]:
+        return render(request, "403.html", status=403)
+
+    messages.info(
+        request,
+        "La exportación de informes de banda todavía está en desarrollo.",
+    )
+    return redirect("detalle_informe_banda", pk=pk)
 
 
 @login_required

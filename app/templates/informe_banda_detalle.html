@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}Informe de banda - {{ informe.banda.nombre_principal }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h4 mb-1">Informe de {{ informe.banda.nombre_principal|default:"Banda sin nombre" }}</h1>
+        <p class="text-muted mb-0">Creado el {{ informe.creado_en|date:"d/m/Y H:i" }} · Actualizado el {{ informe.actualizado_en|date:"d/m/Y H:i" }}</p>
+    </div>
+    <div class="btn-group">
+        <a href="{% url 'editar_informe_banda' informe.pk %}" class="btn btn-outline-primary">Editar</a>
+        <a href="{% url 'exportar_informe_banda' informe.pk %}" class="btn btn-outline-secondary">Exportar</a>
+        <form action="{% url 'eliminar_informe_banda' informe.pk %}" method="post" onsubmit="return confirm('¿Eliminar este informe?')">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-danger">Eliminar</button>
+        </form>
+    </div>
+</div>
+
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+{% endif %}
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header">Resumen ejecutivo</div>
+            <div class="card-body">
+                <p class="mb-0">{{ informe.resumen_ejecutivo|default:"Sin resumen"|linebreaks }}</p>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">Conclusión relevante</div>
+            <div class="card-body">
+                <p class="mb-0">{{ informe.conclusion_relevante|default:"Sin conclusión"|linebreaks }}</p>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">Posible evolución</div>
+            <div class="card-body">
+                <p class="mb-0">{{ informe.posible_evolucion|default:"Sin datos"|linebreaks }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header">Zonas de influencia</div>
+            <div class="card-body">
+                {% if informe.zonas_influencia_detalle %}
+                    <ul class="mb-0">
+                        {% for zona in informe.zonas_influencia_detalle %}
+                            <li>
+                                {% if zona.barrio %}
+                                    {{ zona.barrio }}{% if zona.localidad or zona.ciudad or zona.provincia %}, {% endif %}
+                                {% endif %}
+                                {% if zona.localidad %}
+                                    {{ zona.localidad }}{% if zona.ciudad or zona.provincia %}, {% endif %}
+                                {% endif %}
+                                {% if zona.ciudad %}
+                                    {{ zona.ciudad }}{% if zona.provincia %}, {% endif %}
+                                {% endif %}
+                                {% if zona.provincia %}
+                                    {{ zona.provincia }}
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted mb-0">Sin zonas registradas.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">Jerarquías principales</div>
+            <div class="card-body">
+                <strong>Líderes</strong>
+                {% if lideres %}
+                    <ul>
+                        {% for lider in lideres %}
+                            <li>{{ lider }}</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted">Sin líderes registrados.</p>
+                {% endif %}
+                <strong>Lugartenientes</strong>
+                {% if lugartenientes %}
+                    <ul>
+                        {% for lugarteniente in lugartenientes %}
+                            <li>{{ lugarteniente }}</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted">Sin lugartenientes registrados.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">Bandas relacionadas</div>
+            <div class="card-body">
+                <strong>Aliadas</strong>
+                {% if informe.bandas_aliadas.all %}
+                    <ul>
+                        {% for banda in informe.bandas_aliadas.all %}
+                            <li>{{ banda.nombre_principal }}</li>
+                        {% empty %}
+                            <li class="text-muted">Sin bandas aliadas registradas.</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted">Sin bandas aliadas registradas.</p>
+                {% endif %}
+                <strong>Rivales</strong>
+                {% if informe.bandas_rivales.all %}
+                    <ul>
+                        {% for banda in informe.bandas_rivales.all %}
+                            <li>{{ banda.nombre_principal }}</li>
+                        {% empty %}
+                            <li class="text-muted">Sin bandas rivales registradas.</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted">Sin bandas rivales registradas.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<a href="{% url 'crear_informe_banda' %}" class="btn btn-secondary mt-3">Volver al listado</a>
+{% endblock %}

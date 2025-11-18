@@ -17,6 +17,8 @@ from .models import (
     BandaCriminal,
     LinkRelevante,
     EstadoLink,
+    InformeBandaCriminal,
+    JerarquiaPrincipal,
 )
 
 
@@ -209,6 +211,109 @@ class BandaCriminalForm(forms.ModelForm):
                 "Ingresá al menos una zona de influencia con algún dato."
             )
         return zonas_limpias
+
+
+class InformeBandaCriminalForm(forms.ModelForm):
+    lideres = forms.ModelMultipleChoiceField(
+        queryset=InformeIndividual.objects.order_by("apellido", "nombre"),
+        required=False,
+        widget=forms.SelectMultiple(attrs={"class": "form-select", "size": 6}),
+        label="Líderes",
+        help_text="Seleccioná los miembros que actúan como líderes.",
+    )
+    lugartenientes = forms.ModelMultipleChoiceField(
+        queryset=InformeIndividual.objects.order_by("apellido", "nombre"),
+        required=False,
+        widget=forms.SelectMultiple(attrs={"class": "form-select", "size": 6}),
+        label="Lugartenientes",
+        help_text="Seleccioná los miembros que actúan como lugartenientes.",
+    )
+
+    class Meta:
+        model = InformeBandaCriminal
+        fields = [
+            "banda",
+            "resumen_ejecutivo",
+            "conclusion_relevante",
+            "bandas_aliadas",
+            "bandas_rivales",
+            "posible_evolucion",
+        ]
+        widgets = {
+            "banda": forms.Select(attrs={"class": "form-select"}),
+            "resumen_ejecutivo": forms.Textarea(attrs={"class": "form-control", "rows": 4}),
+            "conclusion_relevante": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+            "bandas_aliadas": forms.SelectMultiple(attrs={"class": "form-select", "size": 6}),
+            "bandas_rivales": forms.SelectMultiple(attrs={"class": "form-select", "size": 6}),
+            "posible_evolucion": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+        }
+        labels = {
+            "bandas_aliadas": "Bandas aliadas (opcional)",
+            "bandas_rivales": "Bandas rivales (opcional)",
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["bandas_aliadas"].queryset = BandaCriminal.objects.order_by("nombres")
+        self.fields["bandas_rivales"].queryset = BandaCriminal.objects.order_by("nombres")
+        self.fields["bandas_aliadas"].required = False
+        self.fields["bandas_rivales"].required = False
+        self.fields["resumen_ejecutivo"].required = False
+        self.fields["conclusion_relevante"].required = False
+        self.fields["posible_evolucion"].required = False
+        if self.instance and self.instance.pk:
+            lideres_inicial = self.instance.jerarquias.filter(
+                rol=JerarquiaPrincipal.Rol.LIDER
+            ).values_list("miembro_id", flat=True)
+            lugartenientes_inicial = self.instance.jerarquias.filter(
+                rol=JerarquiaPrincipal.Rol.LUGARTENIENTE
+            ).values_list("miembro_id", flat=True)
+            self.fields["lideres"].initial = list(lideres_inicial)
+            self.fields["lugartenientes"].initial = list(lugartenientes_inicial)
+
+    def _zonas_desde_banda(self, banda):
+        zonas = getattr(banda, "zonas_influencia", []) or []
+        if isinstance(zonas, str):
+            try:
+                zonas = json.loads(zonas)
+            except json.JSONDecodeError:
+                zonas = []
+        if not isinstance(zonas, list):
+            zonas = []
+        return zonas
+
+    def save(self, commit=True):
+        informe = super().save(commit=False)
+        informe.zonas_influencia = self._zonas_desde_banda(informe.banda)
+        if commit:
+            informe.save()
+            self.save_m2m()
+        return informe
+
+    def save_m2m(self):
+        super().save_m2m()
+        informe = getattr(self, "instance", None)
+        if informe and informe.pk:
+            informe.jerarquias.all().delete()
+            relaciones = []
+            for miembro in self.cleaned_data.get("lideres", []):
+                relaciones.append(
+                    JerarquiaPrincipal(
+                        informe=informe,
+                        miembro=miembro,
+                        rol=JerarquiaPrincipal.Rol.LIDER,
+                    )
+                )
+            for miembro in self.cleaned_data.get("lugartenientes", []):
+                relaciones.append(
+                    JerarquiaPrincipal(
+                        informe=informe,
+                        miembro=miembro,
+                        rol=JerarquiaPrincipal.Rol.LUGARTENIENTE,
+                    )
+                )
+            if relaciones:
+                JerarquiaPrincipal.objects.bulk_create(relaciones)
 
 
 class ArticuloForm(forms.ModelForm):

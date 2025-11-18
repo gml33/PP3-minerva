@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+
+{% block title %}Informe de banda{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 mb-0">{{ titulo_pagina|default:"Nuevo informe de banda criminal" }}</h1>
+        <p class="text-muted mb-0">{{ descripcion_pagina|default:"Completá la información solicitada para registrar el informe." }}</p>
+    </div>
+    {% if volver_url %}
+        <a href="{{ volver_url }}" class="btn btn-outline-secondary">Volver</a>
+    {% else %}
+        <a href="{% url 'redaccion' %}" class="btn btn-outline-secondary">Volver</a>
+    {% endif %}
+</div>
+
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+{% endif %}
+
+<form method="post" class="card">
+    {% csrf_token %}
+    <div class="card-body">
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {% for error in form.non_field_errors %}
+                    <div>{{ error }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        <div class="row g-4">
+            <div class="col-md-6">
+                <label class="form-label">{{ form.banda.label }}</label>
+                {{ form.banda }}
+                {% if form.banda.help_text %}
+                    <div class="form-text">{{ form.banda.help_text }}</div>
+                {% endif %}
+                {% for error in form.banda.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label d-block">Zonas de influencia</label>
+                <div class="form-control" style="height:auto; min-height: 120px;" id="zonas-influencia-display">
+                    <span class="text-muted">Seleccioná una banda para ver sus zonas.</span>
+                </div>
+                <div class="form-text">
+                    Este dato se completa automáticamente tomando la información de la banda seleccionada.
+                </div>
+            </div>
+        </div>
+
+        <hr class="my-4">
+
+        <div class="mb-3">
+            <label class="form-label">{{ form.resumen_ejecutivo.label }}</label>
+            {{ form.resumen_ejecutivo }}
+            {% for error in form.resumen_ejecutivo.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-6">
+                <label class="form-label">{{ form.lideres.label }}</label>
+                {{ form.lideres }}
+                {% if form.lideres.help_text %}
+                    <div class="form-text">{{ form.lideres.help_text }}</div>
+                {% endif %}
+                {% for error in form.lideres.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">{{ form.lugartenientes.label }}</label>
+                {{ form.lugartenientes }}
+                {% if form.lugartenientes.help_text %}
+                    <div class="form-text">{{ form.lugartenientes.help_text }}</div>
+                {% endif %}
+                {% for error in form.lugartenientes.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <hr class="my-4">
+
+        <div class="row g-4">
+            <div class="col-md-6">
+                <label class="form-label">{{ form.bandas_aliadas.label }}</label>
+                {{ form.bandas_aliadas }}
+                {% for error in form.bandas_aliadas.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">{{ form.bandas_rivales.label }}</label>
+                {{ form.bandas_rivales }}
+                {% for error in form.bandas_rivales.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <hr class="my-4">
+
+        <div class="mb-3">
+            <label class="form-label">{{ form.conclusion_relevante.label }}</label>
+            {{ form.conclusion_relevante }}
+            {% for error in form.conclusion_relevante.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">{{ form.posible_evolucion.label }}</label>
+            {{ form.posible_evolucion }}
+            {% for error in form.posible_evolucion.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="card-footer d-flex justify-content-end gap-2">
+        <a href="{% url 'redaccion' %}" class="btn btn-outline-secondary">Cancelar</a>
+        <button type="submit" class="btn btn-primary">Guardar informe</button>
+    </div>
+</form>
+
+{% if informes %}
+<div class="card mt-5">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Informes elaborados</span>
+        <span class="badge bg-secondary">{{ informes|length }}</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-dark table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Banda</th>
+                    <th>Resumen breve</th>
+                    <th>Actualizado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for informe in informes %}
+                <tr>
+                    <td>
+                        <strong>{{ informe.banda.nombre_principal|default:"Banda sin nombre" }}</strong><br>
+                        <small class="text-muted">Creado el {{ informe.creado_en|date:"d/m/Y H:i" }}</small>
+                    </td>
+                    <td>
+                        {% if informe.resumen_ejecutivo %}
+                            {{ informe.resumen_ejecutivo|truncatechars:120 }}
+                        {% else %}
+                            <span class="text-muted">Sin resumen</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ informe.actualizado_en|date:"d/m/Y H:i" }}</td>
+                    <td class="text-nowrap">
+                        <div class="btn-group btn-group-sm" role="group">
+                            <a class="btn btn-outline-light" href="{% url 'detalle_informe_banda' informe.pk %}">Ver</a>
+                            <a class="btn btn-outline-primary" href="{% url 'editar_informe_banda' informe.pk %}">Editar</a>
+                            <a class="btn btn-outline-secondary" href="{% url 'exportar_informe_banda' informe.pk %}">Exportar</a>
+                            <form action="{% url 'eliminar_informe_banda' informe.pk %}" method="post" class="d-inline" onsubmit="return confirm('¿Eliminar este informe?')">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-outline-danger">Eliminar</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center text-muted">No hay informes registrados.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+    {{ block.super }}
+    <script>
+        (function() {
+            const bandasInfo = JSON.parse('{{ bandas_info|default:"[]"|escapejs }}');
+            const zonasDisplay = document.getElementById('zonas-influencia-display');
+            const selectBanda = document.getElementById('id_banda');
+            if (!selectBanda || !zonasDisplay) {
+                return;
+            }
+            const bandasMap = {};
+            bandasInfo.forEach((item) => {
+                bandasMap[item.id] = item;
+            });
+
+            function formatearZona(zona) {
+                if (!zona) {
+                    return '';
+                }
+                const partes = [zona.barrio, zona.localidad, zona.ciudad, zona.provincia]
+                    .filter(Boolean)
+                    .map(text => text.trim());
+                return partes.join(', ');
+            }
+
+            function actualizarZonas() {
+                const id = parseInt(selectBanda.value, 10);
+                const data = bandasMap[id];
+                if (!data) {
+                    zonasDisplay.innerHTML = '<span class="text-muted">Seleccioná una banda para ver sus zonas.</span>';
+                    return;
+                }
+                const zonas = Array.isArray(data.zonas) ? data.zonas : [];
+                if (!zonas.length) {
+                    zonasDisplay.innerHTML = '<span class="text-warning">La banda seleccionada no tiene zonas cargadas.</span>';
+                    return;
+                }
+                const list = document.createElement('ul');
+                list.className = 'mb-0';
+                zonas.forEach((zona) => {
+                    const texto = formatearZona(zona);
+                    if (texto) {
+                        const li = document.createElement('li');
+                        li.textContent = texto;
+                        list.appendChild(li);
+                    }
+                });
+                zonasDisplay.innerHTML = '';
+                zonasDisplay.appendChild(list);
+            }
+
+            selectBanda.addEventListener('change', actualizarZonas);
+            actualizarZonas();
+        })();
+    </script>
+{% endblock %}

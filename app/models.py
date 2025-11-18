@@ -700,3 +700,132 @@ class BandaCriminal(models.Model):
             if texto:
                 textos.append(texto)
         return " / ".join(textos)
+
+
+class InformeBandaCriminal(models.Model):
+    banda = models.ForeignKey(
+        BandaCriminal,
+        on_delete=models.CASCADE,
+        related_name="informes",
+    )
+    resumen_ejecutivo = models.TextField(
+        blank=True,
+        help_text="Resumen redactado por el equipo encargado del informe.",
+    )
+    jerarquias_principales = models.ManyToManyField(
+        "InformeIndividual",
+        through="JerarquiaPrincipal",
+        related_name="informes_banda_criminal",
+        blank=True,
+    )
+    zonas_influencia = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Listado estructurado de zonas donde opera la banda en el contexto del informe.",
+    )
+    conclusion_relevante = models.TextField(
+        blank=True,
+        help_text="Conclusión redactada por el redactor responsable.",
+    )
+    bandas_aliadas = models.ManyToManyField(
+        BandaCriminal,
+        related_name="informes_bandas_aliadas",
+        symmetrical=False,
+        blank=True,
+    )
+    bandas_rivales = models.ManyToManyField(
+        BandaCriminal,
+        related_name="informes_bandas_rivales",
+        symmetrical=False,
+        blank=True,
+    )
+    posible_evolucion = models.TextField(
+        blank=True,
+        help_text="Hipótesis u observaciones sobre la evolución de la banda.",
+    )
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Informe de Banda Criminal"
+        verbose_name_plural = "Informes de Bandas Criminales"
+        ordering = ["-creado_en"]
+
+    def __str__(self):
+        return f"Informe de {self.banda.nombre_principal or 'Banda'}"
+
+    def _zonas_influencia_list(self):
+        data = self.zonas_influencia or []
+        if isinstance(data, str):
+            try:
+                data = json.loads(data)
+            except json.JSONDecodeError:
+                data = []
+        if not isinstance(data, list):
+            return []
+        zonas = []
+        for zona in data:
+            if isinstance(zona, dict):
+                zonas.append(
+                    {
+                        "barrio": zona.get("barrio", "").strip(),
+                        "localidad": zona.get("localidad", "").strip(),
+                        "ciudad": zona.get("ciudad", "").strip(),
+                        "provincia": zona.get("provincia", "").strip(),
+                    }
+                )
+            elif isinstance(zona, str):
+                zonas.append(
+                    {
+                        "barrio": "",
+                        "localidad": "",
+                        "ciudad": zona.strip(),
+                        "provincia": "",
+                    }
+                )
+        return zonas
+
+    @property
+    def zonas_influencia_detalle(self):
+        return self._zonas_influencia_list()
+
+    @property
+    def zonas_resumen(self):
+        textos = []
+        for zona in self._zonas_influencia_list():
+            partes = [
+                zona.get("barrio") or "",
+                zona.get("localidad") or "",
+                zona.get("ciudad") or "",
+                zona.get("provincia") or "",
+            ]
+            texto = ", ".join([p for p in partes if p])
+            if texto:
+                textos.append(texto)
+        return " / ".join(textos)
+
+
+class JerarquiaPrincipal(models.Model):
+    class Rol(models.TextChoices):
+        LIDER = "lider", "Líder"
+        LUGARTENIENTE = "lugarteniente", "Lugarteniente"
+
+    informe = models.ForeignKey(
+        InformeBandaCriminal,
+        on_delete=models.CASCADE,
+        related_name="jerarquias",
+    )
+    miembro = models.ForeignKey(
+        InformeIndividual,
+        on_delete=models.CASCADE,
+        related_name="jerarquias_de_banda",
+    )
+    rol = models.CharField(max_length=20, choices=Rol.choices)
+
+    class Meta:
+        verbose_name = "Jerarquía Principal"
+        verbose_name_plural = "Jerarquías Principales"
+        unique_together = ("informe", "miembro")
+
+    def __str__(self):
+        return f"{self.miembro} - {self.get_rol_display()} en {self.informe}"

@@ -20,6 +20,11 @@ from .views import (
     logout_view,
     clasificacion_view,
     redaccion_view,
+    informe_banda_crear_view,
+    informe_banda_detalle_view,
+    informe_banda_editar_view,
+    informe_banda_eliminar_view,
+    informe_banda_exportar_view,
     actividad_view,
     ActividadViewSet,
     exportar_actividades_excel,
@@ -109,6 +114,31 @@ urlpatterns = [
     path("logout/", logout_view, name="logout"),
     path("prensa/", prensa_view, name="prensa"),
     path("redaccion/", redaccion_view, name="redaccion"),
+    path(
+        "redaccion/informe-banda/nuevo/",
+        informe_banda_crear_view,
+        name="crear_informe_banda",
+    ),
+    path(
+        "redaccion/informe-banda/<int:pk>/",
+        informe_banda_detalle_view,
+        name="detalle_informe_banda",
+    ),
+    path(
+        "redaccion/informe-banda/<int:pk>/editar/",
+        informe_banda_editar_view,
+        name="editar_informe_banda",
+    ),
+    path(
+        "redaccion/informe-banda/<int:pk>/eliminar/",
+        informe_banda_eliminar_view,
+        name="eliminar_informe_banda",
+    ),
+    path(
+        "redaccion/informe-banda/<int:pk>/exportar/",
+        informe_banda_exportar_view,
+        name="exportar_informe_banda",
+    ),
     path(
         "solicitud/informacion/",
         solicitud_info_portal_view,
