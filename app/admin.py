@@ -170,7 +170,7 @@ class BandaCriminalAdmin(admin.ModelAdmin):
         "cantidad_miembros",
     )
     search_fields = ("nombres",)
-    filter_horizontal = ("lideres", "miembros")
+    filter_horizontal = ("lideres", "miembros", "bandas_aliadas", "bandas_rivales")
 
     @admin.display(description="Nombres / alias")
     def nombres_resumen(self, obj):

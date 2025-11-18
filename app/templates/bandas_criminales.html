@@ -110,6 +110,8 @@
                                     <th>Zonas de influencia</th>
                                     <th>Líderes</th>
                                     <th>Miembros</th>
+                                    <th>Bandas aliadas</th>
+                                    <th>Bandas rivales</th>
                                     <th class="text-end">Acciones</th>
                                 </tr>
                             </thead>
@@ -149,6 +151,32 @@
                                                 {% endfor %}
                                             {% else %}
                                                 <span class="text-muted">Sin líderes</span>
+                                            {% endif %}
+                                        {% endwith %}
+                                    </td>
+                                    <td>
+                                        {% with aliadas=banda.bandas_aliadas.all %}
+                                            {% if aliadas %}
+                                                <ul class="mb-0 ps-3">
+                                                    {% for aliada in aliadas %}
+                                                        <li>{{ aliada.nombre_principal|default:aliada }}</li>
+                                                    {% endfor %}
+                                                </ul>
+                                            {% else %}
+                                                <span class="text-muted">Sin alianzas registradas</span>
+                                            {% endif %}
+                                        {% endwith %}
+                                    </td>
+                                    <td>
+                                        {% with rivales=banda.bandas_rivales.all %}
+                                            {% if rivales %}
+                                                <ul class="mb-0 ps-3">
+                                                    {% for rival in rivales %}
+                                                        <li>{{ rival.nombre_principal|default:rival }}</li>
+                                                    {% endfor %}
+                                                </ul>
+                                            {% else %}
+                                                <span class="text-muted">Sin rivales registrados</span>
                                             {% endif %}
                                         {% endwith %}
                                     </td>

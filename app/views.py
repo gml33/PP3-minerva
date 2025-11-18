@@ -21,7 +21,10 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib import colors
 from reportlab.lib.units import cm
-from weasyprint import HTML
+try:
+    from weasyprint import HTML
+except Exception:
+    HTML = None
 import pandas as pd
 import plotly.express as px
 from collections import defaultdict
@@ -118,6 +121,17 @@ from django.contrib import messages
 import logging
 
 logger = logging.getLogger(__name__)
+
+WEASYPRINT_ERROR_MESSAGE = (
+    "No se puede generar el PDF porque las dependencias de WeasyPrint no están instaladas en el servidor."
+)
+
+
+def _weasyprint_unavailable_response(request, fallback_url=None):
+    messages.error(request, WEASYPRINT_ERROR_MESSAGE)
+    if fallback_url:
+        return redirect(fallback_url)
+    return HttpResponse(WEASYPRINT_ERROR_MESSAGE, status=503)
 
 # -------------------------- AUTENTICACIÓN --------------------------
 
@@ -256,7 +270,7 @@ def bandas_criminales_view(request):
 
     bandas_queryset = (
         BandaCriminal.objects.all()
-        .prefetch_related("lideres", "miembros")
+        .prefetch_related("lideres", "miembros", "bandas_aliadas", "bandas_rivales")
     )
     bandas = sorted(
         bandas_queryset,
@@ -320,7 +334,7 @@ def banda_criminal_editar_view(request, pk):
 
     bandas_queryset = (
         BandaCriminal.objects.all()
-        .prefetch_related("lideres", "miembros")
+        .prefetch_related("lideres", "miembros", "bandas_aliadas", "bandas_rivales")
     )
     bandas = sorted(
         bandas_queryset,
@@ -801,6 +815,8 @@ def exportar_actividades_pdf(request):
 
 @login_required
 def exportar_articulo_pdf(request, id):
+    if HTML is None:
+        return _weasyprint_unavailable_response(request, "redaccion")
     articulo = get_object_or_404(
         Articulo.objects.select_related("generado_por", "categoria").prefetch_related(
             "links_incluidos"
@@ -2410,6 +2426,8 @@ def estadisticas_view(request):
 
 @login_required
 def exportar_estadisticas_pdf(request):
+    if HTML is None:
+        return _weasyprint_unavailable_response(request, "estadisticas")
     if request.user.userprofile.rol not in [Roles.ADMIN, Roles.GERENCIA]:
         return render(request, "403.html", status=403)
         
@@ -3247,6 +3265,8 @@ def hecho_delictivo_detalle_view(request, id):
 
 @login_required
 def exportar_hecho_delictivo_pdf(request, id):
+    if HTML is None:
+        return _weasyprint_unavailable_response(request, "hechos_delictivos")
     hecho = get_object_or_404(
         HechoDelictivo.objects.select_related("creado_por", "articulo").prefetch_related(
             "autor", "noticias"
@@ -3325,6 +3345,8 @@ def links_list(request):
 
 @login_required
 def exportar_informe_pdf(request, informe_id):
+    if HTML is None:
+        return _weasyprint_unavailable_response(request, "informes")
     informe = get_object_or_404(InformeIndividual, id=informe_id)
 
     if request.user.userprofile.rol not in [Roles.ADMIN, Roles.GERENCIA, Roles.CLIENTE, Roles.INFORMES]:

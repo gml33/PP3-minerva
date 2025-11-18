@@ -624,6 +624,18 @@ class BandaCriminal(models.Model):
         related_name="bandas_miembro",
         blank=True,
     )
+    bandas_aliadas = models.ManyToManyField(
+        "self",
+        blank=True,
+        symmetrical=False,
+        related_name="bandas_aliadas_de",
+    )
+    bandas_rivales = models.ManyToManyField(
+        "self",
+        blank=True,
+        symmetrical=False,
+        related_name="bandas_rivales_de",
+    )
     class Meta:
         verbose_name = "Banda Criminal"
         verbose_name_plural = "Bandas Criminales"

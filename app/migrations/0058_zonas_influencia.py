@@ -68,4 +68,22 @@ class Migration(migrations.Migration):
             model_name="bandacriminal",
             name="territorio_operacion",
         ),
+        migrations.AddField(
+            model_name="bandacriminal",
+            name="bandas_aliadas",
+            field=models.ManyToManyField(
+                blank=True,
+                related_name="bandas_aliadas_de",
+                to="app.bandacriminal",
+            ),
+        ),
+        migrations.AddField(
+            model_name="bandacriminal",
+            name="bandas_rivales",
+            field=models.ManyToManyField(
+                blank=True,
+                related_name="bandas_rivales_de",
+                to="app.bandacriminal",
+            ),
+        ),
     ]

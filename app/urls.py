@@ -1,5 +1,4 @@
 from django.urls import path, include
-from django.contrib import admin
 from rest_framework.routers import DefaultRouter
 from django.shortcuts import redirect
 from rest_framework.authtoken.views import obtain_auth_token
@@ -105,7 +104,6 @@ router.register(r"tv", TvDigitalViewSet, basename="tvdigital")
 router.register(r"radios", RadioDigitalViewSet, basename="radiodigital")
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
     path("", lambda request: redirect("login/")),
     path("login/", login_view, name="login"),
     path("logout/", logout_view, name="logout"),

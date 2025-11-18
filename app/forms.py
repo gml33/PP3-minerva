@@ -106,29 +106,27 @@ class RadioDigitalForm(forms.ModelForm):
 
 
 class BandaCriminalForm(forms.ModelForm):
-    lideres = forms.ModelMultipleChoiceField(
-        queryset=InformeIndividual.objects.all().order_by("apellido", "nombre"),
-        required=False,
-        widget=forms.SelectMultiple(attrs={"class": "form-select", "size": 8}),
-        label="Líderes",
-    )
-    miembros = forms.ModelMultipleChoiceField(
-        queryset=InformeIndividual.objects.all().order_by("apellido", "nombre"),
-        required=False,
-        widget=forms.SelectMultiple(attrs={"class": "form-select", "size": 8}),
-        label="Miembros",
-    )
-
     class Meta:
         model = BandaCriminal
-        fields = ["nombres", "zonas_influencia", "lideres", "miembros"]
+        fields = [
+            "nombres",
+            "zonas_influencia",
+            "lideres",
+            "miembros",
+            "bandas_aliadas",
+            "bandas_rivales",
+        ]
         widgets = {
             "nombres": forms.HiddenInput(),
             "zonas_influencia": forms.HiddenInput(),
+            "bandas_aliadas": forms.SelectMultiple(attrs={"class": "form-select", "size": 6}),
+            "bandas_rivales": forms.SelectMultiple(attrs={"class": "form-select", "size": 6}),
         }
         labels = {
             "nombres": "Nombres o alias",
             "zonas_influencia": "Zonas de influencia",
+            "bandas_aliadas": "Bandas aliadas",
+            "bandas_rivales": "Bandas rivales",
         }
 
     def __init__(self, *args, **kwargs):
