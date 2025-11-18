@@ -506,54 +506,41 @@ def solicitud_info_portal_detalle_view(request, pk):
     )
 
 
+# NUEVA VISTA: Editar solicitud de información
 @login_required
 def solicitud_info_portal_editar_view(request, pk):
     if request.user.userprofile.rol not in [Roles.REDACCION, Roles.ADMIN]:
         return render(request, "403.html", status=403)
 
     solicitud = get_object_or_404(
-        SolicitudInfo.objects.prefetch_related("articulos").select_related("usuario_creador"),
+        SolicitudInfo.objects.select_related("usuario_creador", "respondido_por").prefetch_related("articulos"),
         pk=pk,
     )
 
     if request.user.userprofile.rol == Roles.REDACCION and solicitud.usuario_creador != request.user:
         return render(request, "403.html", status=403)
 
-    solicitudes_usuario = (
-        SolicitudInfo.objects.select_related("respondido_por")
-        .prefetch_related("articulos")
-        .filter(usuario_creador=request.user)
-        .order_by("-fecha_creacion")
-    )
-
-    paginator = Paginator(solicitudes_usuario, 10)
-    page_number = request.GET.get("page")
-    solicitudes_page = paginator.get_page(page_number)
-
     if request.method == "POST":
         form = SolicitudInfoForm(request.POST, instance=solicitud, user=request.user)
         if form.is_valid():
-            solicitud_actualizada = form.save()
+            solicitud = form.save(commit=False)
+            solicitud.save()
             articulos_relacionados = form.cleaned_data.get("articulos")
-            if articulos_relacionados:
-                solicitud_actualizada.articulos.set(articulos_relacionados)
-            else:
-                solicitud_actualizada.articulos.clear()
+            if articulos_relacionados is not None:
+                solicitud.articulos.set(articulos_relacionados)
             log_actividad(
                 request,
                 TipoActividad.OTRO,
-                f"Solicitud de información actualizada (# {solicitud_actualizada.pk}).",
+                f"Solicitud de información editada (# {solicitud.pk}).",
             )
             messages.success(request, "Solicitud actualizada correctamente.")
             return redirect("solicitud_info_portal")
         messages.error(
             request,
-            "No se pudo actualizar la solicitud. Revisá los campos destacados.",
+            "No se pudo actualizar la solicitud. Por favor, revisá los campos destacados.",
         )
     else:
         form = SolicitudInfoForm(instance=solicitud, user=request.user)
-        seleccionados = list(solicitud.articulos.values_list("id", flat=True))
-        form.fields["articulos"].initial = seleccionados
 
     articulos_queryset = form.fields["articulos"].queryset.select_related("categoria")
     categorias_articulos = (
@@ -565,17 +552,13 @@ def solicitud_info_portal_editar_view(request, pk):
 
     return render(
         request,
-        "solicitud_info_portal.html",
+        "solicitud_info_portal_editar.html",
         {
             "form": form,
-            "solicitudes_usuario": solicitudes_usuario,
-            "solicitudes_page": solicitudes_page,
+            "solicitud": solicitud,
             "articulos_disponibles": articulos_queryset,
             "categorias_articulos": list(categorias_articulos),
             "estados_articulo": Articulo.Estado.choices,
-            "modo_edicion": True,
-            "solicitud_en_edicion": solicitud,
-            "form_action": request.path,
         },
     )
 
