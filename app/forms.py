@@ -348,6 +348,11 @@ class HechoDelictivoForm(forms.ModelForm):
         widget=forms.SelectMultiple(attrs={"class": "form-select", "size": 8}),
         label="Autores",
     )
+    autor_desconocido = forms.BooleanField(
+        required=False,
+        label="Autor no identificado",
+        help_text="Tildá esta opción si todavía no tenés identificado al autor.",
+    )
     noticias = forms.ModelMultipleChoiceField(
         queryset=LinkRelevante.objects.all(),
         required=False,
@@ -364,6 +369,7 @@ class HechoDelictivoForm(forms.ModelForm):
             "calificacion",
             "articulo",
             "autor",
+            "autor_desconocido",
             "descripcion",
             "noticias",
         ]

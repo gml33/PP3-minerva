@@ -40,7 +40,9 @@
 
     <div class="section">
         <h2>Autores vinculados</h2>
-        {% if autores %}
+        {% if hecho.autor_desconocido %}
+            <p>Autor no identificado.</p>
+        {% elif autores %}
             <ul>
                 {% for autor in autores %}
                     <li>{{ autor }}</li>

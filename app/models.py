@@ -579,6 +579,10 @@ class HechoDelictivo(models.Model):
         related_name="hechos_criminales_autor",
         blank=True,
     )
+    autor_desconocido = models.BooleanField(
+        default=False,
+        help_text="Marcá esta opción si no hay autores identificados.",
+    )
     descripcion = models.TextField()
     noticias = models.ManyToManyField(
         "LinkRelevante",

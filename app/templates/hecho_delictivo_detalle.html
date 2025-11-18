@@ -62,17 +62,21 @@
         <div class="card mb-4">
             <div class="card-header">Autores vinculados</div>
             <div class="card-body">
-                {% with autores=hecho.autor.all %}
-                    {% if autores %}
-                        <ul class="mb-0">
-                            {% for autor in autores %}
-                                <li>{{ autor }}</li>
-                            {% endfor %}
-                        </ul>
-                    {% else %}
-                        <p class="mb-0 text-muted">Sin autores relacionados.</p>
-                    {% endif %}
-                {% endwith %}
+                {% if hecho.autor_desconocido %}
+                    <p class="mb-0 text-muted">Autor no identificado para este hecho.</p>
+                {% else %}
+                    {% with autores=hecho.autor.all %}
+                        {% if autores %}
+                            <ul class="mb-0">
+                                {% for autor in autores %}
+                                    <li>{{ autor }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p class="mb-0 text-muted">Sin autores relacionados.</p>
+                        {% endif %}
+                    {% endwith %}
+                {% endif %}
             </div>
         </div>
     </div>

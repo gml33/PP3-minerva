@@ -98,6 +98,62 @@
     </div>
 
     <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header">Filtrar bandas criminales</div>
+            <div class="card-body">
+                <form method="get" action="" class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label" for="filtro-nombre">Nombre o alias</label>
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="filtro-nombre"
+                            name="nombre"
+                            value="{{ filtros.nombre }}"
+                            placeholder="Ej: sapucai"
+                        >
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="filtro-zona">Zona de influencia</label>
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="filtro-zona"
+                            name="zona"
+                            value="{{ filtros.zona }}"
+                            placeholder="Barrio, ciudad o provincia"
+                        >
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="filtro-aliada">Banda aliada</label>
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="filtro-aliada"
+                            name="aliada"
+                            value="{{ filtros.aliada }}"
+                            placeholder="Nombre de banda aliada"
+                        >
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="filtro-rival">Banda rival</label>
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="filtro-rival"
+                            name="rival"
+                            value="{{ filtros.rival }}"
+                            placeholder="Nombre de banda rival"
+                        >
+                    </div>
+                    <div class="col-12 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">Aplicar filtros</button>
+                        <a href="{% url 'bandas_criminales' %}" class="btn btn-outline-secondary">Limpiar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <div class="card">
             <div class="card-header">Listado de bandas criminales</div>
             <div class="card-body p-0">
@@ -155,6 +211,17 @@
                                         {% endwith %}
                                     </td>
                                     <td>
+                                        {% with miembros=banda.miembros.all %}
+                                            {% if miembros %}
+                                                {% for miembro in miembros %}
+                                                    {{ miembro }}{% if not forloop.last %}, {% endif %}
+                                                {% endfor %}
+                                            {% else %}
+                                                <span class="text-muted">Sin miembros</span>
+                                            {% endif %}
+                                        {% endwith %}
+                                    </td>
+                                    <td>
                                         {% with aliadas=banda.bandas_aliadas.all %}
                                             {% if aliadas %}
                                                 <ul class="mb-0 ps-3">
@@ -177,17 +244,6 @@
                                                 </ul>
                                             {% else %}
                                                 <span class="text-muted">Sin rivales registrados</span>
-                                            {% endif %}
-                                        {% endwith %}
-                                    </td>
-                                    <td>
-                                        {% with miembros=banda.miembros.all %}
-                                            {% if miembros %}
-                                                {% for miembro in miembros %}
-                                                    {{ miembro }}{% if not forloop.last %}, {% endif %}
-                                                {% endfor %}
-                                            {% else %}
-                                                <span class="text-muted">Sin miembros</span>
                                             {% endif %}
                                         {% endwith %}
                                     </td>

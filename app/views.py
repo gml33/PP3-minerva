@@ -496,10 +496,33 @@ def bandas_criminales_view(request):
     if request.user.userprofile.rol not in [Roles.REDACCION, Roles.ADMIN]:
         return render(request, "403.html", status=403)
 
-    bandas_queryset = (
-        BandaCriminal.objects.all()
-        .prefetch_related("lideres", "miembros", "bandas_aliadas", "bandas_rivales")
+    filtros = {
+        "nombre": request.GET.get("nombre", "").strip(),
+        "zona": request.GET.get("zona", "").strip(),
+        "aliada": request.GET.get("aliada", "").strip(),
+        "rival": request.GET.get("rival", "").strip(),
+    }
+
+    bandas_queryset = BandaCriminal.objects.all().prefetch_related(
+        "lideres", "miembros", "bandas_aliadas", "bandas_rivales"
     )
+
+    if filtros["nombre"]:
+        bandas_queryset = bandas_queryset.filter(nombres__icontains=filtros["nombre"])
+    if filtros["zona"]:
+        bandas_queryset = bandas_queryset.filter(
+            zonas_influencia__icontains=filtros["zona"]
+        )
+    if filtros["aliada"]:
+        bandas_queryset = bandas_queryset.filter(
+            bandas_aliadas__nombres__icontains=filtros["aliada"]
+        )
+    if filtros["rival"]:
+        bandas_queryset = bandas_queryset.filter(
+            bandas_rivales__nombres__icontains=filtros["rival"]
+        )
+
+    bandas_queryset = bandas_queryset.distinct()
     bandas = sorted(
         bandas_queryset,
         key=lambda banda: (banda.nombre_principal or "").lower(),
@@ -531,6 +554,7 @@ def bandas_criminales_view(request):
             "bandas": bandas,
             "modo_edicion": False,
             "form_action": reverse("bandas_criminales"),
+            "filtros": filtros,
         },
     )
 
@@ -541,6 +565,13 @@ def banda_criminal_editar_view(request, pk):
 
     if request.user.userprofile.rol not in [Roles.REDACCION, Roles.ADMIN]:
         return render(request, "403.html", status=403)
+
+    filtros = {
+        "nombre": request.GET.get("nombre", "").strip(),
+        "zona": request.GET.get("zona", "").strip(),
+        "aliada": request.GET.get("aliada", "").strip(),
+        "rival": request.GET.get("rival", "").strip(),
+    }
 
     if request.method == "POST":
         form = BandaCriminalForm(request.POST, instance=banda)
@@ -560,10 +591,24 @@ def banda_criminal_editar_view(request, pk):
     else:
         form = BandaCriminalForm(instance=banda)
 
-    bandas_queryset = (
-        BandaCriminal.objects.all()
-        .prefetch_related("lideres", "miembros", "bandas_aliadas", "bandas_rivales")
+    bandas_queryset = BandaCriminal.objects.all().prefetch_related(
+        "lideres", "miembros", "bandas_aliadas", "bandas_rivales"
     )
+    if filtros["nombre"]:
+        bandas_queryset = bandas_queryset.filter(nombres__icontains=filtros["nombre"])
+    if filtros["zona"]:
+        bandas_queryset = bandas_queryset.filter(
+            zonas_influencia__icontains=filtros["zona"]
+        )
+    if filtros["aliada"]:
+        bandas_queryset = bandas_queryset.filter(
+            bandas_aliadas__nombres__icontains=filtros["aliada"]
+        )
+    if filtros["rival"]:
+        bandas_queryset = bandas_queryset.filter(
+            bandas_rivales__nombres__icontains=filtros["rival"]
+        )
+    bandas_queryset = bandas_queryset.distinct()
     bandas = sorted(
         bandas_queryset,
         key=lambda banda: (banda.nombre_principal or "").lower(),
@@ -578,6 +623,7 @@ def banda_criminal_editar_view(request, pk):
             "modo_edicion": True,
             "banda_actual": banda,
             "form_action": reverse("banda_criminal_editar", args=[banda.pk]),
+            "filtros": filtros,
         },
     )
 

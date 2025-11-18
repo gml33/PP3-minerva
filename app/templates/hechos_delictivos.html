@@ -74,15 +74,19 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        {% with autores=hecho.autor.all %}
-                                            {% if autores %}
-                                                {% for autor in autores %}
-                                                    {{ autor }}{% if not forloop.last %}, {% endif %}
-                                                {% endfor %}
-                                            {% else %}
-                                                <span class="text-muted">Sin autores</span>
-                                            {% endif %}
-                                        {% endwith %}
+                                        {% if hecho.autor_desconocido %}
+                                            <span class="text-muted fst-italic">Autor no identificado</span>
+                                        {% else %}
+                                            {% with autores=hecho.autor.all %}
+                                                {% if autores %}
+                                                    {% for autor in autores %}
+                                                        {{ autor }}{% if not forloop.last %}, {% endif %}
+                                                    {% endfor %}
+                                                {% else %}
+                                                    <span class="text-muted">Sin autores</span>
+                                                {% endif %}
+                                            {% endwith %}
+                                        {% endif %}
                                     </td>
                                     <td class="text-end">
                                         <a class="btn btn-sm btn-outline-info" href="{% url 'hecho_delictivo_detalle' hecho.id %}">Ver</a>
