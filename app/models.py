@@ -712,10 +712,6 @@ class InformeBandaCriminal(models.Model):
         on_delete=models.CASCADE,
         related_name="informes",
     )
-    resumen_ejecutivo = models.TextField(
-        blank=True,
-        help_text="Resumen redactado por el equipo encargado del informe.",
-    )
     jerarquias_principales = models.ManyToManyField(
         "InformeIndividual",
         through="JerarquiaPrincipal",

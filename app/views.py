@@ -22,6 +22,10 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib import colors
 from reportlab.lib.units import cm
 try:
+    from docx import Document
+except ImportError:
+    Document = None
+try:
     from weasyprint import HTML
 except Exception:
     HTML = None
@@ -440,12 +444,243 @@ def informe_banda_eliminar_view(request, pk):
 def informe_banda_exportar_view(request, pk):
     if request.user.userprofile.rol not in [Roles.REDACCION, Roles.ADMIN]:
         return render(request, "403.html", status=403)
+    if Document is None:
+        messages.error(
+            request,
+            "No es posible generar el documento porque falta la dependencia python-docx. Instalála y volvé a intentarlo.",
+        )
+        return redirect("detalle_informe_banda", pk=pk)
 
-    messages.info(
-        request,
-        "La exportación de informes de banda todavía está en desarrollo.",
+    jerarquias_prefetch = Prefetch(
+        "jerarquias",
+        queryset=JerarquiaPrincipal.objects.select_related("miembro").prefetch_related(
+            "miembro__alias",
+            "miembro__telefono",
+        ),
     )
-    return redirect("detalle_informe_banda", pk=pk)
+    informe = get_object_or_404(
+        InformeBandaCriminal.objects.select_related("banda").prefetch_related(
+            "bandas_aliadas",
+            "bandas_rivales",
+            jerarquias_prefetch,
+        ),
+        pk=pk,
+    )
+
+    banda = informe.banda
+    jerarquias = list(informe.jerarquias.all())
+    bandas_aliadas = list(banda.bandas_aliadas.all())
+    bandas_rivales = list(banda.bandas_rivales.all())
+    miembros_totales = list(banda.miembros.all())
+
+    lideres = [
+        jerarquia.miembro
+        for jerarquia in jerarquias
+        if jerarquia.rol == JerarquiaPrincipal.Rol.LIDER and jerarquia.miembro
+    ]
+    lugartenientes = [
+        jerarquia.miembro
+        for jerarquia in jerarquias
+        if jerarquia.rol == JerarquiaPrincipal.Rol.LUGARTENIENTE and jerarquia.miembro
+    ]
+
+    doc = Document()
+    doc.add_heading("Informe de Banda", 0)
+    doc.add_paragraph(
+        f"Banda: {banda.nombre_principal or 'Sin nombre'} · Generado el {localtime(now()).strftime('%d/%m/%Y %H:%M')}"
+    )
+
+    def add_anexo(numero, titulo, contenido, bullet=False):
+        encabezado = f"Anexo {numero} - {titulo}"
+        doc.add_heading(encabezado, level=1)
+        if not contenido:
+            doc.add_paragraph("Sin información disponible.")
+            return
+        if isinstance(contenido, (list, tuple)):
+            for linea in contenido:
+                if not linea:
+                    continue
+                if bullet:
+                    doc.add_paragraph(linea, style="List Bullet")
+                else:
+                    doc.add_paragraph(linea)
+        else:
+            doc.add_paragraph(contenido)
+
+    zonas = banda.zonas_influencia_detalle
+    zonas_listado = [
+        zona
+        for zona in [
+            ", ".join(
+                list(
+                    filter(
+                        None,
+                        [
+                            z.get("barrio") or "",
+                            z.get("localidad") or "",
+                            z.get("ciudad") or "",
+                            z.get("provincia") or "",
+                        ],
+                    )
+                )
+            )
+            for z in zonas or []
+        ]
+        if zona
+    ]
+
+    miembros_lineas = []
+    if lideres:
+        miembros_lineas.append("Líderes identificados:")
+        for lider in lideres:
+            miembros_lineas.append(
+                f"  - {lider} · Documento: {lider.documento or '-'} · Situación: {lider.get_situacion_display() or '-'}"
+            )
+    if lugartenientes:
+        miembros_lineas.append("Lugartenientes identificados:")
+        for lugarteniente in lugartenientes:
+            miembros_lineas.append(
+                f"  - {lugarteniente} · Documento: {lugarteniente.documento or '-'} · Situación: {lugarteniente.get_situacion_display() or '-'}"
+            )
+    miembros_sin_jerarquia = [
+        miembro
+        for miembro in miembros_totales
+        if miembro.pk not in {m.pk for m in lideres + lugartenientes if m}
+    ]
+    if miembros_sin_jerarquia:
+        miembros_lineas.append(
+            "Miembros registrados sin jerarquía: "
+            + ", ".join(str(miembro) for miembro in miembros_sin_jerarquia)
+        )
+    if not miembros_lineas:
+        miembros_lineas = ["No se registraron miembros ni jerarquías para esta banda."]
+
+    zonas_contenido = zonas_listado or ["No se cargaron zonas de influencia para la banda."]
+    aliadas_contenido = (
+        [f"- {aliada.nombre_principal or '-'}" for aliada in bandas_aliadas]
+        if bandas_aliadas
+        else ["Sin alianzas registradas."]
+    )
+    rivales_contenido = (
+        [f"- {rival.nombre_principal or '-'}" for rival in bandas_rivales]
+        if bandas_rivales
+        else ["Sin rivales registrados."]
+    )
+    conclusion_texto = (
+        informe.conclusion_relevante or "No se registró una conclusión relevante."
+    )
+    evolucion_texto = (
+        informe.posible_evolucion or "No se registró una posible evolución."
+    )
+
+    anexo1_contenido = []
+    anexo1_contenido.append("Miembros y jerarquías:")
+    anexo1_contenido.extend(miembros_lineas)
+    anexo1_contenido.append("")
+    anexo1_contenido.append("Zonas de influencia:")
+    anexo1_contenido.extend(zonas_contenido)
+    anexo1_contenido.append("")
+    anexo1_contenido.append("Bandas aliadas:")
+    anexo1_contenido.extend(aliadas_contenido)
+    anexo1_contenido.append("")
+    anexo1_contenido.append("Bandas rivales:")
+    anexo1_contenido.extend(rivales_contenido)
+    anexo1_contenido.append("")
+    anexo1_contenido.append("Conclusión relevante:")
+    anexo1_contenido.append(conclusion_texto)
+    anexo1_contenido.append("")
+    anexo1_contenido.append("Probable evolución:")
+    anexo1_contenido.append(evolucion_texto)
+
+    add_anexo(1, "Resumen ejecutivo", anexo1_contenido)
+
+    add_anexo(
+        2,
+        "Introducción",
+        [
+            "Este informe compila la información disponible dentro de la plataforma Minerva.",
+            f"Nombres y alias registrados: {banda.nombres_como_texto or 'Sin alias registrados'}.",
+            f"Informe generado por: {request.user.username}",
+        ],
+    )
+
+    antecedentes_contenido = []
+    if zonas_listado:
+        antecedentes_contenido.append("Zonas de influencia conocidas:")
+        antecedentes_contenido.extend(zonas_listado)
+    if bandas_aliadas:
+        antecedentes_contenido.append(
+            "Bandas aliadas registradas: "
+            + ", ".join([aliada.nombre_principal or "-" for aliada in bandas_aliadas])
+        )
+    if bandas_rivales:
+        antecedentes_contenido.append(
+            "Bandas rivales registradas: "
+            + ", ".join([rival.nombre_principal or "-" for rival in bandas_rivales])
+        )
+    if not antecedentes_contenido:
+        antecedentes_contenido = ["No se cargaron antecedentes para esta banda."]
+    add_anexo(3, "Antecedentes", antecedentes_contenido)
+
+    desarrollo_lineas = []
+    if lideres:
+        desarrollo_lineas.append("Líderes identificados:")
+        for lider in lideres:
+            desarrollo_lineas.append(
+                f"- {lider} · Documento: {lider.documento or '-'} · Rol interno: {lider.get_rol_display() or '-'}"
+            )
+    if lugartenientes:
+        desarrollo_lineas.append("Lugartenientes identificados:")
+        for lugarteniente in lugartenientes:
+            desarrollo_lineas.append(
+                f"- {lugarteniente} · Documento: {lugarteniente.documento or '-'} · Situación: {lugarteniente.get_situacion_display() or '-'}"
+            )
+    if not desarrollo_lineas:
+        desarrollo_lineas = ["No se registraron jerarquías en el informe."]
+    add_anexo(4, "Desarrollo", desarrollo_lineas)
+
+    add_anexo(
+        5,
+        "Hechos relevantes",
+        "Aún no se cargaron hechos relevantes específicos asociados a este informe.",
+    )
+
+    add_anexo(
+        6,
+        "Conclusiones",
+        informe.conclusion_relevante
+        or "No se registraron conclusiones en este informe.",
+    )
+
+    fichas = []
+    personas = []
+    personas.extend(lideres)
+    personas.extend(lugartenientes)
+    for persona in personas:
+        alias = ", ".join(persona.alias.values_list("nombre", flat=True))
+        telefonos = ", ".join(
+            [str(numero) for numero in persona.telefono.values_list("numero", flat=True)]
+        )
+        fichas.append(
+            f"{persona} · Documento: {persona.documento or '-'} · Rol: {persona.get_rol_display() or '-'} · Alias: {alias or 'Sin alias'} · Teléfonos: {telefonos or 'Sin teléfonos'}"
+        )
+    if not fichas:
+        fichas.append("No hay fichas individuales asociadas al informe.")
+    add_anexo(7, "Anexo fichas individuales", fichas, bullet=True)
+
+    buffer = io.BytesIO()
+    doc.save(buffer)
+    buffer.seek(0)
+
+    nombre_slug = slugify(banda.nombre_principal or "banda")
+    response = HttpResponse(
+        buffer.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    )
+    response[
+        "Content-Disposition"
+    ] = f'attachment; filename="Informe_Banda_{nombre_slug}_{informe.pk}.docx"'
+    return response
 
 
 @login_required

@@ -105,14 +105,6 @@
 
         <hr class="my-4">
 
-        <div class="mb-3">
-            <label class="form-label">{{ form.resumen_ejecutivo.label }}</label>
-            {{ form.resumen_ejecutivo }}
-            {% for error in form.resumen_ejecutivo.errors %}
-                <div class="text-danger small">{{ error }}</div>
-            {% endfor %}
-        </div>
-
         <hr class="my-4">
 
         <div class="mb-3">
@@ -148,7 +140,6 @@
             <thead>
                 <tr>
                     <th>Banda</th>
-                    <th>Resumen breve</th>
                     <th>Actualizado</th>
                     <th>Acciones</th>
                 </tr>
@@ -159,13 +150,6 @@
                     <td>
                         <strong>{{ informe.banda.nombre_principal|default:"Banda sin nombre" }}</strong><br>
                         <small class="text-muted">Creado el {{ informe.creado_en|date:"d/m/Y H:i" }}</small>
-                    </td>
-                    <td>
-                        {% if informe.resumen_ejecutivo %}
-                            {{ informe.resumen_ejecutivo|truncatechars:120 }}
-                        {% else %}
-                            <span class="text-muted">Sin resumen</span>
-                        {% endif %}
                     </td>
                     <td>{{ informe.actualizado_en|date:"d/m/Y H:i" }}</td>
                     <td class="text-nowrap">
