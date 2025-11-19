@@ -365,6 +365,11 @@ class ArticuloForm(forms.ModelForm):
 
 
 class HechoDelictivoForm(forms.ModelForm):
+    ubicacion_barrio = forms.CharField(
+        required=False,
+        label="Barrio",
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
     ubicacion_localidad = forms.CharField(
         required=False,
         label="Localidad",

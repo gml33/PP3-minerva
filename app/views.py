@@ -23,8 +23,10 @@ from reportlab.lib import colors
 from reportlab.lib.units import cm
 try:
     from docx import Document
+    from docx.shared import Inches
 except ImportError:
     Document = None
+    Inches = None
 try:
     from weasyprint import HTML
 except Exception:
@@ -651,21 +653,39 @@ def informe_banda_exportar_view(request, pk):
         or "No se registraron conclusiones en este informe.",
     )
 
-    fichas = []
-    personas = []
-    personas.extend(lideres)
-    personas.extend(lugartenientes)
-    for persona in personas:
-        alias = ", ".join(persona.alias.values_list("nombre", flat=True))
-        telefonos = ", ".join(
-            [str(numero) for numero in persona.telefono.values_list("numero", flat=True)]
-        )
-        fichas.append(
-            f"{persona} · Documento: {persona.documento or '-'} · Rol: {persona.get_rol_display() or '-'} · Alias: {alias or 'Sin alias'} · Teléfonos: {telefonos or 'Sin teléfonos'}"
-        )
-    if not fichas:
-        fichas.append("No hay fichas individuales asociadas al informe.")
-    add_anexo(7, "Anexo fichas individuales", fichas, bullet=True)
+    doc.add_heading("Anexo 7 - Fichas individuales", level=1)
+    personas_conocidas = []
+    vistos = set()
+    for persona in list(banda.lideres.all()) + list(banda.miembros.all()):
+        if persona and persona.pk not in vistos:
+            personas_conocidas.append(persona)
+            vistos.add(persona.pk)
+
+    if personas_conocidas:
+        for persona in personas_conocidas:
+            doc.add_heading(str(persona), level=2)
+            if persona.foto and hasattr(persona.foto, "path"):
+                try:
+                    doc.add_picture(persona.foto.path, width=Inches(1.8))
+                except Exception:
+                    doc.add_paragraph("No se pudo cargar la foto del individuo.")
+            alias = ", ".join(persona.alias.values_list("nombre", flat=True))
+            telefonos = ", ".join(
+                [str(numero) for numero in persona.telefono.values_list("numero", flat=True)]
+            )
+            info = [
+                f"Documento: {persona.documento or '-'}",
+                f"Rol: {persona.get_rol_display() or '-'}",
+                f"Situación: {persona.get_situacion_display() or '-'}",
+                f"Actividad: {persona.actividad or '-'}",
+                f"Alias: {alias or 'Sin alias'}",
+                f"Teléfonos: {telefonos or 'Sin teléfonos'}",
+            ]
+            for linea in info:
+                doc.add_paragraph(linea)
+            doc.add_paragraph("")
+    else:
+        doc.add_paragraph("No hay fichas individuales asociadas al informe.")
 
     buffer = io.BytesIO()
     doc.save(buffer)
