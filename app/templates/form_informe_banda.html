@@ -58,29 +58,83 @@
             Los integrantes, jerarquías, zonas y relaciones se completan automáticamente según la banda seleccionada.
         </div>
 
-        <div class="row g-4 mt-1">
-            <div class="col-lg-6">
-                <div class="card h-100">
-                    <div class="card-header">Líderes detectados</div>
-                    <div class="card-body" id="info-lideres">
-                        <span class="text-muted">Seleccioná una banda para ver los líderes registrados.</span>
+        <div class="card mt-4">
+            <div class="card-header">Anexo 1 - Miembros y jerarquías</div>
+            <div class="card-body">
+                <div class="row g-4 mt-1">
+                    <div class="col-lg-6">
+                        <div class="border rounded p-3 h-100">
+                            <h5 class="mb-3">Líderes detectados</h5>
+                            <div id="info-lideres">
+                                <span class="text-muted">Seleccioná una banda para ver los líderes registrados.</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="border rounded p-3 h-100">
+                            <h5 class="mb-3">Lugartenientes detectados</h5>
+                            <div id="info-lugartenientes">
+                                <span class="text-muted">Seleccioná una banda para ver los lugartenientes registrados.</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="col-lg-6">
-                <div class="card h-100">
-                    <div class="card-header">Lugartenientes detectados</div>
-                    <div class="card-body" id="info-lugartenientes">
-                        <span class="text-muted">Seleccioná una banda para ver los lugartenientes registrados.</span>
+
+                <div class="mt-4">
+                    <h5>Integrantes de la banda</h5>
+                    <div class="border rounded p-3" id="info-miembros">
+                        <span class="text-muted">Seleccioná una banda para ver los integrantes asociados.</span>
+                    </div>
+                </div>
+
+                <div class="row g-4 mt-4">
+                    <div class="col-md-6">
+                        <div class="border rounded p-3 h-100">
+                            <h5>Bandas aliadas (automático)</h5>
+                            <div id="info-aliadas">
+                                <span class="text-muted">Sin datos disponibles.</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="border rounded p-3 h-100">
+                            <h5>Bandas rivales (automático)</h5>
+                            <div id="info-rivales">
+                                <span class="text-muted">Sin datos disponibles.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-4 mt-4">
+                    <div class="col-md-6">
+                        <label class="form-label">{{ form.conclusion_relevante.label }}</label>
+                        {{ form.conclusion_relevante }}
+                        {% for error in form.conclusion_relevante.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">{{ form.posible_evolucion.label }}</label>
+                        {{ form.posible_evolucion }}
+                        {% for error in form.posible_evolucion.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="card mt-4">
-            <div class="card-header">Integrantes de la banda</div>
-            <div class="card-body" id="info-miembros">
-                <span class="text-muted">Seleccioná una banda para ver los integrantes asociados.</span>
+            <div class="card-header">Anexo 2 - Introducción</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">{{ form.introduccion_descripcion.label }}</label>
+                    {{ form.introduccion_descripcion }}
+                    {% for error in form.introduccion_descripcion.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                    {% endfor %}
+                </div>
             </div>
         </div>
 
@@ -98,58 +152,6 @@
                     Sumá tantos antecedentes como necesites. Cada antecedente tiene un título y una descripción que se incluirán en el anexo 3 del informe.
                 </div>
             </div>
-        </div>
-
-        <div class="row g-4 mt-4">
-            <div class="col-md-6">
-                <div class="card h-100">
-                    <div class="card-header">Bandas aliadas (automático)</div>
-                    <div class="card-body" id="info-aliadas">
-                        <span class="text-muted">Sin datos disponibles.</span>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card h-100">
-                    <div class="card-header">Bandas rivales (automático)</div>
-                    <div class="card-body" id="info-rivales">
-                        <span class="text-muted">Sin datos disponibles.</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <hr class="my-4">
-
-        <hr class="my-4">
-
-        <div class="card mb-4">
-            <div class="card-header">Anexo 2 - Introducción</div>
-            <div class="card-body">
-                <div class="mb-3">
-                    <label class="form-label">{{ form.introduccion_descripcion.label }}</label>
-                    {{ form.introduccion_descripcion }}
-                    {% for error in form.introduccion_descripcion.errors %}
-                        <div class="text-danger small">{{ error }}</div>
-                    {% endfor %}
-                </div>
-            </div>
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">{{ form.conclusion_relevante.label }}</label>
-            {{ form.conclusion_relevante }}
-            {% for error in form.conclusion_relevante.errors %}
-                <div class="text-danger small">{{ error }}</div>
-            {% endfor %}
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">{{ form.posible_evolucion.label }}</label>
-            {{ form.posible_evolucion }}
-            {% for error in form.posible_evolucion.errors %}
-                <div class="text-danger small">{{ error }}</div>
-            {% endfor %}
         </div>
 
         <div class="card mb-4">
@@ -172,6 +174,7 @@
                 </div>
             </div>
         </div>
+
     </div>
     <div class="card-footer d-flex justify-content-end gap-2">
         <a href="{% url 'redaccion' %}" class="btn btn-outline-secondary">Cancelar</a>
