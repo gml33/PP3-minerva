@@ -221,7 +221,7 @@
                             <a class="btn btn-outline-light" href="{% url 'detalle_informe_banda' informe.pk %}">Ver</a>
                             <a class="btn btn-outline-primary" href="{% url 'editar_informe_banda' informe.pk %}">Editar</a>
                             <a class="btn btn-outline-secondary" href="{% url 'exportar_informe_banda' informe.pk %}">Exportar</a>
-                            <form action="{% url 'eliminar_informe_banda' informe.pk %}" method="post" class="d-inline" onsubmit="return confirm('¿Eliminar este informe?')">
+                            <form action="{% url 'eliminar_informe_banda' informe.pk %}" method="post" class="d-inline form-eliminar-informe-banda">
                                 {% csrf_token %}
                                 <button type="submit" class="btn btn-outline-danger">Eliminar</button>
                             </form>
@@ -451,6 +451,25 @@
                 crearItem();
             }
             sincronizarHidden();
+        })();
+        (function () {
+            document.querySelectorAll(".form-eliminar-informe-banda").forEach((form) => {
+                form.addEventListener("submit", function (event) {
+                    event.preventDefault();
+                    Swal.fire({
+                        title: "¿Eliminar este informe?",
+                        text: "Si lo borrás, la banda va a chismosear que lo rompiste. ¿Seguimos?",
+                        icon: "warning",
+                        showCancelButton: true,
+                        confirmButtonText: "Sí, igual borrarlo",
+                        cancelButtonText: "Mejor no",
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            form.submit();
+                        }
+                    });
+                });
+            });
         })();
     </script>
 {% endblock %}
