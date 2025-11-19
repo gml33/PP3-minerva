@@ -123,12 +123,17 @@
 
         <hr class="my-4">
 
-        <div class="mb-3">
-            <label class="form-label">{{ form.introduccion_descripcion.label }}</label>
-            {{ form.introduccion_descripcion }}
-            {% for error in form.introduccion_descripcion.errors %}
-                <div class="text-danger small">{{ error }}</div>
-            {% endfor %}
+        <div class="card mb-4">
+            <div class="card-header">Anexo 2 - Introducción</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">{{ form.introduccion_descripcion.label }}</label>
+                    {{ form.introduccion_descripcion }}
+                    {% for error in form.introduccion_descripcion.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                    {% endfor %}
+                </div>
+            </div>
         </div>
 
         <div class="mb-3">
