@@ -286,5 +286,18 @@
     </div>
 </section>
 
+<section class="mb-5">
+    <div class="card">
+        <div class="card-header">Conclusiones (Anexo 6)</div>
+        <div class="card-body">
+            {% if informe.conclusiones_desarrollo %}
+                <p class="mb-0">{{ informe.conclusiones_desarrollo|linebreaks }}</p>
+            {% else %}
+                <p class="text-muted mb-0">Sin conclusiones registradas.</p>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
 <a href="{% url 'crear_informe_banda' %}" class="btn btn-secondary">Volver al listado</a>
 {% endblock %}

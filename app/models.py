@@ -790,6 +790,10 @@ class InformeBandaCriminal(models.Model):
         blank=True,
         help_text="Hipótesis u observaciones sobre la evolución de la banda.",
     )
+    conclusiones_desarrollo = models.TextField(
+        blank=True,
+        help_text="Contenido del anexo de conclusiones.",
+    )
     antecedentes = models.JSONField(
         default=list,
         blank=True,

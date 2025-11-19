@@ -228,6 +228,7 @@ class InformeBandaCriminalForm(forms.ModelForm):
             "posible_evolucion",
             "desarrollo_titulo",
             "desarrollo_contenido",
+            "conclusiones_desarrollo",
         ]
         widgets = {
             "banda": forms.Select(attrs={"class": "form-select"}),
@@ -236,6 +237,7 @@ class InformeBandaCriminalForm(forms.ModelForm):
             "posible_evolucion": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
             "desarrollo_titulo": forms.TextInput(attrs={"class": "form-control"}),
             "desarrollo_contenido": forms.Textarea(attrs={"class": "form-control", "rows": 4}),
+            "conclusiones_desarrollo": forms.Textarea(attrs={"class": "form-control", "rows": 4}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -245,6 +247,7 @@ class InformeBandaCriminalForm(forms.ModelForm):
         self.fields["posible_evolucion"].required = False
         self.fields["desarrollo_titulo"].required = False
         self.fields["desarrollo_contenido"].required = False
+        self.fields["conclusiones_desarrollo"].required = False
         self.fields["desarrollo_titulo"].label = "Título"
         self.fields["desarrollo_contenido"].label = "Contenido"
         antecedentes_inicial = []

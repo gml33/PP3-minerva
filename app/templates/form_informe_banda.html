@@ -175,6 +175,17 @@
             </div>
         </div>
 
+        <div class="card mb-4">
+            <div class="card-header">Anexo 6 - Conclusiones</div>
+            <div class="card-body">
+                <label class="form-label" for="{{ form.conclusiones_desarrollo.id_for_label }}">Desarrollo</label>
+                {{ form.conclusiones_desarrollo }}
+                {% for error in form.conclusiones_desarrollo.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+            </div>
+        </div>
+
     </div>
     <div class="card-footer d-flex justify-content-end gap-2">
         <a href="{% url 'redaccion' %}" class="btn btn-outline-secondary">Cancelar</a>

@@ -647,7 +647,7 @@ def informe_banda_exportar_view(request, pk):
     add_anexo(
         6,
         "Conclusiones",
-        informe.conclusion_relevante
+        informe.conclusiones_desarrollo
         or "No se registraron conclusiones en este informe.",
     )
 
