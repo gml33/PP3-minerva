@@ -634,10 +634,9 @@ def informe_banda_exportar_view(request, pk):
     hechos_lineas = []
     if hechos_relacionados:
         for hecho in hechos_relacionados:
-            titulo = f"{hecho.get_categoria_display() or 'Sin categoría'} - {hecho.fecha.strftime('%d/%m/%Y')}"
+            titulo = f"{hecho.fecha.strftime('%d/%m/%Y')} - {hecho.ubicacion_texto}"
             hechos_lineas.append(titulo)
             hechos_lineas.append(f"Fecha del hecho: {hecho.fecha.strftime('%d/%m/%Y')}")
-            hechos_lineas.append(f"Lugar: {hecho.ubicacion_texto}")
             descripcion = hecho.descripcion.strip() if hecho.descripcion else ""
             hechos_lineas.append(f"Descripción: {descripcion or 'Sin descripción registrada.'}")
             hechos_lineas.append("")
