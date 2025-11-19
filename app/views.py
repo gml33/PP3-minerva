@@ -631,11 +631,19 @@ def informe_banda_exportar_view(request, pk):
     desarrollo_titulo = informe.desarrollo_titulo or "Desarrollo"
     add_anexo(4, desarrollo_titulo, desarrollo_contenido)
 
-    add_anexo(
-        5,
-        "Hechos relevantes",
-        "Aún no se cargaron hechos relevantes específicos asociados a este informe.",
-    )
+    hechos_lineas = []
+    if hechos_relacionados:
+        for hecho in hechos_relacionados:
+            titulo = f"{hecho.get_categoria_display() or 'Sin categoría'} - {hecho.fecha.strftime('%d/%m/%Y')}"
+            hechos_lineas.append(titulo)
+            hechos_lineas.append(f"Fecha del hecho: {hecho.fecha.strftime('%d/%m/%Y')}")
+            hechos_lineas.append(f"Lugar: {hecho.ubicacion_texto}")
+            descripcion = hecho.descripcion.strip() if hecho.descripcion else ""
+            hechos_lineas.append(f"Descripción: {descripcion or 'Sin descripción registrada.'}")
+            hechos_lineas.append("")
+    else:
+        hechos_lineas.append("No se registraron hechos delictivos asociados a la banda.")
+    add_anexo(5, "Hechos relevantes", hechos_lineas)
 
     add_anexo(
         6,

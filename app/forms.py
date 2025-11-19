@@ -218,6 +218,7 @@ class InformeBandaCriminalForm(forms.ModelForm):
         required=False,
         widget=forms.HiddenInput(),
     )
+
     class Meta:
         model = InformeBandaCriminal
         fields = [
@@ -244,6 +245,8 @@ class InformeBandaCriminalForm(forms.ModelForm):
         self.fields["posible_evolucion"].required = False
         self.fields["desarrollo_titulo"].required = False
         self.fields["desarrollo_contenido"].required = False
+        self.fields["desarrollo_titulo"].label = "Título"
+        self.fields["desarrollo_contenido"].label = "Contenido"
         antecedentes_inicial = []
         if self.instance and getattr(self.instance, "antecedentes", None):
             antecedentes_inicial = self.instance.antecedentes
@@ -359,11 +362,6 @@ class ArticuloForm(forms.ModelForm):
 
 
 class HechoDelictivoForm(forms.ModelForm):
-    ubicacion_barrio = forms.CharField(
-        required=False,
-        label="Barrio",
-        widget=forms.TextInput(attrs={"class": "form-control"}),
-    )
     ubicacion_localidad = forms.CharField(
         required=False,
         label="Localidad",

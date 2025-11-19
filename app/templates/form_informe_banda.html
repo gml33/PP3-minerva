@@ -147,20 +147,25 @@
             {% endfor %}
         </div>
 
-        <div class="mb-3">
-            <label class="form-label">{{ form.desarrollo_titulo.label }}</label>
-            {{ form.desarrollo_titulo }}
-            {% for error in form.desarrollo_titulo.errors %}
-                <div class="text-danger small">{{ error }}</div>
-            {% endfor %}
-        </div>
+        <div class="card mb-4">
+            <div class="card-header">Anexo 4 - Desarrollo</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">{{ form.desarrollo_titulo.label }}</label>
+                    {{ form.desarrollo_titulo }}
+                    {% for error in form.desarrollo_titulo.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                    {% endfor %}
+                </div>
 
-        <div class="mb-3">
-            <label class="form-label">{{ form.desarrollo_contenido.label }}</label>
-            {{ form.desarrollo_contenido }}
-            {% for error in form.desarrollo_contenido.errors %}
-                <div class="text-danger small">{{ error }}</div>
-            {% endfor %}
+                <div class="mb-3">
+                    <label class="form-label">{{ form.desarrollo_contenido.label }}</label>
+                    {{ form.desarrollo_contenido }}
+                    {% for error in form.desarrollo_contenido.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                    {% endfor %}
+                </div>
+            </div>
         </div>
     </div>
     <div class="card-footer d-flex justify-content-end gap-2">
