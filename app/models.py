@@ -894,3 +894,19 @@ class JerarquiaPrincipal(models.Model):
 
     def __str__(self):
         return f"{self.miembro} - {self.get_rol_display()} en {self.informe}"
+
+
+class ConfiguracionSistema(models.Model):
+    sarcasmo_mode = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name = "Configuración del Sistema"
+        verbose_name_plural = "Configuración del Sistema"
+
+    def __str__(self):
+        return "Configuración del sistema"
+
+    @classmethod
+    def obtener(cls):
+        obj, _ = cls.objects.get_or_create(pk=1, defaults={"sarcasmo_mode": False})
+        return obj

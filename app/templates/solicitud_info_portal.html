@@ -5,11 +5,7 @@
 {% block content %}
 <h1 class="mb-4">Solicitud de información</h1>
 
-{% if messages %}
-    {% for message in messages %}
-        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-    {% endfor %}
-{% endif %}
+{% include "partials/messages.html" %}
 
 <div class="card mb-4">
     <div class="card-header">

@@ -19,6 +19,7 @@ from .models import (
     EstadoLink,
     InformeBandaCriminal,
     JerarquiaPrincipal,
+    ConfiguracionSistema,
 )
 
 
@@ -497,6 +498,15 @@ class HechoDelictivoForm(forms.ModelForm):
                     )
         cleaned_data["antecedentes"] = antecedentes_limpios
         return cleaned_data
+
+
+class ConfiguracionSarcasmoForm(forms.ModelForm):
+    class Meta:
+        model = ConfiguracionSistema
+        fields = ["sarcasmo_mode"]
+        labels = {
+            "sarcasmo_mode": "Activar Modo Sarcasmo",
+        }
 
 
 class SolicitudInfoForm(forms.ModelForm):

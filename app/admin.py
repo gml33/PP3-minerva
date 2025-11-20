@@ -30,6 +30,7 @@ from .models import (
     TvDigital,
     RadioDigital,
     LinkRadioDigital,
+    ConfiguracionSistema,
 )
 
 # Opcional: para personalizar visualización
@@ -222,6 +223,7 @@ admin.site.register(Empleador)
 admin.site.register(Alias)
 admin.site.register(Vinculo)
 admin.site.register(HechoDestacado)
+admin.site.register(ConfiguracionSistema)
 
 # Register any remaining models so they appear in the admin automatically.
 app_config = apps.get_app_config("app")

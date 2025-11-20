@@ -34,11 +34,7 @@
 
 <h1 class="mb-4">Redacción de Artículos</h1>
 
-{% if messages %}
-    {% for message in messages %}
-        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-    {% endfor %}
-{% endif %}
+{% include "partials/messages.html" %}
 
 <!-- Formulario -->
 <div class="card mb-4">

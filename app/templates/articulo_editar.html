@@ -7,11 +7,7 @@
     <a href="{% url 'solicitud_info_portal' %}" class="btn btn-secondary">Volver a solicitudes</a>
 </div>
 
-{% if messages %}
-    {% for message in messages %}
-        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-    {% endfor %}
-{% endif %}
+{% include "partials/messages.html" %}
 
 <div class="row">
     <div class="col-lg-6">

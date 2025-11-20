@@ -77,6 +77,7 @@ from .models import (
     LinkRadioDigital,
     InformeBandaCriminal,
     JerarquiaPrincipal,
+    ConfiguracionSistema,
 )
 from .serializers import (
     UserProfileSerializer,
@@ -116,6 +117,7 @@ from .forms import (
     HechoDelictivoForm,
     BandaCriminalForm,
     InformeBandaCriminalForm,
+    ConfiguracionSarcasmoForm,
 )
 
 # Asegúrate de que esta utilidad exista en tu proyecto
@@ -3196,10 +3198,37 @@ def consultar_articulo_view(request, id):
 
 @login_required
 def configuraciones(request):
-    if request.user.userprofile.rol != Roles.GERENTE_PRODUCCION:
-        # CORRECCIÓN: Usar la plantilla 403.html
+    if request.user.userprofile.rol not in [Roles.GERENTE_PRODUCCION, Roles.ADMIN]:
         return render(request, "403.html", status=403)
-        
+
+    config_sistema = ConfiguracionSistema.obtener()
+    sarcasmo_form = ConfiguracionSarcasmoForm(instance=config_sistema)
+    if (
+        request.method == "POST"
+        and request.POST.get("formulario") == "sarcasmo"
+        and request.user.userprofile.rol == Roles.ADMIN
+    ):
+        sarcasmo_form = ConfiguracionSarcasmoForm(
+            request.POST, instance=config_sistema
+        )
+        if sarcasmo_form.is_valid():
+            sarcasmo_form.save()
+            if config_sistema.sarcasmo_mode:
+                messages.success(
+                    request,
+                    "Sarcasmo mode activado. Prepará los chistes.",
+                )
+            else:
+                messages.success(
+                    request,
+                    "Sarcasmo mode desactivado. Volvemos a la seriedad.",
+                )
+            return redirect("configuraciones")
+        else:
+            messages.error(
+                request, "No se pudo actualizar la configuración de sarcasmo."
+            )
+
     categorias = Categoria.objects.all()
     diarios = DiarioDigital.objects.all()
     redes_sociales = RedSocial.objects.all()
@@ -3214,6 +3243,7 @@ def configuraciones(request):
             "redes_sociales": redes_sociales,
             "tv_digital": tv_digital,
             "radios_digitales": radios_digitales,
+            "sarcasmo_form": sarcasmo_form,
         },
     )
 
