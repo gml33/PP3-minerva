@@ -689,6 +689,15 @@ def informe_banda_exportar_view(request, pk):
     else:
         doc.add_paragraph("No hay fichas individuales asociadas al informe.")
 
+    InformeBandaCriminal.objects.filter(pk=informe.pk).update(
+        exportaciones=F("exportaciones") + 1
+    )
+    log_actividad(
+        request,
+        TipoActividad.EXPORTAR_INFORME_BANDA,
+        f"Informe exportado para {banda.nombre_principal or 'Banda sin nombre'} (ID {informe.pk})",
+    )
+
     buffer = io.BytesIO()
     doc.save(buffer)
     buffer.seek(0)
@@ -2931,9 +2940,56 @@ def estadisticas_view(request):
         
     # Conteo por categoría
     categorias_counter = defaultdict(int)
+    diarios_counter = defaultdict(int)
     for link in links:
         for cat in link.categorias.all():
             categorias_counter[cat.nombre] += 1
+        nombre_diario = (
+            link.diario_digital.nombre if getattr(link, "diario_digital", None) else "Sin diario"
+        )
+        diarios_counter[nombre_diario] += 1
+
+    consultas_counter = defaultdict(int)
+    for informe in InformeBandaCriminal.objects.select_related("banda"):
+        nombre_banda = (
+            informe.banda.nombre_principal if informe.banda else "Sin banda"
+        )
+        consultas_counter[nombre_banda or "Sin banda"] += 1
+
+    integrantes_labels = []
+    integrantes_values = []
+    for banda in BandaCriminal.objects.prefetch_related("miembros"):
+        integrantes_labels.append(banda.nombre_principal or "Banda sin nombre")
+        integrantes_values.append(banda.miembros.count())
+
+    exportes_counter = defaultdict(int)
+    for informe in InformeBandaCriminal.objects.select_related("banda"):
+        nombre_banda = (
+            informe.banda.nombre_principal if informe.banda else "Sin banda"
+        )
+        exportes_counter[nombre_banda or "Sin banda"] += informe.exportaciones or 0
+
+    acciones_usuario = (
+        Actividad.objects.values("usuario__username")
+        .annotate(cantidad=Count("id"))
+        .order_by("-cantidad")
+    )
+    acciones_usuario_labels = [
+        (item["usuario__username"] or "Sin usuario") for item in acciones_usuario
+    ]
+    acciones_usuario_values = [item["cantidad"] for item in acciones_usuario]
+
+    rol_map = dict(Roles.choices)
+    acciones_por_rol = (
+        Actividad.objects.values("usuario__userprofile__rol")
+        .annotate(cantidad=Count("id"))
+        .order_by("-cantidad")
+    )
+    acciones_rol_labels = [
+        rol_map.get(item["usuario__userprofile__rol"], "Sin rol")
+        for item in acciones_por_rol
+    ]
+    acciones_rol_values = [item["cantidad"] for item in acciones_por_rol]
 
 
     return render(
@@ -2947,6 +3003,18 @@ def estadisticas_view(request):
             "barras_values": list(barras.values()),
             "categorias_labels": list(categorias_counter.keys()),
             "categorias_values": list(categorias_counter.values()),
+            "links_diario_labels": list(diarios_counter.keys()),
+            "links_diario_values": list(diarios_counter.values()),
+            "consultas_banda_labels": list(consultas_counter.keys()),
+            "consultas_banda_values": list(consultas_counter.values()),
+            "integrantes_banda_labels": integrantes_labels,
+            "integrantes_banda_values": integrantes_values,
+            "exports_banda_labels": list(exportes_counter.keys()),
+            "exports_banda_values": list(exportes_counter.values()),
+            "acciones_usuario_labels": acciones_usuario_labels,
+            "acciones_usuario_values": acciones_usuario_values,
+            "acciones_rol_labels": acciones_rol_labels,
+            "acciones_rol_values": acciones_rol_values,
             "filtros": {"usuario": usuario, "desde": desde, "hasta": hasta},
             "promedio_dias": promedio_dias,
             "promedio_horas": promedio_horas,
@@ -3146,6 +3214,35 @@ def estadisticas_api_view(request):
     for banda in BandaCriminal.objects.prefetch_related("miembros"):
         integrantes_labels.append(banda.nombre_principal or "Banda sin nombre")
         integrantes_values.append(banda.miembros.count())
+    
+    exportes_counter = defaultdict(int)
+    for informe in InformeBandaCriminal.objects.select_related("banda"):
+        nombre_banda = (
+            informe.banda.nombre_principal if informe.banda else "Sin banda"
+        )
+        exportes_counter[nombre_banda or "Sin banda"] += informe.exportaciones or 0
+
+    acciones_usuario = (
+        Actividad.objects.values("usuario__username")
+        .annotate(cantidad=Count("id"))
+        .order_by("-cantidad")
+    )
+    acciones_usuario_labels = [
+        (item["usuario__username"] or "Sin usuario") for item in acciones_usuario
+    ]
+    acciones_usuario_values = [item["cantidad"] for item in acciones_usuario]
+
+    rol_map = dict(Roles.choices)
+    acciones_por_rol = (
+        Actividad.objects.values("usuario__userprofile__rol")
+        .annotate(cantidad=Count("id"))
+        .order_by("-cantidad")
+    )
+    acciones_rol_labels = [
+        rol_map.get(item["usuario__userprofile__rol"], "Sin rol")
+        for item in acciones_por_rol
+    ]
+    acciones_rol_values = [item["cantidad"] for item in acciones_por_rol]
             
     # Datos de la tabla (limitados)
     tabla = [
@@ -3180,6 +3277,12 @@ def estadisticas_api_view(request):
             "consultas_banda_values": list(consultas_counter.values()),
             "integrantes_banda_labels": integrantes_labels,
             "integrantes_banda_values": integrantes_values,
+            "exports_banda_labels": list(exportes_counter.keys()),
+            "exports_banda_values": list(exportes_counter.values()),
+            "acciones_usuario_labels": acciones_usuario_labels,
+            "acciones_usuario_values": acciones_usuario_values,
+            "acciones_rol_labels": acciones_rol_labels,
+            "acciones_rol_values": acciones_rol_values,
             "tabla": tabla,
             "promedio_horas": promedio_horas
         }

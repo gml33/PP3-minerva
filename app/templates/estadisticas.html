@@ -66,6 +66,19 @@
             <canvas id="graficoIntegrantesBanda"></canvas>
         </div>
     </div>
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <canvas id="graficoExportesBanda"></canvas>
+        </div>
+        <div class="col-md-6">
+            <canvas id="graficoAccionesUsuario"></canvas>
+        </div>
+    </div>
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <canvas id="graficoAccionesRol"></canvas>
+        </div>
+    </div>
 
 
     <h4 class="mt-4">Links Relevantes</h4>
@@ -107,6 +120,9 @@
     let graficoLinksDiario = null;
     let graficoConsultasBanda = null;
     let graficoIntegrantesBanda = null;
+    let graficoExportesBanda = null;
+    let graficoAccionesUsuario = null;
+    let graficoAccionesRol = null;
 
     function asegurarDatos(labels, values, placeholder) {
         if (!labels || labels.length === 0) {
@@ -256,6 +272,72 @@
                 scales: {
                     x: { title: { display: true, color: '#fff', text: 'Banda' } },
                     y: { title: { display: true, color: '#fff', text: 'Integrantes' }, beginAtZero: true }
+                }
+            }
+        });
+
+        const ctxExportesBanda = document.getElementById('graficoExportesBanda').getContext('2d');
+        if (graficoExportesBanda) { graficoExportesBanda.destroy(); }
+        const exportesData = asegurarDatos(data.exports_banda_labels, data.exports_banda_values, "Sin bandas");
+        graficoExportesBanda = new Chart(ctxExportesBanda, {
+            type: 'bar',
+            data: {
+                labels: exportesData.labels,
+                datasets: [{ label: 'Exportaciones de Informes', data: exportesData.values }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false, labels: { color: '#fff' } },
+                    title: { display: true, color: '#fff', text: 'Exportaciones de informes por banda' }
+                },
+                scales: {
+                    x: { title: { display: true, color: '#fff', text: 'Banda' } },
+                    y: { title: { display: true, color: '#fff', text: 'Exportaciones' }, beginAtZero: true }
+                }
+            }
+        });
+
+        const ctxAccionesUsuario = document.getElementById('graficoAccionesUsuario').getContext('2d');
+        if (graficoAccionesUsuario) { graficoAccionesUsuario.destroy(); }
+        const accionesUsuData = asegurarDatos(data.acciones_usuario_labels, data.acciones_usuario_values, "Sin usuarios");
+        graficoAccionesUsuario = new Chart(ctxAccionesUsuario, {
+            type: 'bar',
+            data: {
+                labels: accionesUsuData.labels,
+                datasets: [{ label: 'Acciones', data: accionesUsuData.values }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false, labels: { color: '#fff' } },
+                    title: { display: true, color: '#fff', text: 'Acciones realizadas por usuario' }
+                },
+                scales: {
+                    x: { title: { display: true, color: '#fff', text: 'Usuario' } },
+                    y: { title: { display: true, color: '#fff', text: 'Acciones' }, beginAtZero: true }
+                }
+            }
+        });
+
+        const ctxAccionesRol = document.getElementById('graficoAccionesRol').getContext('2d');
+        if (graficoAccionesRol) { graficoAccionesRol.destroy(); }
+        const accionesRolData = asegurarDatos(data.acciones_rol_labels, data.acciones_rol_values, "Sin roles");
+        graficoAccionesRol = new Chart(ctxAccionesRol, {
+            type: 'bar',
+            data: {
+                labels: accionesRolData.labels,
+                datasets: [{ label: 'Acciones', data: accionesRolData.values }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false, labels: { color: '#fff' } },
+                    title: { display: true, color: '#fff', text: 'Acciones registradas por rol' }
+                },
+                scales: {
+                    x: { title: { display: true, color: '#fff', text: 'Rol' } },
+                    y: { title: { display: true, color: '#fff', text: 'Acciones' }, beginAtZero: true }
                 }
             }
         });

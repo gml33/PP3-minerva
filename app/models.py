@@ -437,6 +437,7 @@ class TipoActividad(models.TextChoices):
     CLASIFICACION_LINK = "clasificacion_link", "Clasificacion del Link"
     CARGA_INFORME = "carge_informe", "carga de informe"
     OTRO = "otro", "Otro"
+    EXPORTAR_INFORME_BANDA = "exportar_informe_banda", "Exportó informe de banda"
 
 
 class SolicitudInfo(models.Model):
@@ -794,6 +795,7 @@ class InformeBandaCriminal(models.Model):
         blank=True,
         help_text="Contenido del anexo de conclusiones.",
     )
+    exportaciones = models.PositiveIntegerField(default=0)
     antecedentes = models.JSONField(
         default=list,
         blank=True,
