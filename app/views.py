@@ -2887,7 +2887,7 @@ def estadisticas_view(request):
     usuarios = User.objects.filter(
         userprofile__rol__in=[Roles.ADMIN, Roles.PRENSA, Roles.CLASIFICACION]
     )
-    links = LinkRelevante.objects.select_related("cargado_por").prefetch_related(
+    links = LinkRelevante.objects.select_related("cargado_por", "diario_digital").prefetch_related(
         "categorias"
     )
 
@@ -2965,7 +2965,7 @@ def exportar_estadisticas_pdf(request):
     desde = request.GET.get("desde")
     hasta = request.GET.get("hasta")
 
-    links = LinkRelevante.objects.select_related("cargado_por").prefetch_related(
+    links = LinkRelevante.objects.select_related("cargado_por", "diario_digital").prefetch_related(
         "categorias"
     )
     if usuario:
@@ -3105,7 +3105,7 @@ def estadisticas_api_view(request):
     desde = request.GET.get("desde")
     hasta = request.GET.get("hasta")
     
-    links = LinkRelevante.objects.select_related("cargado_por").prefetch_related(
+    links = LinkRelevante.objects.select_related("cargado_por", "diario_digital").prefetch_related(
         "categorias"
     )
     
@@ -3127,9 +3127,25 @@ def estadisticas_api_view(request):
         
     # Conteo por categoría
     categorias = defaultdict(int)
+    diarios_counter = defaultdict(int)
     for link in links:
+        nombre_diario = link.diario_digital.nombre if getattr(link, "diario_digital", None) else "Sin diario"
+        diarios_counter[nombre_diario] += 1
         for cat in link.categorias.all():
             categorias[cat.nombre] += 1
+
+    consultas_counter = defaultdict(int)
+    for informe in InformeBandaCriminal.objects.select_related("banda"):
+        nombre_banda = (
+            informe.banda.nombre_principal if informe.banda else "Sin banda"
+        )
+        consultas_counter[nombre_banda or "Sin banda"] += 1
+
+    integrantes_labels = []
+    integrantes_values = []
+    for banda in BandaCriminal.objects.prefetch_related("miembros"):
+        integrantes_labels.append(banda.nombre_principal or "Banda sin nombre")
+        integrantes_values.append(banda.miembros.count())
             
     # Datos de la tabla (limitados)
     tabla = [
@@ -3158,6 +3174,12 @@ def estadisticas_api_view(request):
             "barras_values": list(barras.values()),
             "categorias_labels": list(categorias.keys()),
             "categorias_values": list(categorias.values()),
+            "links_diario_labels": list(diarios_counter.keys()),
+            "links_diario_values": list(diarios_counter.values()),
+            "consultas_banda_labels": list(consultas_counter.keys()),
+            "consultas_banda_values": list(consultas_counter.values()),
+            "integrantes_banda_labels": integrantes_labels,
+            "integrantes_banda_values": integrantes_values,
             "tabla": tabla,
             "promedio_horas": promedio_horas
         }
