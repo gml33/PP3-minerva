@@ -485,6 +485,10 @@ class Actividad(models.Model):
 
 # agregar una fecha por cada vez que se actualiza el informe, algo como un date_add_now_true.
 class InformeIndividual(models.Model):
+    class Sexo(models.TextChoices):
+        MASCULINO = "masculino", "Masculino"
+        FEMENINO = "femenino", "Femenino"
+
     apellido = models.CharField(max_length=100, blank=True)
     nombre = models.CharField(max_length=100, blank=True)
     documento = models.CharField(max_length=8, blank=True)
@@ -507,6 +511,12 @@ class InformeIndividual(models.Model):
 
     rol = models.CharField(max_length=20, choices=ROL_CHOICES, blank=True)
     situacion = models.CharField(max_length=20, choices=SITUACION_CHOICES, blank=True)
+    sexo = models.CharField(
+        max_length=20,
+        choices=Sexo.choices,
+        blank=True,
+        help_text="Sexo registrado en el documento del individuo.",
+    )
     actividad = models.CharField(max_length=200, blank=True)
     telefono = models.ManyToManyField(Telefono, blank=True)
     fecha_nacimiento = models.DateField(null=True, blank=True)
@@ -565,7 +575,7 @@ class HechoDelictivo(models.Model):
     ubicacion = models.JSONField(
         default=dict,
         blank=True,
-        help_text="Detalle de ubicación con barrio, localidad, ciudad y provincia.",
+        help_text="Detalle de ubicación con calle, número, barrio, localidad, ciudad y provincia.",
     )
     calificacion = models.CharField(
         max_length=20,
@@ -632,6 +642,8 @@ class HechoDelictivo(models.Model):
         if not isinstance(data, dict):
             data = {}
         return {
+            "calle": data.get("calle", ""),
+            "numero": data.get("numero", ""),
             "barrio": data.get("barrio", ""),
             "localidad": data.get("localidad", ""),
             "ciudad": data.get("ciudad", ""),
@@ -641,12 +653,23 @@ class HechoDelictivo(models.Model):
     @property
     def ubicacion_texto(self):
         data = self._ubicacion_dict()
-        partes = [
-            data.get("barrio", "").strip(),
-            data.get("localidad", "").strip(),
-            data.get("ciudad", "").strip(),
-            data.get("provincia", "").strip(),
-        ]
+        partes = []
+        calle = data.get("calle", "").strip()
+        numero = data.get("numero", "").strip()
+        if calle and numero:
+            partes.append(f"{calle} {numero}")
+        elif calle:
+            partes.append(calle)
+        elif numero:
+            partes.append(f"N° {numero}")
+        partes.extend(
+            [
+                data.get("barrio", "").strip(),
+                data.get("localidad", "").strip(),
+                data.get("ciudad", "").strip(),
+                data.get("provincia", "").strip(),
+            ]
+        )
         partes = [p for p in partes if p]
         return ", ".join(partes) if partes else "Ubicación no registrada"
 

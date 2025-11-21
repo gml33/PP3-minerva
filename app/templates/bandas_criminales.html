@@ -6,261 +6,219 @@
 
 {% include "partials/messages.html" %}
 
-<div class="row">
-    <div class="col-lg-4">
-        <div class="card mb-4">
-            <div class="card-header">
+<div class="card mb-4">
+    <div class="card-header">
+        {% if modo_edicion %}Editar banda criminal{% else %}Nueva banda criminal{% endif %}
+    </div>
+    <div class="card-body">
+        {% if modo_edicion and banda_actual %}
+        <div class="alert alert-info py-2">
+            Estás editando <strong>{{ banda_actual.nombres_como_texto }}</strong>.
+        </div>
+        {% endif %}
+        <form method="post" action="{{ form_action|default:request.path }}">
+            {% csrf_token %}
+            {% for field in form %}
+                {% if field.name == "nombres" %}
+                <div class="mb-3">
+                    <label class="form-label" for="id_nombres_control">Nombres o alias</label>
+                    {{ field }}
+                    <div id="nombres-dynamic-list" class="d-flex flex-column gap-2"></div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="btn-agregar-nombre">
+                        Agregar otro nombre
+                    </button>
+                    <div class="form-text">Cargá uno o más nombres/alias para esta banda.</div>
+                    {% if field.errors %}
+                    <div class="text-danger small mt-2">
+                        {% for error in field.errors %}{{ error }}{% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% elif field.name == "zonas_influencia" %}
+                <div class="mb-3">
+                    <label class="form-label" for="id_zonas_control">Zonas de influencia</label>
+                    {{ field }}
+                    <div id="zonas-dynamic-list" class="d-flex flex-column gap-3"></div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="btn-agregar-zona">
+                        Agregar zona
+                    </button>
+                    <div class="form-text">Indicá barrio, localidad, ciudad y provincia según corresponda.</div>
+                    {% if field.errors %}
+                    <div class="text-danger small mt-2">
+                        {% for error in field.errors %}{{ error }}{% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="mb-3">
+                    {{ field.label_tag }}
+                    {{ field }}
+                    {% if field.help_text %}
+                    <div class="form-text">{{ field.help_text }}</div>
+                    {% endif %}
+                    {% if field.errors %}
+                    <div class="text-danger small">
+                        {% for error in field.errors %}{{ error }}{% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            {% endfor %}
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary">
+                    {% if modo_edicion %}Guardar cambios{% else %}Crear banda{% endif %}
+                </button>
                 {% if modo_edicion %}
-                    Editar banda criminal
-                {% else %}
-                    Nueva banda criminal
+                <a href="{% url 'bandas_criminales' %}" class="btn btn-secondary">Cancelar</a>
                 {% endif %}
             </div>
-            <div class="card-body">
-                {% if modo_edicion and banda_actual %}
-                    <div class="alert alert-info py-2">
-                        Estás editando <strong>{{ banda_actual.nombres_como_texto }}</strong>.
-                    </div>
-                {% endif %}
-                <form method="post" action="{{ form_action|default:request.path }}">
-                    {% csrf_token %}
-                    {% for field in form %}
-                        {% if field.name == "nombres" %}
-                            <div class="mb-3">
-                                <label class="form-label" for="id_nombres_control">Nombres o alias</label>
-                                {{ field }}
-                                <div id="nombres-dynamic-list" class="d-flex flex-column gap-2"></div>
-                                <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="btn-agregar-nombre">
-                                    Agregar otro nombre
-                                </button>
-                                <div class="form-text">
-                                    Cargá uno o más nombres/alias para esta banda. Podés agregar y quitar campos con los botones.
-                                </div>
-                                {% if field.errors %}
-                                    <div class="text-danger small mt-2">
-                                        {% for error in field.errors %}
-                                            {{ error }}
-                                        {% endfor %}
-                                    </div>
+        </form>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">Filtrar bandas criminales</div>
+    <div class="card-body">
+        <form method="get" action="" class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label" for="filtro-nombre">Nombre o alias</label>
+                <input type="text" class="form-control" id="filtro-nombre" name="nombre" value="{{ filtros.nombre }}" placeholder="Ej: Sapucai">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" for="filtro-zona">Zona de influencia</label>
+                <input type="text" class="form-control" id="filtro-zona" name="zona" value="{{ filtros.zona }}" placeholder="Barrio, ciudad o provincia">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" for="filtro-aliada">Banda aliada</label>
+                <input type="text" class="form-control" id="filtro-aliada" name="aliada" value="{{ filtros.aliada }}" placeholder="Nombre de banda aliada">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" for="filtro-rival">Banda rival</label>
+                <input type="text" class="form-control" id="filtro-rival" name="rival" value="{{ filtros.rival }}" placeholder="Nombre de banda rival">
+            </div>
+            <div class="col-12 d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Aplicar filtros</button>
+                <a href="{% url 'bandas_criminales' %}" class="btn btn-outline-secondary">Limpiar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">Bandas criminales registradas</div>
+    <div class="card-body p-0">
+        {% if bandas and bandas.object_list %}
+        <div class="table-responsive">
+            <table class="table table-striped mb-0">
+                <thead>
+                    <tr>
+                        <th>Nombres / Alias</th>
+                        <th>Zonas de influencia</th>
+                        <th>Líderes</th>
+                        <th>Miembros</th>
+                        <th>Bandas aliadas</th>
+                        <th>Bandas rivales</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for banda in bandas %}
+                    <tr {% if banda_actual and banda.pk == banda_actual.pk %}class="table-info"{% endif %}>
+                        <td>
+                            {% with nombres=banda.nombres_como_texto %}
+                                {% if nombres %}
+                                    {{ nombres|truncatechars:35 }}
+                                {% else %}
+                                    <span class="text-muted">Sin nombre</span>
                                 {% endif %}
-                            </div>
-                        {% elif field.name == "zonas_influencia" %}
-                            <div class="mb-3">
-                                <label class="form-label" for="id_zonas_control">Zonas de influencia</label>
-                                {{ field }}
-                                <div id="zonas-dynamic-list" class="d-flex flex-column gap-3"></div>
-                                <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="btn-agregar-zona">
-                                    Agregar zona
-                                </button>
-                                <div class="form-text">
-                                    Definí una o varias zonas indicando barrio, localidad, ciudad y provincia. Podés dejar vacíos los campos que no correspondan.
-                                </div>
-                                {% if field.errors %}
-                                    <div class="text-danger small mt-2">
-                                        {% for error in field.errors %}
-                                            {{ error }}
-                                        {% endfor %}
-                                    </div>
+                            {% endwith %}
+                        </td>
+                        <td>
+                            {% with resumen=banda.zonas_resumen %}
+                                {% if resumen %}
+                                    {{ resumen|truncatechars:35 }}
+                                {% else %}
+                                    <span class="text-muted">Sin zonas registradas</span>
                                 {% endif %}
-                            </div>
-                        {% else %}
-                            <div class="mb-3">
-                                {{ field.label_tag }}
-                                {{ field }}
-                                {% if field.help_text %}
-                                    <div class="form-text">{{ field.help_text }}</div>
+                            {% endwith %}
+                        </td>
+                        <td>
+                            {% with lideres=banda.lideres.all|join:", " %}
+                                {% if lideres %}
+                                    {{ lideres|truncatechars:35 }}
+                                {% else %}
+                                    <span class="text-muted">Sin líderes</span>
                                 {% endif %}
-                                {% if field.errors %}
-                                    <div class="text-danger small">
-                                        {% for error in field.errors %}
-                                            {{ error }}
-                                        {% endfor %}
-                                    </div>
+                            {% endwith %}
+                        </td>
+                        <td>
+                            {% with miembros=banda.miembros.all|join:", " %}
+                                {% if miembros %}
+                                    {{ miembros|truncatechars:35 }}
+                                {% else %}
+                                    <span class="text-muted">Sin miembros</span>
                                 {% endif %}
-                            </div>
-                        {% endif %}
+                            {% endwith %}
+                        </td>
+                        <td>
+                            {% with aliadas=banda.bandas_aliadas.all|join:", " %}
+                                {% if aliadas %}
+                                    {{ aliadas|truncatechars:35 }}
+                                {% else %}
+                                    <span class="text-muted">Sin aliadas</span>
+                                {% endif %}
+                            {% endwith %}
+                        </td>
+                        <td>
+                            {% with rivales=banda.bandas_rivales.all|join:", " %}
+                                {% if rivales %}
+                                    {{ rivales|truncatechars:35 }}
+                                {% else %}
+                                    <span class="text-muted">Sin rivales</span>
+                                {% endif %}
+                            {% endwith %}
+                        </td>
+                        <td class="text-end">
+                            <a href="{% url 'banda_criminal_editar' banda.pk %}" class="btn btn-sm btn-outline-primary">Editar</a>
+                            <form method="post" action="{% url 'banda_criminal_eliminar' banda.pk %}" class="d-inline form-eliminar-banda">
+                                {% csrf_token %}
+                                <button type="button" class="btn btn-sm btn-outline-danger btn-eliminar-banda">Eliminar</button>
+                            </form>
+                        </td>
+                    </tr>
                     {% endfor %}
-                    <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-primary">
-                            {% if modo_edicion %}Guardar cambios{% else %}Crear banda{% endif %}
-                        </button>
-                        {% if modo_edicion %}
-                            <a href="{% url 'bandas_criminales' %}" class="btn btn-secondary">Cancelar</a>
-                        {% endif %}
-                    </div>
-                </form>
-            </div>
+                </tbody>
+            </table>
         </div>
+        {% else %}
+        <p class="m-3 text-muted">No se encontraron bandas registradas.</p>
+        {% endif %}
     </div>
-
-    <div class="col-lg-8">
-        <div class="card mb-4">
-            <div class="card-header">Filtrar bandas criminales</div>
-            <div class="card-body">
-                <form method="get" action="" class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label" for="filtro-nombre">Nombre o alias</label>
-                        <input
-                            type="text"
-                            class="form-control"
-                            id="filtro-nombre"
-                            name="nombre"
-                            value="{{ filtros.nombre }}"
-                            placeholder="Ej: sapucai"
-                        >
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label" for="filtro-zona">Zona de influencia</label>
-                        <input
-                            type="text"
-                            class="form-control"
-                            id="filtro-zona"
-                            name="zona"
-                            value="{{ filtros.zona }}"
-                            placeholder="Barrio, ciudad o provincia"
-                        >
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label" for="filtro-aliada">Banda aliada</label>
-                        <input
-                            type="text"
-                            class="form-control"
-                            id="filtro-aliada"
-                            name="aliada"
-                            value="{{ filtros.aliada }}"
-                            placeholder="Nombre de banda aliada"
-                        >
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label" for="filtro-rival">Banda rival</label>
-                        <input
-                            type="text"
-                            class="form-control"
-                            id="filtro-rival"
-                            name="rival"
-                            value="{{ filtros.rival }}"
-                            placeholder="Nombre de banda rival"
-                        >
-                    </div>
-                    <div class="col-12 d-flex gap-2">
-                        <button type="submit" class="btn btn-primary">Aplicar filtros</button>
-                        <a href="{% url 'bandas_criminales' %}" class="btn btn-outline-secondary">Limpiar</a>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="card-header">Listado de bandas criminales</div>
-            <div class="card-body p-0">
-                {% if bandas %}
-                    <div class="table-responsive">
-                        <table class="table table-striped mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Nombres / Alias</th>
-                                    <th>Zonas de influencia</th>
-                                    <th>Líderes</th>
-                                    <th>Miembros</th>
-                                    <th>Bandas aliadas</th>
-                                    <th>Bandas rivales</th>
-                                    <th class="text-end">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for banda in bandas %}
-                                <tr {% if banda_actual and banda.pk == banda_actual.pk %}class="table-info"{% endif %}>
-                                    <td>
-                                        {% if banda.nombres %}
-                                            {% for alias in banda.nombres %}
-                                                <span class="badge bg-light text-dark border">{{ alias }}</span>{% if not forloop.last %} {% endif %}
-                                            {% endfor %}
-                                        {% else %}
-                                            <span class="text-muted">Sin nombre</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if banda.zonas_influencia_detalle %}
-                                            <ul class="mb-0 ps-3">
-                                                {% for zona in banda.zonas_influencia_detalle %}
-                                                    <li>
-                                                        {% if zona.barrio %}<strong>Barrio:</strong> {{ zona.barrio }}{% endif %}
-                                                        {% if zona.localidad %}{% if zona.barrio %} · {% endif %}<strong>Localidad:</strong> {{ zona.localidad }}{% endif %}
-                                                        {% if zona.ciudad %}{% if zona.barrio or zona.localidad %} · {% endif %}<strong>Ciudad:</strong> {{ zona.ciudad }}{% endif %}
-                                                        {% if zona.provincia %}{% if zona.barrio or zona.localidad or zona.ciudad %} · {% endif %}<strong>Provincia:</strong> {{ zona.provincia }}{% endif %}
-                                                    </li>
-                                                {% endfor %}
-                                            </ul>
-                                        {% else %}
-                                            <span class="text-muted">Sin zonas registradas</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% with lideres=banda.lideres.all %}
-                                            {% if lideres %}
-                                                {% for lider in lideres %}
-                                                    {{ lider }}{% if not forloop.last %}, {% endif %}
-                                                {% endfor %}
-                                            {% else %}
-                                                <span class="text-muted">Sin líderes</span>
-                                            {% endif %}
-                                        {% endwith %}
-                                    </td>
-                                    <td>
-                                        {% with miembros=banda.miembros.all %}
-                                            {% if miembros %}
-                                                {% for miembro in miembros %}
-                                                    {{ miembro }}{% if not forloop.last %}, {% endif %}
-                                                {% endfor %}
-                                            {% else %}
-                                                <span class="text-muted">Sin miembros</span>
-                                            {% endif %}
-                                        {% endwith %}
-                                    </td>
-                                    <td>
-                                        {% with aliadas=banda.bandas_aliadas.all %}
-                                            {% if aliadas %}
-                                                <ul class="mb-0 ps-3">
-                                                    {% for aliada in aliadas %}
-                                                        <li>{{ aliada.nombre_principal|default:aliada }}</li>
-                                                    {% endfor %}
-                                                </ul>
-                                            {% else %}
-                                                <span class="text-muted">Sin alianzas registradas</span>
-                                            {% endif %}
-                                        {% endwith %}
-                                    </td>
-                                    <td>
-                                        {% with rivales=banda.bandas_rivales.all %}
-                                            {% if rivales %}
-                                                <ul class="mb-0 ps-3">
-                                                    {% for rival in rivales %}
-                                                        <li>{{ rival.nombre_principal|default:rival }}</li>
-                                                    {% endfor %}
-                                                </ul>
-                                            {% else %}
-                                                <span class="text-muted">Sin rivales registrados</span>
-                                            {% endif %}
-                                        {% endwith %}
-                                    </td>
-                                    <td class="text-end">
-                                        <a href="{% url 'banda_criminal_editar' banda.pk %}" class="btn btn-sm btn-outline-primary">Editar</a>
-                                        <form method="post" action="{% url 'banda_criminal_eliminar' banda.pk %}" class="d-inline form-eliminar-banda">
-                                            {% csrf_token %}
-                                            <button type="button" class="btn btn-sm btn-outline-danger btn-eliminar-banda">Eliminar</button>
-                                        </form>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                {% else %}
-                    <p class="mb-0 text-muted p-3">Todavía no hay bandas registradas.</p>
+    {% if bandas and bandas.has_other_pages %}
+    <div class="card-footer">
+        <nav aria-label="Paginación de bandas">
+            <ul class="pagination justify-content-center mb-0">
+                {% if bandas.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ bandas.previous_page_number }}">Anterior</a>
+                </li>
                 {% endif %}
-            </div>
-        </div>
+                {% for num in bandas.paginator.page_range %}
+                    {% if bandas.number == num %}
+                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% else %}
+                        <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+                    {% endif %}
+                {% endfor %}
+                {% if bandas.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ bandas.next_page_number }}">Siguiente</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
     </div>
+    {% endif %}
 </div>
 {% endblock %}
 

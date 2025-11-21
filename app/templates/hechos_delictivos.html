@@ -6,157 +6,168 @@
 
 {% include "partials/messages.html" %}
 
-<div class="row">
-    <div class="col-lg-4">
-        <div class="card mb-4">
-            <div class="card-header">Registrar nuevo hecho delictivo</div>
-            <div class="card-body">
-                <form method="post" class="needs-validation" novalidate>
-                    {% csrf_token %}
-                    {% for field in form %}
-                        {% if field.name == "ubicacion" %}
-                            {{ field }}
-                        {% elif field.name == "ubicacion_barrio" or field.name == "ubicacion_localidad" or field.name == "ubicacion_ciudad" or field.name == "ubicacion_provincia" %}
-                            {# handled separately #}
-                        {% else %}
-                            <div class="mb-3">
-                                {{ field.label_tag }}
-                                {{ field }}
-                                {% if field.help_text %}
-                                    <div class="form-text">{{ field.help_text }}</div>
-                                {% endif %}
-                                {% if field.errors %}
-                                    <div class="text-danger small">
-                                        {% for error in field.errors %}
-                                            {{ error }}
-                                        {% endfor %}
-                                    </div>
-                                {% endif %}
+<div class="card mb-4">
+    <div class="card-header">Registrar nuevo hecho delictivo</div>
+    <div class="card-body">
+        <form method="post" class="needs-validation" novalidate>
+            {% csrf_token %}
+            {% for field in form %}
+                {% if field.name == "ubicacion" %}
+                    {{ field }}
+                {% elif field.name == "ubicacion_calle" or field.name == "ubicacion_numero" or field.name == "ubicacion_barrio" or field.name == "ubicacion_localidad" or field.name == "ubicacion_ciudad" or field.name == "ubicacion_provincia" %}
+                    {# handled separately #}
+                {% else %}
+                    <div class="mb-3">
+                        {{ field.label_tag }}
+                        {{ field }}
+                        {% if field.help_text %}
+                            <div class="form-text">{{ field.help_text }}</div>
+                        {% endif %}
+                        {% if field.errors %}
+                            <div class="text-danger small">
+                                {% for error in field.errors %}
+                                    {{ error }}
+                                {% endfor %}
                             </div>
                         {% endif %}
-                    {% endfor %}
-                    <div class="mb-3">
-                        <label class="form-label">Ubicación del hecho</label>
-                        <div class="row g-2">
-                            <div class="col-md-3">
-                                {{ form.ubicacion_barrio.label_tag }}
-                                {{ form.ubicacion_barrio }}
-                                {% for error in form.ubicacion_barrio.errors %}
-                                    <div class="text-danger small">{{ error }}</div>
-                                {% endfor %}
-                            </div>
-                            <div class="col-md-3">
-                                {{ form.ubicacion_localidad.label_tag }}
-                                {{ form.ubicacion_localidad }}
-                                {% for error in form.ubicacion_localidad.errors %}
-                                    <div class="text-danger small">{{ error }}</div>
-                                {% endfor %}
-                            </div>
-                            <div class="col-md-3">
-                                {{ form.ubicacion_ciudad.label_tag }}
-                                {{ form.ubicacion_ciudad }}
-                                {% for error in form.ubicacion_ciudad.errors %}
-                                    <div class="text-danger small">{{ error }}</div>
-                                {% endfor %}
-                            </div>
-                            <div class="col-md-3">
-                                {{ form.ubicacion_provincia.label_tag }}
-                                {{ form.ubicacion_provincia }}
-                                {% for error in form.ubicacion_provincia.errors %}
-                                    <div class="text-danger small">{{ error }}</div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                        <div class="form-text">Completá los datos que conozcas sobre la ubicación del hecho.</div>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100">Guardar hecho delictivo</button>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-lg-8">
-        <div class="card">
-            <div class="card-header">Mis hechos delictivos</div>
-            <div class="card-body p-0">
-                {% if hechos %}
-                    <div class="table-responsive">
-                        <table class="table table-striped mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Fecha</th>
-                                    <th>Categoría</th>
-                                    <th>Ubicación</th>
-                                    <th>Calificación</th>
-                                    <th>Artículo</th>
-                                    <th>Autores</th>
-                                    <th>Bandas</th>
-                                    <th class="text-end">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for hecho in hechos %}
-                                <tr>
-                                    <td>{{ hecho.fecha|date:"d/m/Y" }}</td>
-                                    <td>{{ hecho.get_categoria_display|default:"Sin categoría" }}</td>
-                                    <td>{{ hecho.ubicacion_texto }}</td>
-                                    <td>{{ hecho.get_calificacion_display }}</td>
-                                    <td>
-                                        {% if hecho.articulo %}
-                                            <a href="{% url 'exportar_articulo_pdf' hecho.articulo.id %}" target="_blank" class="text-decoration-none">
-                                                #{{ hecho.articulo.id }} · {{ hecho.articulo.titulo|default:"Sin título" }}
-                                            </a>
-                                        {% else %}
-                                            <span class="text-muted">Sin artículo</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if hecho.autor_desconocido %}
-                                            <span class="text-muted fst-italic">Autor no identificado</span>
-                                        {% else %}
-                                            {% with autores=hecho.autor.all %}
-                                                {% if autores %}
-                                                    {% for autor in autores %}
-                                                        {{ autor }}{% if not forloop.last %}, {% endif %}
-                                                    {% endfor %}
-                                                {% else %}
-                                                    <span class="text-muted">Sin autores</span>
-                                                {% endif %}
-                                            {% endwith %}
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% with bandas=hecho.bandas.all %}
-                                            {% if bandas %}
-                                                {% for banda in bandas %}
-                                                    {{ banda.nombre_principal|default:banda }}{% if not forloop.last %}, {% endif %}
-                                                {% endfor %}
-                                            {% else %}
-                                                <span class="text-muted">Sin bandas asociadas</span>
-                                            {% endif %}
-                                        {% endwith %}
-                                    </td>
-                                    <td class="text-end">
-                                        <a class="btn btn-sm btn-outline-info" href="{% url 'hecho_delictivo_detalle' hecho.id %}">Ver</a>
-                                        <a class="btn btn-sm btn-outline-primary" href="{% url 'editar_hecho_delictivo' hecho.id %}">Editar</a>
-                                        <a class="btn btn-sm btn-outline-success" href="{% url 'exportar_hecho_delictivo_pdf' hecho.id %}" target="_blank">PDF</a>
-                                        <form method="post" action="{% url 'eliminar_hecho_delictivo' hecho.id %}" class="d-inline form-eliminar-hecho">
-                                            {% csrf_token %}
-                                            <button type="button" class="btn btn-sm btn-outline-danger btn-eliminar-hecho">Eliminar</button>
-                                        </form>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                {% else %}
-                    <p class="mb-0 text-muted p-3">Todavía no registraste hechos delictivos.</p>
                 {% endif %}
+            {% endfor %}
+            <div class="mb-3">
+                <label class="form-label">Ubicación del hecho</label>
+                <div class="row g-2">
+                    <div class="col-md-3">
+                        {{ form.ubicacion_calle.label_tag }}
+                        {{ form.ubicacion_calle }}
+                        {% for error in form.ubicacion_calle.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="col-md-2">
+                        {{ form.ubicacion_numero.label_tag }}
+                        {{ form.ubicacion_numero }}
+                        {% for error in form.ubicacion_numero.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="col-md-3">
+                        {{ form.ubicacion_barrio.label_tag }}
+                        {{ form.ubicacion_barrio }}
+                        {% for error in form.ubicacion_barrio.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="col-md-2">
+                        {{ form.ubicacion_localidad.label_tag }}
+                        {{ form.ubicacion_localidad }}
+                        {% for error in form.ubicacion_localidad.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="col-md-2">
+                        {{ form.ubicacion_ciudad.label_tag }}
+                        {{ form.ubicacion_ciudad }}
+                        {% for error in form.ubicacion_ciudad.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="col-md-2">
+                        {{ form.ubicacion_provincia.label_tag }}
+                        {{ form.ubicacion_provincia }}
+                        {% for error in form.ubicacion_provincia.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="form-text">Completá los datos que conozcas sobre la ubicación del hecho.</div>
             </div>
-        </div>
+            <div class="text-end">
+                <button type="submit" class="btn btn-primary">Guardar hecho delictivo</button>
+            </div>
+        </form>
     </div>
 </div>
+
+<div class="card">
+    <div class="card-header">Mis hechos delictivos</div>
+    <div class="card-body p-0">
+        {% if hechos %}
+            <div class="table-responsive">
+                <table class="table table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Categoría</th>
+                            <th>Ubicación</th>
+                            <th>Calificación</th>
+                            <th>Artículo</th>
+                            <th>Autores</th>
+                            <th>Bandas</th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for hecho in hechos %}
+                        <tr>
+                            <td>{{ hecho.fecha|date:"d/m/Y" }}</td>
+                            <td>{{ hecho.get_categoria_display|default:"Sin categoría" }}</td>
+                            <td>{{ hecho.ubicacion_texto }}</td>
+                            <td>{{ hecho.get_calificacion_display }}</td>
+                            <td>
+                                {% if hecho.articulo %}
+                                    <span class="text-truncate d-inline-block" style="max-width: 200px;" title="{{ hecho.articulo.titulo }}">
+                                        {{ hecho.articulo.titulo }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted">Sin artículo</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if hecho.autor_desconocido %}
+                                    <span class="text-muted fst-italic">Autor no identificado</span>
+                                {% else %}
+                                    {% with autores=hecho.autor.all %}
+                                        {% if autores %}
+                                            {% for autor in autores %}
+                                                {{ autor }}{% if not forloop.last %}, {% endif %}
+                                            {% endfor %}
+                                        {% else %}
+                                            <span class="text-muted">Sin autores</span>
+                                        {% endif %}
+                                    {% endwith %}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% with bandas=hecho.bandas.all %}
+                                    {% if bandas %}
+                                        {% for banda in bandas %}
+                                            {{ banda.nombre_principal|default:banda }}{% if not forloop.last %}, {% endif %}
+                                        {% endfor %}
+                                    {% else %}
+                                        <span class="text-muted">Sin bandas asociadas</span>
+                                    {% endif %}
+                                {% endwith %}
+                            </td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-info" href="{% url 'hecho_delictivo_detalle' hecho.id %}">Ver</a>
+                                <a class="btn btn-sm btn-outline-primary" href="{% url 'editar_hecho_delictivo' hecho.id %}">Editar</a>
+                                <a class="btn btn-sm btn-outline-success" href="{% url 'exportar_hecho_delictivo_pdf' hecho.id %}" target="_blank">PDF</a>
+                                <form method="post" action="{% url 'eliminar_hecho_delictivo' hecho.id %}" class="d-inline form-eliminar-hecho">
+                                    {% csrf_token %}
+                                    <button type="button" class="btn btn-sm btn-outline-danger btn-eliminar-hecho">Eliminar</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="mb-0 text-muted p-3">Todavía no registraste hechos delictivos.</p>
+        {% endif %}
+    </div>
+</div>
+
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     document.querySelectorAll(".form-eliminar-hecho").forEach(function (form) {

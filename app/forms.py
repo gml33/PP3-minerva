@@ -39,6 +39,7 @@ class InformeIndividualForm(forms.ModelForm):
             "documento",
             "cuit",
             "nacionalidad",
+            "sexo",
             "banda",
             "actividad",
             "fecha_nacimiento",
@@ -366,6 +367,16 @@ class ArticuloForm(forms.ModelForm):
 
 
 class HechoDelictivoForm(forms.ModelForm):
+    ubicacion_calle = forms.CharField(
+        required=False,
+        label="Calle",
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+    ubicacion_numero = forms.CharField(
+        required=False,
+        label="Número",
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
     ubicacion_barrio = forms.CharField(
         required=False,
         label="Barrio",
@@ -464,6 +475,8 @@ class HechoDelictivoForm(forms.ModelForm):
         self.fields["articulo"].required = True
 
         ubicacion_dict = self.instance._ubicacion_dict() if self.instance.pk else {}
+        self.fields["ubicacion_calle"].initial = ubicacion_dict.get("calle", "")
+        self.fields["ubicacion_numero"].initial = ubicacion_dict.get("numero", "")
         self.fields["ubicacion_barrio"].initial = ubicacion_dict.get("barrio", "")
         self.fields["ubicacion_localidad"].initial = ubicacion_dict.get("localidad", "")
         self.fields["ubicacion_ciudad"].initial = ubicacion_dict.get("ciudad", "")
@@ -472,6 +485,8 @@ class HechoDelictivoForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
         ubicacion = {
+            "calle": cleaned_data.get("ubicacion_calle", "").strip(),
+            "numero": cleaned_data.get("ubicacion_numero", "").strip(),
             "barrio": cleaned_data.get("ubicacion_barrio", "").strip(),
             "localidad": cleaned_data.get("ubicacion_localidad", "").strip(),
             "ciudad": cleaned_data.get("ubicacion_ciudad", "").strip(),

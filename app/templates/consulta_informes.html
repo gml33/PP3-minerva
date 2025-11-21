@@ -5,158 +5,238 @@
 
 {% block content %}
 
-<body>
+<h1 class="mb-4 text-center">Consultar Informes</h1>
 
-    <h1 class="mb-4 text-center">Consultar Informes</h1>
-
-    <form method="GET" action="/informes/consulta/">
-
-        <!-- Datos personales -->
-        <div class="row mb-3">
-            <div class="col-md-4">
-                <label>Apellido</label>
-                <input type="text" name="apellido" class="form-control" value="{{ request.GET.apellido }}">
+<form method="GET" action="{% url 'consulta_informes' %}">
+    <div class="card mb-4">
+        <div class="card-header">Datos personales</div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Apellido</label>
+                    <input type="text" name="apellido" class="form-control" value="{{ request.GET.apellido }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Nombre</label>
+                    <input type="text" name="nombre" class="form-control" value="{{ request.GET.nombre }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Alias</label>
+                    <input type="text" name="alias" class="form-control" value="{{ request.GET.alias }}">
+                </div>
             </div>
-            <div class="col-md-4">
-                <label>Nombre</label>
-                <input type="text" name="nombre" class="form-control" value="{{ request.GET.nombre }}">
+            <div class="row g-3 mt-1">
+                <div class="col-md-4">
+                    <label class="form-label">Documento de identidad</label>
+                    <input type="text" name="documento" class="form-control" value="{{ request.GET.documento }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Nacionalidad</label>
+                    <input type="text" name="nacionalidad" class="form-control" value="{{ request.GET.nacionalidad }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Sexo</label>
+                    <select name="sexo" class="form-select">
+                        <option value="">Cualquiera</option>
+                        <option value="masculino" {% if request.GET.sexo == "masculino" %}selected{% endif %}>Masculino</option>
+                        <option value="femenino" {% if request.GET.sexo == "femenino" %}selected{% endif %}>Femenino</option>
+                        <option value="otro" {% if request.GET.sexo == "otro" %}selected{% endif %}>Otro</option>
+                    </select>
+                </div>
             </div>
-            <div class="col-md-4">
-                <label>Documento</label>
-                <input type="text" name="documento" class="form-control" value="{{ request.GET.documento }}">
+            <div class="row g-3 mt-1">
+                <div class="col-md-4">
+                    <label class="form-label">Teléfono</label>
+                    <input type="text" name="telefono" class="form-control" value="{{ request.GET.telefono }}">
+                </div>
+            </div>
+            <div class="row g-3 mt-1">
+                <div class="col-md-6">
+                    <label class="form-label">Fecha de nacimiento desde</label>
+                    <input type="date" name="fecha_nacimiento_desde" class="form-control" value="{{ request.GET.fecha_nacimiento_desde }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Fecha de nacimiento hasta</label>
+                    <input type="date" name="fecha_nacimiento_hasta" class="form-control" value="{{ request.GET.fecha_nacimiento_hasta }}">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="accordion" id="filtrosAccordion">
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="headingDomicilio">
+                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDomicilio" aria-expanded="true" aria-controls="collapseDomicilio">
+                    Domicilio
+                </button>
+            </h2>
+            <div id="collapseDomicilio" class="accordion-collapse collapse show" data-bs-parent="#filtrosAccordion">
+                <div class="accordion-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Calle</label>
+                            <input type="text" name="calle" class="form-control" value="{{ request.GET.calle }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Altura desde</label>
+                            <input type="number" name="altura_desde" class="form-control" value="{{ request.GET.altura_desde }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Altura hasta</label>
+                            <input type="number" name="altura_hasta" class="form-control" value="{{ request.GET.altura_hasta }}">
+                        </div>
+                    </div>
+                    <div class="row g-3 mt-1">
+                        <div class="col-md-3">
+                            <label class="form-label">Barrio</label>
+                            <input type="text" name="barrio" class="form-control" value="{{ request.GET.barrio }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Localidad</label>
+                            <input type="text" name="localidad" class="form-control" value="{{ request.GET.localidad }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Ciudad</label>
+                            <input type="text" name="ciudad" class="form-control" value="{{ request.GET.ciudad }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Provincia</label>
+                            <input type="text" name="provincia" class="form-control" value="{{ request.GET.provincia }}">
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="row mb-3">
-            <div class="col-md-4">
-                <label>Nacionalidad</label>
-                <input type="text" name="nacionalidad" class="form-control" value="{{ request.GET.nacionalidad }}">
-            </div>
-            <div class="col-md-4">
-                <label>Banda</label>
-                <input type="text" name="banda" class="form-control" value="{{ request.GET.banda }}">
-            </div>
-            <div class="col-md-4">
-                <label>Actividad</label>
-                <input type="text" name="actividad" class="form-control" value="{{ request.GET.actividad }}">
-            </div>
-        </div>
-
-        <div class="row mb-3">
-            <div class="col-md-4">
-                <label>Rol</label>
-<select name="rol" class="form-select">
-    <option value="">Seleccione un rol</option>
-    <option value="soldadito" {% if request.GET.rol|default_if_none:"" == "soldadito" %}selected{% endif %}>Soldadito</option>
-    <option value="sicario" {% if request.GET.rol|default_if_none:"" == "sicario" %}selected{% endif %}>Sicario</option>
-    <option value="lugarteniente" {% if request.GET.rol|default_if_none:"" == "lugarteniente" %}selected{% endif %}>Lugarteniente</option>
-    <option value="lider" {% if request.GET.rol|default_if_none:"" == "lider" %}selected{% endif %}>Lider</option>
-</select>
-            </div>
-            <div class="col-md-4">
-                <label>Situación</label>
-<select name="situacion" class="form-select">
-    <option value="">Seleccione situación</option>
-    <option value="libertad" {% if request.GET.situacion|default:"" == "libertad" %}selected{% endif %}>Libertad</option>
-    <option value="fallecido" {% if request.GET.situacion|default:"" == "fallecido" %}selected{% endif %}>Fallecido</option>
-    <option value="detenido" {% if request.GET.situacion|default:"" == "detenido" %}selected{% endif %}>Detenido</option>
-    <option value="domiciliaria" {% if request.GET.situacion|default:"" == "domiciliaria" %}selected{% endif %}>Domiciliaria</option>
-    <option value="profugo" {% if request.GET.situacion|default:"" == "profugo" %}selected{% endif %}>Prófugo</option>
-</select>
-
-            </div>
-            <div class="col-md-4">
-                <label>Fecha Nac. Desde</label>
-                <input type="date" name="fecha_nacimiento_desde" class="form-control" value="{{ request.GET.fecha_nacimiento_desde }}">
-            </div>
-            <div class="col-md-4">
-                <label>Fecha Nac. Hasta</label>
-                <input type="date" name="fecha_nacimiento_hasta" class="form-control"› value="{{ request.GET.fecha_nacimiento_hasta }}">
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="headingVinculos">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseVinculos" aria-expanded="false" aria-controls="collapseVinculos">
+                    Vínculos personales
+                </button>
+            </h2>
+            <div id="collapseVinculos" class="accordion-collapse collapse" data-bs-parent="#filtrosAccordion">
+                <div class="accordion-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Nombre del vínculo</label>
+                            <input type="text" name="vinculo_nombre" class="form-control" value="{{ request.GET.vinculo_nombre }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Tipo de vínculo</label>
+                            <input type="text" name="vinculo_tipo" class="form-control" value="{{ request.GET.vinculo_tipo }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">DNI del vínculo</label>
+                            <input type="text" name="vinculo_dni" class="form-control" value="{{ request.GET.vinculo_dni }}">
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="mb-3">
-            <label>Alias contiene</label>
-            <input type="text" name="alias" class="form-control" value="{{ request.GET.alias }}">
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="headingActividadCriminal">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseActividadCriminal" aria-expanded="false" aria-controls="collapseActividadCriminal">
+                    Actividad criminal
+                </button>
+            </h2>
+            <div id="collapseActividadCriminal" class="accordion-collapse collapse" data-bs-parent="#filtrosAccordion">
+                <div class="accordion-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Banda</label>
+                            <input type="text" name="banda" class="form-control" value="{{ request.GET.banda }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Situación</label>
+                            <select name="situacion" class="form-select">
+                                <option value="">Seleccione situación</option>
+                                <option value="libertad" {% if request.GET.situacion|default:"" == "libertad" %}selected{% endif %}>Libertad</option>
+                                <option value="fallecido" {% if request.GET.situacion|default:"" == "fallecido" %}selected{% endif %}>Fallecido</option>
+                                <option value="detenido" {% if request.GET.situacion|default:"" == "detenido" %}selected{% endif %}>Detenido</option>
+                                <option value="domiciliaria" {% if request.GET.situacion|default:"" == "domiciliaria" %}selected{% endif %}>Domiciliaria</option>
+                                <option value="profugo" {% if request.GET.situacion|default:"" == "profugo" %}selected{% endif %}>Prófugo</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Rol</label>
+                            <select name="rol" class="form-select">
+                                <option value="">Seleccione un rol</option>
+                                <option value="soldadito" {% if request.GET.rol|default_if_none:"" == "soldadito" %}selected{% endif %}>Soldadito</option>
+                                <option value="sicario" {% if request.GET.rol|default_if_none:"" == "sicario" %}selected{% endif %}>Sicario</option>
+                                <option value="lugarteniente" {% if request.GET.rol|default_if_none:"" == "lugarteniente" %}selected{% endif %}>Lugarteniente</option>
+                                <option value="lider" {% if request.GET.rol|default_if_none:"" == "lider" %}selected{% endif %}>Líder</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="mb-3">
-    <label>Teléfono contiene</label>
-    <input type="text" name="telefono" class="form-control" value="{{ request.GET.telefono }}">
-</div>
 
-<div class="row mb-3">
-    <div class="col-md-4">
-        <label>Calle domicilio contiene</label>
-        <input type="number" name="calle" class="form-control" value="{{ request.GET.calle }}">
-    </div>
-    <div class="col-md-4">
-        <label>Barrio domicilio contiene</label>
-        <input type="text" name="barrio" class="form-control" value="{{ request.GET.barrio }}">
-    </div>
-    <div class="col-md-4">
-        <label>Ciudad domicilio contiene</label>
-        <input type="text" name="ciudad" class="form-control" value="{{ request.GET.ciudad }}">
-    </div>
-    <div class="col-md-4">
-        <label>Provincia domicilio contiene</label>
-        <input type="text" name="provincia" class="form-control" value="{{ request.GET.provincia }}">
-    </div>
-    <div class="col-md-3">
-        <label>Altura desde</label>
-        <input type="number" name="altura_desde" class="form-control" value="{{ request.GET.altura_desde }}">
-    </div>
-    <div class="col-md-3">
-        <label>Altura hasta</label>
-        <input type="number" name="altura_hasta" class="form-control" value="{{ request.GET.altura_hasta }}">
-    </div>
-</div>
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="headingVehiculos">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseVehiculos" aria-expanded="false" aria-controls="collapseVehiculos">
+                    Vehículos
+                </button>
+            </h2>
+            <div id="collapseVehiculos" class="accordion-collapse collapse" data-bs-parent="#filtrosAccordion">
+                <div class="accordion-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Marca</label>
+                            <input type="text" name="vehiculo_marca" class="form-control" value="{{ request.GET.vehiculo_marca }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Modelo</label>
+                            <input type="text" name="vehiculo_modelo" class="form-control" value="{{ request.GET.vehiculo_modelo }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Dominio</label>
+                            <input type="text" name="vehiculo_dominio" class="form-control" value="{{ request.GET.vehiculo_dominio }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Color</label>
+                            <input type="text" name="vehiculo_color" class="form-control" value="{{ request.GET.vehiculo_color }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-<div class="row mb-3">
-    <div class="col-md-4">
-        <label>Marca vehículo</label>
-        <input type="text" name="vehiculo_marca" class="form-control" value="{{ request.GET.vehiculo_marca }}">
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="headingActividadComercial">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseActividadComercial" aria-expanded="false" aria-controls="collapseActividadComercial">
+                    Actividad comercial
+                </button>
+            </h2>
+            <div id="collapseActividadComercial" class="accordion-collapse collapse" data-bs-parent="#filtrosAccordion">
+                <div class="accordion-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Actividad</label>
+                            <input type="text" name="actividad" class="form-control" value="{{ request.GET.actividad }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Nombre del empleador</label>
+                            <input type="text" name="empleador_nombre" class="form-control" value="{{ request.GET.empleador_nombre }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">CUIT del empleador</label>
+                            <input type="text" name="empleador_cuit" class="form-control" value="{{ request.GET.empleador_cuit }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="col-md-4">
-        <label>Modelo vehículo</label>
-        <input type="text" name="vehiculo_modelo" class="form-control" value="{{ request.GET.vehiculo_modelo }}">
-    </div>
-    <div class="col-md-4">
-        <label>Dominio vehículo</label>
-        <input type="text" name="vehiculo_dominio" class="form-control" value="{{ request.GET.vehiculo_dominio }}">
-    </div>
-    <div class="col-md-4">
-        <label>Color vehículo</label>
-        <input type="text" name="vehiculo_color" class="form-control" value="{{ request.GET.vehiculo_color }}">
-    </div>
-</div>
 
-<div class="row mb-3">
-    <div class="col-md-4">
-        <label>Nombre empleador</label>
-        <input type="text" name="empleador_nombre" class="form-control" value="{{ request.GET.empleador_nombre }}">
+    <div class="d-flex gap-2 mt-4">
+        <button type="submit" class="btn btn-primary">Buscar</button>
+        <button type="button" class="btn btn-secondary" onclick="limpiarFormulario()">Limpiar</button>
     </div>
-    <div class="col-md-4">
-        <label>CUIT empleador</label>
-        <input type="number" name="empleador_cuit" class="form-control" value="{{ request.GET.empleador_cuit }}">
-    </div>
-</div>
+</form>
 
-<div class="row mb-3">
-    <div class="col-md-4">
-        <label>Nombre vínculo</label>
-        <input type="text" name="vinculo_nombre" class="form-control" value="{{ request.GET.vinculo_nombre }}">
-    </div>
-    <div class="col-md-4">
-        <label>DNI vínculo</label>
-        <input type="number" name="vinculo_dni" class="form-control" value="{{ request.GET.vinculo_dni }}">
-    </div>
-</div>
-
-        <button type="submit" class="btn btn-primary mt-3">Buscar</button>
-        <button type="button" class="btn btn-secondary mt-3 ms-2" onclick="limpiarFormulario()">Limpiar</button>
-    </form>
-
-    <hr class="my-5">
+<hr class="my-5">
 {% if request.GET %}
     <h2 class="mb-4">Resultados</h2>
     <table class="table table-striped">
@@ -167,6 +247,7 @@
                 <th>Apellido</th>
                 <th>Nombre</th>
                 <th>Documento</th>
+                <th>Sexo</th>
                 <th>Acciones</th>
             </tr>
         </thead>
@@ -178,6 +259,7 @@
                 <td>{{ inf.apellido }}</td>
                 <td>{{ inf.nombre }}</td>
                 <td>{{ inf.documento }}</td>
+                <td>{{ inf.get_sexo_display|default:"-" }}</td>
                 <td>
                     <button type="button" class="btn btn-sm btn-info" onclick="verInforme({{ inf.id }})" data-bs-toggle="modal" data-bs-target="#modalInforme">Ver</button>
                     <a href="{% url 'exportar_informe_pdf' inf.id %}" class="btn btn-sm btn-danger ms-1" target="_blank">PDF</a>
@@ -185,7 +267,7 @@
             </tr>
             {% empty %}
             <tr>
-                <td colspan="6">No hay informes que coincidan con los filtros.</td>
+                <td colspan="7">No hay informes que coincidan con los filtros.</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -230,6 +312,7 @@ function verInforme(id) {
     .then(data => {
         if (data.status === "ok") {
             const inf = data.informe;
+            const sexo = inf.sexo_display || (inf.sexo ? inf.sexo.charAt(0).toUpperCase() + inf.sexo.slice(1) : "No informado");
             console.log("VEHICULOS:", inf.vehiculos);
 
             let html = `
@@ -246,6 +329,7 @@ function verInforme(id) {
     <p><strong>Documento:</strong> ${inf.documento}</p>
     <p><strong>CUIT:</strong> ${inf.cuit}</p>
     <p><strong>Nacionalidad:</strong> ${inf.nacionalidad}</p>
+    <p><strong>Sexo:</strong> ${sexo}</p>
     <p><strong>Banda:</strong> ${inf.banda}</p>
     <p><strong>Rol:</strong> ${inf.rol}</p>
     <p><strong>Situación:</strong> ${inf.situacion}</p>

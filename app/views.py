@@ -787,11 +787,10 @@ def bandas_criminales_view(request):
             bandas_rivales__nombres__icontains=filtros["rival"]
         )
 
-    bandas_queryset = bandas_queryset.distinct()
-    bandas = sorted(
-        bandas_queryset,
-        key=lambda banda: (banda.nombre_principal or "").lower(),
-    )
+    bandas_queryset = bandas_queryset.distinct().order_by("nombres")
+    paginator = Paginator(bandas_queryset, 10)
+    pagina = request.GET.get("page")
+    bandas = paginator.get_page(pagina)
 
     if request.method == "POST":
         form = BandaCriminalForm(request.POST)
@@ -873,11 +872,10 @@ def banda_criminal_editar_view(request, pk):
         bandas_queryset = bandas_queryset.filter(
             bandas_rivales__nombres__icontains=filtros["rival"]
         )
-    bandas_queryset = bandas_queryset.distinct()
-    bandas = sorted(
-        bandas_queryset,
-        key=lambda banda: (banda.nombre_principal or "").lower(),
-    )
+    bandas_queryset = bandas_queryset.distinct().order_by("nombres")
+    paginator = Paginator(bandas_queryset, 10)
+    pagina = request.GET.get("page")
+    bandas = paginator.get_page(pagina)
 
     return render(
         request,
@@ -2448,6 +2446,7 @@ def informes_view(request):
             "informes": informes,
             "categorias": categorias,
             "usuarios": usuarios,
+            "bandas": BandaCriminal.objects.order_by("nombres"),
             "fecha_desde": fecha_desde,
             "fecha_hasta": fecha_hasta,
             "selected_categoria": int(categoria_id) if categoria_id and categoria_id.isdigit() else 0,
@@ -2623,6 +2622,7 @@ def informes_crear_view(request):
             "articulos": articulos,
             "categorias": Categoria.objects.all(),
             "usuarios": User.objects.all(),
+            "bandas": BandaCriminal.objects.order_by("nombres"),
             "selected_categoria": (
                 int(categoria_id) if categoria_id and categoria_id.isdigit() and categoria_id != "0" else 0
             ),
@@ -2665,6 +2665,8 @@ def api_detalle_informe(request, id):
         "documento": informe.documento,
         "cuit": informe.cuit,
         "nacionalidad": informe.nacionalidad,
+        "sexo": informe.sexo,
+        "sexo_display": informe.get_sexo_display(),
         "banda": informe.banda,
         "rol": informe.get_rol_display(),
         "situacion": informe.get_situacion_display(),
@@ -2773,16 +2775,21 @@ def consulta_informes_view(request):
     situacion = request.GET.get("situacion", "").strip()
     alias = request.GET.get("alias", "").strip()
     telefono = request.GET.get("telefono", "").strip()
+    sexo = request.GET.get("sexo", "").strip()
     calle = request.GET.get("calle", "").strip()
+    barrio = request.GET.get("barrio", "").strip()
+    localidad = request.GET.get("localidad", "").strip()
     ciudad = request.GET.get("ciudad", "").strip()
     provincia = request.GET.get("provincia", "").strip()
     vehiculo_marca = request.GET.get("vehiculo_marca", "").strip()
+    vehiculo_modelo = request.GET.get("vehiculo_modelo", "").strip()
     vehiculo_dominio = request.GET.get("vehiculo_dominio", "").strip()
     vehiculo_color = request.GET.get("vehiculo_color", "").strip()
     empleador_nombre = request.GET.get("empleador_nombre", "").strip()
     empleador_cuit = request.GET.get("empleador_cuit", "").strip()
     vinculo_nombre = request.GET.get("vinculo_nombre", "").strip()
     vinculo_dni = request.GET.get("vinculo_dni", "").strip()
+    vinculo_tipo = request.GET.get("vinculo_tipo", "").strip()
     altura_desde = request.GET.get("altura_desde")
     altura_hasta = request.GET.get("altura_hasta")
 
@@ -2811,6 +2818,8 @@ def consulta_informes_view(request):
         informes = informes.filter(banda__icontains=banda)
     if actividad:
         informes = informes.filter(actividad__icontains=actividad)
+    if sexo:
+        informes = informes.filter(sexo=sexo)
     if rol:
         informes = informes.filter(rol=rol)
     if situacion:
@@ -2823,12 +2832,18 @@ def consulta_informes_view(request):
         informes = informes.filter(telefono__numero__icontains=telefono)
     if calle:
         informes = informes.filter(domicilio__calle__icontains=calle)
+    if barrio:
+        informes = informes.filter(domicilio__barrio__icontains=barrio)
+    if localidad:
+        informes = informes.filter(domicilio__ciudad__icontains=localidad)
     if ciudad:
         informes = informes.filter(domicilio__ciudad__icontains=ciudad)
     if provincia:
         informes = informes.filter(domicilio__provincia__icontains=provincia)
     if vehiculo_marca:
         informes = informes.filter(vehiculos__marca__icontains=vehiculo_marca)
+    if vehiculo_modelo:
+        informes = informes.filter(vehiculos__modelo__icontains=vehiculo_modelo)
     if vehiculo_dominio:
         informes = informes.filter(vehiculos__dominio__icontains=vehiculo_dominio)
     if vehiculo_color:
@@ -2841,6 +2856,8 @@ def consulta_informes_view(request):
         informes = informes.filter(vinculos__nombre_apellido__icontains=vinculo_nombre)
     if vinculo_dni:
         informes = informes.filter(vinculos__dni__icontains=vinculo_dni)
+    if vinculo_tipo:
+        informes = informes.filter(vinculos__tipo__icontains=vinculo_tipo)
 
     # Fecha nacimiento aproximada
     if fecha_nacimiento_desde:
