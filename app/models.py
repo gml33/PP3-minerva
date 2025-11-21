@@ -774,7 +774,7 @@ class BandaCriminal(models.Model):
 
 
 class InformeBandaCriminal(models.Model):
-    banda = models.ForeignKey(
+    banda = models.OneToOneField(
         BandaCriminal,
         on_delete=models.CASCADE,
         related_name="informes",

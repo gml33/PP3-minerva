@@ -179,11 +179,84 @@
                             {% endwith %}
                         </td>
                         <td class="text-end">
-                            <a href="{% url 'banda_criminal_editar' banda.pk %}" class="btn btn-sm btn-outline-primary">Editar</a>
+                            <div class="btn-group btn-group-sm mb-2">
+                                <button type="button" class="btn btn-outline-info btn-ver-banda"
+                                    data-banda-id="{{ banda.pk }}"
+                                    data-banda-nombre="{{ banda.nombre_principal|default:banda.nombres_como_texto|default:'Banda criminal' }}"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#modalDetalleBanda">
+                                    Ver
+                                </button>
+                                <a href="{% url 'banda_criminal_editar' banda.pk %}" class="btn btn-outline-primary">Editar</a>
+                            </div>
                             <form method="post" action="{% url 'banda_criminal_eliminar' banda.pk %}" class="d-inline form-eliminar-banda">
                                 {% csrf_token %}
                                 <button type="button" class="btn btn-sm btn-outline-danger btn-eliminar-banda">Eliminar</button>
                             </form>
+                            <div id="banda-detalle-{{ banda.pk }}" class="d-none">
+                                <p><strong>Nombres / Alias:</strong> {{ banda.nombres_como_texto|default:"Sin nombre" }}</p>
+                                <div class="mb-2">
+                                    <strong>Zonas de influencia:</strong>
+                                    {% if banda.zonas_influencia_detalle %}
+                                        <ul class="mb-0 ps-3">
+                                            {% for zona in banda.zonas_influencia_detalle %}
+                                                <li>
+                                                    {% if zona.barrio %}<strong>Barrio:</strong> {{ zona.barrio }}{% endif %}
+                                                    {% if zona.localidad %}{% if zona.barrio %} · {% endif %}<strong>Localidad:</strong> {{ zona.localidad }}{% endif %}
+                                                    {% if zona.ciudad %}{% if zona.barrio or zona.localidad %} · {% endif %}<strong>Ciudad:</strong> {{ zona.ciudad }}{% endif %}
+                                                    {% if zona.provincia %}{% if zona.barrio or zona.localidad or zona.ciudad %} · {% endif %}<strong>Provincia:</strong> {{ zona.provincia }}{% endif %}
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
+                                    {% else %}
+                                        <p class="mb-0 text-muted">Sin zonas registradas.</p>
+                                    {% endif %}
+                                </div>
+                                <p><strong>Líderes:</strong>
+                                    {% with lideres=banda.lideres.all %}
+                                        {% if lideres %}
+                                            {% for lider in lideres %}
+                                                {{ lider }}{% if not forloop.last %}, {% endif %}
+                                            {% endfor %}
+                                        {% else %}
+                                            <span class="text-muted">Sin líderes</span>
+                                        {% endif %}
+                                    {% endwith %}
+                                </p>
+                                <p><strong>Miembros:</strong>
+                                    {% with miembros=banda.miembros.all %}
+                                        {% if miembros %}
+                                            {% for miembro in miembros %}
+                                                {{ miembro }}{% if not forloop.last %}, {% endif %}
+                                            {% endfor %}
+                                        {% else %}
+                                            <span class="text-muted">Sin miembros</span>
+                                        {% endif %}
+                                    {% endwith %}
+                                </p>
+                                <p><strong>Bandas aliadas:</strong>
+                                    {% with aliadas=banda.bandas_aliadas.all %}
+                                        {% if aliadas %}
+                                            {% for aliada in aliadas %}
+                                                {{ aliada.nombre_principal|default:aliada }}{% if not forloop.last %}, {% endif %}
+                                            {% endfor %}
+                                        {% else %}
+                                            <span class="text-muted">Sin aliadas</span>
+                                        {% endif %}
+                                    {% endwith %}
+                                </p>
+                                <p><strong>Bandas rivales:</strong>
+                                    {% with rivales=banda.bandas_rivales.all %}
+                                        {% if rivales %}
+                                            {% for rival in rivales %}
+                                                {{ rival.nombre_principal|default:rival }}{% if not forloop.last %}, {% endif %}
+                                            {% endfor %}
+                                        {% else %}
+                                            <span class="text-muted">Sin rivales</span>
+                                        {% endif %}
+                                    {% endwith %}
+                                </p>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
@@ -220,6 +293,19 @@
     </div>
     {% endif %}
 </div>
+<div class="modal fade" id="modalDetalleBanda" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalDetalleBandaTitulo">Detalle de banda</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body" id="modalDetalleBandaBody">
+                <p class="text-muted mb-0">Seleccioná una banda para ver los detalles.</p>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -228,6 +314,20 @@
 document.addEventListener("DOMContentLoaded", function () {
     inicializarCamposNombres();
     inicializarZonasInfluencia();
+
+    const modalTitle = document.getElementById("modalDetalleBandaTitulo");
+    const modalBody = document.getElementById("modalDetalleBandaBody");
+    document.querySelectorAll(".btn-ver-banda").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+            if (!modalTitle || !modalBody) {
+                return;
+            }
+            const bandaId = btn.dataset.bandaId;
+            modalTitle.textContent = btn.dataset.bandaNombre || "Banda criminal";
+            const detalle = document.getElementById(`banda-detalle-${bandaId}`);
+            modalBody.innerHTML = detalle ? detalle.innerHTML : "<p class='text-muted mb-0'>Sin información disponible.</p>";
+        });
+    });
 
     document.querySelectorAll(".form-eliminar-banda").forEach(function (form) {
         const btn = form.querySelector(".btn-eliminar-banda");

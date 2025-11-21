@@ -462,11 +462,31 @@ def informe_banda_exportar_view(request, pk):
             "miembro__telefono",
         ),
     )
+    articulo_links_prefetch = Prefetch(
+        "articulo__links_incluidos",
+        queryset=LinkRelevante.objects.order_by("-fecha_carga"),
+    )
+    hechos_prefetch = Prefetch(
+        "hechos_criminales_autor",
+        queryset=HechoDelictivo.objects.select_related("articulo")
+        .prefetch_related(articulo_links_prefetch)
+        .order_by("-fecha"),
+        to_attr="hechos_autor_prefetch",
+    )
+    personas_queryset = InformeIndividual.objects.prefetch_related(
+        "alias",
+        "telefono",
+        hechos_prefetch,
+    )
     informe = get_object_or_404(
         InformeBandaCriminal.objects.select_related("banda").prefetch_related(
             "bandas_aliadas",
             "bandas_rivales",
             jerarquias_prefetch,
+            Prefetch("banda__bandas_aliadas"),
+            Prefetch("banda__bandas_rivales"),
+            Prefetch("banda__lideres", queryset=personas_queryset),
+            Prefetch("banda__miembros", queryset=personas_queryset),
         ),
         pk=pk,
     )
@@ -488,28 +508,29 @@ def informe_banda_exportar_view(request, pk):
         if jerarquia.rol == JerarquiaPrincipal.Rol.LUGARTENIENTE and jerarquia.miembro
     ]
 
+    titulo_banda = banda.nombre_principal or "Sin nombre"
     doc = Document()
-    doc.add_heading("Informe de Banda", 0)
-    doc.add_paragraph(
-        f"Banda: {banda.nombre_principal or 'Sin nombre'} · Generado el {localtime(now()).strftime('%d/%m/%Y %H:%M')}"
-    )
+    doc.add_heading(f"Informe de banda {titulo_banda}", 0)
 
-    def add_anexo(numero, titulo, contenido, bullet=False):
-        encabezado = f"Anexo {numero} - {titulo}"
-        doc.add_heading(encabezado, level=1)
-        if not contenido:
+    doc.add_heading("Fecha de solicitud", level=1)
+    fecha_solicitud = (
+        localtime(informe.creado_en).strftime("%d/%m/%Y %H:%M")
+        if informe.creado_en
+        else "Fecha no registrada."
+    )
+    doc.add_paragraph(fecha_solicitud)
+
+    def add_section_lines(lineas, bullet=False):
+        if not lineas:
             doc.add_paragraph("Sin información disponible.")
             return
-        if isinstance(contenido, (list, tuple)):
-            for linea in contenido:
-                if not linea:
-                    continue
-                if bullet:
-                    doc.add_paragraph(linea, style="List Bullet")
-                else:
-                    doc.add_paragraph(linea)
-        else:
-            doc.add_paragraph(contenido)
+        for linea in lineas:
+            if not linea:
+                continue
+            if bullet:
+                doc.add_paragraph(linea, style="List Bullet")
+            else:
+                doc.add_paragraph(linea)
 
     zonas = banda.zonas_influencia_detalle
     zonas_listado = [
@@ -561,12 +582,12 @@ def informe_banda_exportar_view(request, pk):
 
     zonas_contenido = zonas_listado or ["No se cargaron zonas de influencia para la banda."]
     aliadas_contenido = (
-        [f"- {aliada.nombre_principal or '-'}" for aliada in bandas_aliadas]
+        [aliada.nombre_principal or "-" for aliada in bandas_aliadas]
         if bandas_aliadas
         else ["Sin alianzas registradas."]
     )
     rivales_contenido = (
-        [f"- {rival.nombre_principal or '-'}" for rival in bandas_rivales]
+        [rival.nombre_principal or "-" for rival in bandas_rivales]
         if bandas_rivales
         else ["Sin rivales registrados."]
     )
@@ -577,82 +598,92 @@ def informe_banda_exportar_view(request, pk):
         informe.posible_evolucion or "No se registró una posible evolución."
     )
 
-    anexo1_contenido = []
-    anexo1_contenido.append("Miembros y jerarquías:")
-    anexo1_contenido.extend(miembros_lineas)
-    anexo1_contenido.append("")
-    anexo1_contenido.append("Zonas de influencia:")
-    anexo1_contenido.extend(zonas_contenido)
-    anexo1_contenido.append("")
-    anexo1_contenido.append("Bandas aliadas:")
-    anexo1_contenido.extend(aliadas_contenido)
-    anexo1_contenido.append("")
-    anexo1_contenido.append("Bandas rivales:")
-    anexo1_contenido.extend(rivales_contenido)
-    anexo1_contenido.append("")
-    anexo1_contenido.append("Conclusión relevante:")
-    anexo1_contenido.append(conclusion_texto)
-    anexo1_contenido.append("")
-    anexo1_contenido.append("Probable evolución:")
-    anexo1_contenido.append(evolucion_texto)
-
-    add_anexo(1, "Resumen ejecutivo", anexo1_contenido)
+    doc.add_heading("Anexo 1 - Resumen ejecutivo", level=1)
+    doc.add_heading("Miembros y jerarquías", level=2)
+    add_section_lines(miembros_lineas)
+    doc.add_heading("Zonas de influencia", level=2)
+    add_section_lines(zonas_contenido, bullet=True)
+    doc.add_heading("Bandas aliadas", level=2)
+    add_section_lines(aliadas_contenido, bullet=True)
+    doc.add_heading("Bandas rivales", level=2)
+    add_section_lines(rivales_contenido, bullet=True)
+    doc.add_heading("Conclusión", level=2)
+    doc.add_paragraph(conclusion_texto)
+    doc.add_heading("Evolución", level=2)
+    doc.add_paragraph(evolucion_texto)
 
     introduccion_contenido = (
         informe.introduccion_descripcion
         or "No se registró una descripción de introducción para este informe."
     )
-    add_anexo(2, "Introducción", introduccion_contenido)
+    doc.add_heading("Anexo 2 - Introducción", level=1)
+    doc.add_paragraph(introduccion_contenido)
 
-    antecedentes_contenido = []
-    antecedentes_contenido.append("Hechos delictivos asociados a la banda:")
-    hechos_relacionados = (
+    hechos_relacionados = list(
         banda.hechos_delictivos.select_related("articulo")
         .prefetch_related("autor")
         .order_by("-fecha")
     )
+    doc.add_heading("Anexo 3 - Antecedentes", level=1)
+    doc.add_heading("Hechos delictivos asociados a la banda", level=2)
     if hechos_relacionados:
         for hecho in hechos_relacionados:
             autores_texto = ", ".join([str(autor) for autor in hecho.autor.all()])
-            antecedentes_contenido.append(
-                f"- {hecho.fecha.strftime('%d/%m/%Y')} · {hecho.get_categoria_display() or 'Sin categoría'} · {hecho.ubicacion_texto} · Calificación {hecho.get_calificacion_display()} · Autores: {autores_texto or ('Autor no identificado' if hecho.autor_desconocido else 'Sin autores')}"
+            descripcion_hecho = (
+                hecho.descripcion.strip() if hecho.descripcion else "Sin descripción registrada."
             )
+            doc.add_paragraph(
+                f"{hecho.fecha.strftime('%d/%m/%Y')} · {hecho.get_categoria_display() or 'Sin categoría'} · {hecho.ubicacion_texto} · Calificación {hecho.get_calificacion_display()} · Autores: {autores_texto or ('Autor no identificado' if hecho.autor_desconocido else 'Sin autores')}"
+            )
+            doc.add_paragraph(f"Descripción: {descripcion_hecho}")
     else:
-        antecedentes_contenido.append("No se registraron hechos delictivos asociados.")
+        doc.add_paragraph("No se registraron hechos delictivos asociados.")
     if informe.antecedentes:
-        antecedentes_contenido.append("")
-        antecedentes_contenido.append("Antecedentes personalizados:")
+        doc.add_heading("Antecedentes personalizados", level=2)
         for antecedente in informe.antecedentes:
             titulo = antecedente.get("titulo") if isinstance(antecedente, dict) else ""
             descripcion = (
                 antecedente.get("descripcion") if isinstance(antecedente, dict) else ""
             )
-            linea = f"{titulo or 'Sin título'}: {descripcion or 'Sin descripción'}"
-            antecedentes_contenido.append(linea.strip())
-    add_anexo(3, "Antecedentes", antecedentes_contenido)
+            doc.add_paragraph(
+                f"{titulo or 'Sin título'}: {descripcion or 'Sin descripción'}".strip()
+            )
 
-    desarrollo_contenido = informe.desarrollo_contenido or "No se registró contenido para el desarrollo."
+    doc.add_heading("Anexo 4 - Desarrollo", level=1)
     desarrollo_titulo = informe.desarrollo_titulo or "Desarrollo"
-    add_anexo(4, desarrollo_titulo, desarrollo_contenido)
+    doc.add_heading(desarrollo_titulo, level=2)
+    if informe.desarrollo_contenido:
+        bloques_desarrollo = [
+            bloque.strip() for bloque in informe.desarrollo_contenido.split("\n\n")
+        ]
+        for bloque in [b for b in bloques_desarrollo if b]:
+            doc.add_paragraph(bloque)
+        if not any(b for b in bloques_desarrollo if b):
+            doc.add_paragraph("No se registró contenido para el desarrollo.")
+    else:
+        doc.add_paragraph("No se registró contenido para el desarrollo.")
 
-    hechos_lineas = []
+    doc.add_heading("Anexo 5 - Hechos relevantes", level=1)
     if hechos_relacionados:
         for hecho in hechos_relacionados:
-            titulo = f"{hecho.fecha.strftime('%d/%m/%Y')} - {hecho.ubicacion_texto}"
-            hechos_lineas.append(titulo)
-            hechos_lineas.append(f"Fecha del hecho: {hecho.fecha.strftime('%d/%m/%Y')}")
+            doc.add_heading(
+                f"{hecho.fecha.strftime('%d/%m/%Y')} - {hecho.ubicacion_texto}",
+                level=2,
+            )
+            doc.add_paragraph(
+                f"Fecha del hecho: {hecho.fecha.strftime('%d/%m/%Y')}"
+            )
             descripcion = hecho.descripcion.strip() if hecho.descripcion else ""
-            hechos_lineas.append(f"Descripción: {descripcion or 'Sin descripción registrada.'}")
-            hechos_lineas.append("")
+            doc.add_paragraph(
+                f"Descripción: {descripcion or 'Sin descripción registrada.'}"
+            )
     else:
-        hechos_lineas.append("No se registraron hechos delictivos asociados a la banda.")
-    add_anexo(5, "Hechos relevantes", hechos_lineas)
+        doc.add_paragraph("No se registraron hechos delictivos asociados a la banda.")
 
-    add_anexo(
-        6,
-        "Conclusiones",
+    doc.add_heading("Anexo 6 - Conclusiones", level=1)
+    doc.add_paragraph(
         informe.conclusiones_desarrollo
-        or "No se registraron conclusiones en este informe.",
+        or "No se registraron conclusiones en este informe."
     )
 
     doc.add_heading("Anexo 7 - Fichas individuales", level=1)
@@ -676,18 +707,81 @@ def informe_banda_exportar_view(request, pk):
                 [str(numero) for numero in persona.telefono.values_list("numero", flat=True)]
             )
             info = [
-                f"Documento: {persona.documento or '-'}",
-                f"Rol: {persona.get_rol_display() or '-'}",
-                f"Situación: {persona.get_situacion_display() or '-'}",
-                f"Actividad: {persona.actividad or '-'}",
-                f"Alias: {alias or 'Sin alias'}",
-                f"Teléfonos: {telefonos or 'Sin teléfonos'}",
+                ("Documento", persona.documento or "-"),
+                ("Rol", persona.get_rol_display() or "-"),
+                ("Situación", persona.get_situacion_display() or "-"),
+                ("Actividad", persona.actividad or "-"),
+                ("Alias", alias or "Sin alias"),
+                ("Teléfonos", telefonos or "Sin teléfonos"),
             ]
-            for linea in info:
-                doc.add_paragraph(linea)
+            table = doc.add_table(rows=len(info), cols=2)
+            for idx, (label, value) in enumerate(info):
+                row = table.rows[idx]
+                row.cells[0].text = label
+                row.cells[1].text = value
             doc.add_paragraph("")
     else:
         doc.add_paragraph("No hay fichas individuales asociadas al informe.")
+
+    doc.add_heading("Anexo 8 - Historial delictivo de integrantes", level=1)
+    if personas_conocidas:
+        for persona in personas_conocidas:
+            doc.add_heading(str(persona), level=2)
+            hechos_integrante = list(
+                getattr(persona, "hechos_autor_prefetch", [])
+            )
+            if not hechos_integrante:
+                doc.add_paragraph(
+                    "Sin hechos delictivos registrados para este integrante."
+                )
+                continue
+            for hecho in hechos_integrante:
+                doc.add_paragraph(
+                    f"Hecho del {hecho.fecha.strftime('%d/%m/%Y')} · {hecho.get_categoria_display() or 'Sin categoría'} · {hecho.ubicacion_texto}"
+                )
+                descripcion = hecho.descripcion.strip() if hecho.descripcion else ""
+                doc.add_paragraph(
+                    f"Descripción: {descripcion or 'Sin descripción disponible.'}"
+                )
+                articulo = hecho.articulo
+                if articulo:
+                    articulo_fecha = (
+                        localtime(articulo.fecha_creacion).strftime("%d/%m/%Y %H:%M")
+                        if articulo.fecha_creacion
+                        else "Sin fecha de creación"
+                    )
+                    doc.add_paragraph(
+                        f"Artículo asociado ({articulo_fecha}): {articulo.titulo or 'Sin título'}"
+                    )
+                    links_relacionados = list(articulo.links_incluidos.all())
+                    if links_relacionados:
+                        doc.add_paragraph("Links relevantes relacionados:")
+                        for link in links_relacionados:
+                            link_fecha = (
+                                localtime(link.fecha_carga).strftime(
+                                    "%d/%m/%Y %H:%M"
+                                )
+                                if link.fecha_carga
+                                else "Sin fecha"
+                            )
+                            doc.add_paragraph(
+                                f"  - {link_fecha} · {link.url}",
+                                style="List Bullet",
+                            )
+                    else:
+                        doc.add_paragraph(
+                            "  - Sin links relevantes asociados.",
+                            style="List Bullet",
+                        )
+                else:
+                    doc.add_paragraph(
+                        "No se registró un artículo asociado a este hecho."
+                    )
+                doc.add_paragraph("")
+    else:
+        doc.add_paragraph(
+            "No se registraron integrantes con hechos delictivos vinculados en este informe."
+        )
 
     InformeBandaCriminal.objects.filter(pk=informe.pk).update(
         exportaciones=F("exportaciones") + 1
