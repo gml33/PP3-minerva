@@ -1,3 +1,5 @@
+import json
+
 from django.contrib.auth.models import User
 from django.db import models
 from django.utils import timezone
@@ -370,8 +372,6 @@ class HechoDestacado(models.Model):
 
 
 # Artículo generado con links incluidos
-
-
 class Articulo(models.Model):
     class Estado(models.TextChoices):
         EN_REDACCION = "en redaccion", "En redacción"
@@ -383,6 +383,13 @@ class Articulo(models.Model):
 
     titulo = models.CharField(max_length=200)
     fecha = models.DateField(null=True, blank=True)
+    # ⚠️ CAMPO NUEVO AGREGADO: Fecha del Hecho
+    fecha_hecho = models.DateField(
+        null=True, 
+        blank=True, 
+        verbose_name="Fecha del Hecho",
+        help_text="Fecha en que ocurrió el hecho"
+    )
     lugar = models.CharField(max_length=200, blank=True)
     descripcion = models.TextField()
     categoria = models.ForeignKey(
@@ -409,7 +416,7 @@ class Articulo(models.Model):
     fecha_redactado_por_prensa = models.DateTimeField(null=True, blank=True)
     fecha_leido_por_redaccion = models.DateTimeField(null=True, blank=True)
     fecha_aprobado_por_redaccion = models.DateTimeField(null=True, blank=True)
-    aprobacion=models.BooleanField(default=False)
+    aprobacion = models.BooleanField(default=False)
     
     class Meta:
         verbose_name_plural = "Artículos"
@@ -430,6 +437,7 @@ class TipoActividad(models.TextChoices):
     CLASIFICACION_LINK = "clasificacion_link", "Clasificacion del Link"
     CARGA_INFORME = "carge_informe", "carga de informe"
     OTRO = "otro", "Otro"
+    EXPORTAR_INFORME_BANDA = "exportar_informe_banda", "Exportó informe de banda"
 
 
 class SolicitudInfo(models.Model):
@@ -477,6 +485,10 @@ class Actividad(models.Model):
 
 # agregar una fecha por cada vez que se actualiza el informe, algo como un date_add_now_true.
 class InformeIndividual(models.Model):
+    class Sexo(models.TextChoices):
+        MASCULINO = "masculino", "Masculino"
+        FEMENINO = "femenino", "Femenino"
+
     apellido = models.CharField(max_length=100, blank=True)
     nombre = models.CharField(max_length=100, blank=True)
     documento = models.CharField(max_length=8, blank=True)
@@ -499,6 +511,12 @@ class InformeIndividual(models.Model):
 
     rol = models.CharField(max_length=20, choices=ROL_CHOICES, blank=True)
     situacion = models.CharField(max_length=20, choices=SITUACION_CHOICES, blank=True)
+    sexo = models.CharField(
+        max_length=20,
+        choices=Sexo.choices,
+        blank=True,
+        help_text="Sexo registrado en el documento del individuo.",
+    )
     actividad = models.CharField(max_length=200, blank=True)
     telefono = models.ManyToManyField(Telefono, blank=True)
     fecha_nacimiento = models.DateField(null=True, blank=True)
@@ -554,7 +572,11 @@ class HechoDelictivo(models.Model):
         null=True,
         blank=True,
     )
-    ubicacion = models.CharField(max_length=255)
+    ubicacion = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Detalle de ubicación con calle, número, barrio, localidad, ciudad y provincia.",
+    )
     calificacion = models.CharField(
         max_length=20,
         choices=Calificacion.choices,
@@ -572,11 +594,21 @@ class HechoDelictivo(models.Model):
         related_name="hechos_criminales_autor",
         blank=True,
     )
+    autor_desconocido = models.BooleanField(
+        default=False,
+        help_text="Marcá esta opción si no hay autores identificados.",
+    )
     descripcion = models.TextField()
     noticias = models.ManyToManyField(
         "LinkRelevante",
         related_name="hechos_criminales",
         blank=True,
+    )
+    bandas = models.ManyToManyField(
+        "BandaCriminal",
+        related_name="hechos_delictivos",
+        blank=True,
+        help_text="Bandas criminales relacionadas con el hecho.",
     )
     articulo = models.ForeignKey(
         Articulo,
@@ -595,9 +627,64 @@ class HechoDelictivo(models.Model):
         categoria = self.get_categoria_display() if self.categoria else "Sin categoría"
         return f"{self.fecha} - {categoria}"
 
+    def _ubicacion_dict(self):
+        data = self.ubicacion or {}
+        if isinstance(data, str):
+            try:
+                data = json.loads(data)
+            except json.JSONDecodeError:
+                data = {
+                    "barrio": "",
+                    "localidad": "",
+                    "ciudad": data,
+                    "provincia": "",
+                }
+        if not isinstance(data, dict):
+            data = {}
+        return {
+            "calle": data.get("calle", ""),
+            "numero": data.get("numero", ""),
+            "barrio": data.get("barrio", ""),
+            "localidad": data.get("localidad", ""),
+            "ciudad": data.get("ciudad", ""),
+            "provincia": data.get("provincia", ""),
+        }
+
+    @property
+    def ubicacion_texto(self):
+        data = self._ubicacion_dict()
+        partes = []
+        calle = data.get("calle", "").strip()
+        numero = data.get("numero", "").strip()
+        if calle and numero:
+            partes.append(f"{calle} {numero}")
+        elif calle:
+            partes.append(calle)
+        elif numero:
+            partes.append(f"N° {numero}")
+        partes.extend(
+            [
+                data.get("barrio", "").strip(),
+                data.get("localidad", "").strip(),
+                data.get("ciudad", "").strip(),
+                data.get("provincia", "").strip(),
+            ]
+        )
+        partes = [p for p in partes if p]
+        return ", ".join(partes) if partes else "Ubicación no registrada"
+
 
 class BandaCriminal(models.Model):
-    nombres = models.CharField(max_length=150, unique=True)
+    nombres = models.JSONField(
+        default=list,
+        db_column="nombre",
+        help_text="Lista de nombres o alias asociados a la banda.",
+    )
+    zonas_influencia = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Listado de zonas con barrio, localidad, ciudad y provincia donde opera la banda.",
+    )
     lideres = models.ManyToManyField(
         InformeIndividual,
         related_name="bandas_lideradas",
@@ -608,12 +695,243 @@ class BandaCriminal(models.Model):
         related_name="bandas_miembro",
         blank=True,
     )
-    territorio_operacion = models.CharField(max_length=255)
-
+    bandas_aliadas = models.ManyToManyField(
+        "self",
+        blank=True,
+        symmetrical=False,
+        related_name="bandas_aliadas_de",
+    )
+    bandas_rivales = models.ManyToManyField(
+        "self",
+        blank=True,
+        symmetrical=False,
+        related_name="bandas_rivales_de",
+    )
     class Meta:
         verbose_name = "Banda Criminal"
         verbose_name_plural = "Bandas Criminales"
         ordering = ["nombres"]
 
     def __str__(self):
-        return self.nombres
+        return self.nombre_principal or "Banda sin nombre"
+
+    @property
+    def nombre_principal(self):
+        if isinstance(self.nombres, list) and self.nombres:
+            return self.nombres[0]
+        if isinstance(self.nombres, str):
+            return self.nombres
+        return ""
+
+    @property
+    def nombres_como_texto(self):
+        if isinstance(self.nombres, list):
+            return ", ".join(self.nombres)
+        if isinstance(self.nombres, str):
+            return self.nombres
+        return ""
+
+    def _zonas_influencia_list(self):
+        data = self.zonas_influencia or []
+        if isinstance(data, str):
+            try:
+                data = json.loads(data)
+            except json.JSONDecodeError:
+                data = []
+        if not isinstance(data, list):
+            return []
+        zonas = []
+        for zona in data:
+            if isinstance(zona, dict):
+                zonas.append(
+                    {
+                        "barrio": zona.get("barrio", "").strip(),
+                        "localidad": zona.get("localidad", "").strip(),
+                        "ciudad": zona.get("ciudad", "").strip(),
+                        "provincia": zona.get("provincia", "").strip(),
+                    }
+                )
+        return zonas
+
+    @property
+    def zonas_influencia_detalle(self):
+        return self._zonas_influencia_list()
+
+    @property
+    def zonas_resumen(self):
+        textos = []
+        for zona in self._zonas_influencia_list():
+            partes = [
+                zona.get("barrio") or "",
+                zona.get("localidad") or "",
+                zona.get("ciudad") or "",
+                zona.get("provincia") or "",
+            ]
+            texto = ", ".join([p for p in partes if p])
+            if texto:
+                textos.append(texto)
+        return " / ".join(textos)
+
+
+class InformeBandaCriminal(models.Model):
+    banda = models.OneToOneField(
+        BandaCriminal,
+        on_delete=models.CASCADE,
+        related_name="informes",
+    )
+    jerarquias_principales = models.ManyToManyField(
+        "InformeIndividual",
+        through="JerarquiaPrincipal",
+        related_name="informes_banda_criminal",
+        blank=True,
+    )
+    introduccion_descripcion = models.TextField(
+        blank=True,
+        help_text="Descripción de la introducción del informe.",
+    )
+    zonas_influencia = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Listado estructurado de zonas donde opera la banda en el contexto del informe.",
+    )
+    conclusion_relevante = models.TextField(
+        blank=True,
+        help_text="Conclusión redactada por el redactor responsable.",
+    )
+    bandas_aliadas = models.ManyToManyField(
+        BandaCriminal,
+        related_name="informes_bandas_aliadas",
+        symmetrical=False,
+        blank=True,
+    )
+    bandas_rivales = models.ManyToManyField(
+        BandaCriminal,
+        related_name="informes_bandas_rivales",
+        symmetrical=False,
+        blank=True,
+    )
+    posible_evolucion = models.TextField(
+        blank=True,
+        help_text="Hipótesis u observaciones sobre la evolución de la banda.",
+    )
+    conclusiones_desarrollo = models.TextField(
+        blank=True,
+        help_text="Contenido del anexo de conclusiones.",
+    )
+    exportaciones = models.PositiveIntegerField(default=0)
+    antecedentes = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Lista de antecedentes personalizados que incluye título y descripción.",
+    )
+    desarrollo_titulo = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Título del apartado de desarrollo.",
+    )
+    desarrollo_contenido = models.TextField(
+        blank=True,
+        help_text="Contenido redactado manualmente para el desarrollo.",
+    )
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Informe de Banda Criminal"
+        verbose_name_plural = "Informes de Bandas Criminales"
+        ordering = ["-creado_en"]
+
+    def __str__(self):
+        return f"Informe de {self.banda.nombre_principal or 'Banda'}"
+
+    def _zonas_influencia_list(self):
+        data = self.zonas_influencia or []
+        if isinstance(data, str):
+            try:
+                data = json.loads(data)
+            except json.JSONDecodeError:
+                data = []
+        if not isinstance(data, list):
+            return []
+        zonas = []
+        for zona in data:
+            if isinstance(zona, dict):
+                zonas.append(
+                    {
+                        "barrio": zona.get("barrio", "").strip(),
+                        "localidad": zona.get("localidad", "").strip(),
+                        "ciudad": zona.get("ciudad", "").strip(),
+                        "provincia": zona.get("provincia", "").strip(),
+                    }
+                )
+            elif isinstance(zona, str):
+                zonas.append(
+                    {
+                        "barrio": "",
+                        "localidad": "",
+                        "ciudad": zona.strip(),
+                        "provincia": "",
+                    }
+                )
+        return zonas
+
+    @property
+    def zonas_influencia_detalle(self):
+        return self._zonas_influencia_list()
+
+    @property
+    def zonas_resumen(self):
+        textos = []
+        for zona in self._zonas_influencia_list():
+            partes = [
+                zona.get("barrio") or "",
+                zona.get("localidad") or "",
+                zona.get("ciudad") or "",
+                zona.get("provincia") or "",
+            ]
+            texto = ", ".join([p for p in partes if p])
+            if texto:
+                textos.append(texto)
+        return " / ".join(textos)
+
+
+class JerarquiaPrincipal(models.Model):
+    class Rol(models.TextChoices):
+        LIDER = "lider", "Líder"
+        LUGARTENIENTE = "lugarteniente", "Lugarteniente"
+
+    informe = models.ForeignKey(
+        InformeBandaCriminal,
+        on_delete=models.CASCADE,
+        related_name="jerarquias",
+    )
+    miembro = models.ForeignKey(
+        InformeIndividual,
+        on_delete=models.CASCADE,
+        related_name="jerarquias_de_banda",
+    )
+    rol = models.CharField(max_length=20, choices=Rol.choices)
+
+    class Meta:
+        verbose_name = "Jerarquía Principal"
+        verbose_name_plural = "Jerarquías Principales"
+        unique_together = ("informe", "miembro")
+
+    def __str__(self):
+        return f"{self.miembro} - {self.get_rol_display()} en {self.informe}"
+
+
+class ConfiguracionSistema(models.Model):
+    sarcasmo_mode = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name = "Configuración del Sistema"
+        verbose_name_plural = "Configuración del Sistema"
+
+    def __str__(self):
+        return "Configuración del sistema"
+
+    @classmethod
+    def obtener(cls):
+        obj, _ = cls.objects.get_or_create(pk=1, defaults={"sarcasmo_mode": False})
+        return obj

@@ -4,7 +4,36 @@
 {% block content %}
 <div class="container mt-4">
     <h1>Panel de Configuraciones</h1>
+    {% include "partials/messages.html" %}
     <div class="row g-4">
+        {% if user.userprofile.rol == 'administrador' %}
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>Modo Sarcasmo</span>
+                    <span class="badge bg-info text-dark">
+                        Estado actual: {{ sarcasmo_form.instance.sarcasmo_mode|yesno:"Activado,Desactivado" }}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <form method="post" class="d-flex align-items-center gap-3">
+                        {% csrf_token %}
+                        <input type="hidden" name="formulario" value="sarcasmo">
+                        <div class="form-check form-switch">
+                            {{ sarcasmo_form.sarcasmo_mode }}
+                            <label class="form-check-label" for="{{ sarcasmo_form.sarcasmo_mode.id_for_label }}">
+                                Activar respuestas sarcásticas
+                            </label>
+                        </div>
+                        <button type="submit" class="btn btn-outline-primary">
+                            Guardar configuración
+                        </button>
+                    </form>
+                    <small class="text-muted">Solo los administradores pueden cambiar esta opción.</small>
+                </div>
+            </div>
+        </div>
+        {% endif %}
         <div class="col-md-6">
             <h3>Diarios</h3>
             <div class="table-responsive">
@@ -152,23 +181,5 @@
         });
     }
 </script>
-
-{% if messages %}
-<script>
-    document.addEventListener("DOMContentLoaded", () => {
-        {% for message in messages %}
-            Swal.fire({
-                toast: true,
-                position: 'top-end',
-                icon: 'success',
-                title: '{{ message|escapejs }}',
-                showConfirmButton: false,
-                timer: 3000,
-                timerProgressBar: true
-            });
-        {% endfor %}
-    });
-</script>
-{% endif %}
 
 {% endblock %}

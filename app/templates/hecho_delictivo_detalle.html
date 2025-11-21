@@ -22,7 +22,7 @@
             <dd class="col-sm-9">{{ hecho.get_categoria_display|default:"Sin categoría" }}</dd>
 
             <dt class="col-sm-3">Ubicación</dt>
-            <dd class="col-sm-9">{{ hecho.ubicacion }}</dd>
+            <dd class="col-sm-9">{{ hecho.ubicacion_texto }}</dd>
 
             <dt class="col-sm-3">Calificación</dt>
             <dd class="col-sm-9">{{ hecho.get_calificacion_display }}</dd>
@@ -62,21 +62,41 @@
         <div class="card mb-4">
             <div class="card-header">Autores vinculados</div>
             <div class="card-body">
-                {% with autores=hecho.autor.all %}
-                    {% if autores %}
-                        <ul class="mb-0">
-                            {% for autor in autores %}
-                                <li>{{ autor }}</li>
-                            {% endfor %}
-                        </ul>
-                    {% else %}
-                        <p class="mb-0 text-muted">Sin autores relacionados.</p>
-                    {% endif %}
-                {% endwith %}
+                {% if hecho.autor_desconocido %}
+                    <p class="mb-0 text-muted">Autor no identificado para este hecho.</p>
+                {% else %}
+                    {% with autores=hecho.autor.all %}
+                        {% if autores %}
+                            <ul class="mb-0">
+                                {% for autor in autores %}
+                                    <li>{{ autor }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p class="mb-0 text-muted">Sin autores relacionados.</p>
+                        {% endif %}
+                    {% endwith %}
+                {% endif %}
             </div>
         </div>
     </div>
     <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">Bandas asociadas</div>
+            <div class="card-body">
+                {% with bandas=hecho.bandas.all %}
+                    {% if bandas %}
+                        <ul class="mb-0">
+                            {% for banda in bandas %}
+                                <li>{{ banda.nombre_principal|default:banda }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="mb-0 text-muted">Sin bandas asociadas.</p>
+                    {% endif %}
+                {% endwith %}
+            </div>
+        </div>
         <div class="card mb-4">
             <div class="card-header">Noticias asociadas</div>
             <div class="card-body">

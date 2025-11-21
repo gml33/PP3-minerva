@@ -5,11 +5,7 @@
 {% block content %}
 <h1 class="mb-4">Herramientas OSINT</h1>
 
-{% if messages %}
-    {% for message in messages %}
-        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-    {% endfor %}
-{% endif %}
+{% include "partials/messages.html" %}
 
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">

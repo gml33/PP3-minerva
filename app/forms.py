@@ -1,3 +1,5 @@
+import json
+
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm
 from captcha.fields import CaptchaField
@@ -15,6 +17,9 @@ from .models import (
     BandaCriminal,
     LinkRelevante,
     EstadoLink,
+    InformeBandaCriminal,
+    JerarquiaPrincipal,
+    ConfiguracionSistema,
 )
 
 
@@ -34,6 +39,7 @@ class InformeIndividualForm(forms.ModelForm):
             "documento",
             "cuit",
             "nacionalidad",
+            "sexo",
             "banda",
             "actividad",
             "fecha_nacimiento",
@@ -104,26 +110,233 @@ class RadioDigitalForm(forms.ModelForm):
 
 
 class BandaCriminalForm(forms.ModelForm):
-    lideres = forms.ModelMultipleChoiceField(
-        queryset=InformeIndividual.objects.all().order_by("apellido", "nombre"),
+    class Meta:
+        model = BandaCriminal
+        fields = [
+            "nombres",
+            "zonas_influencia",
+            "lideres",
+            "miembros",
+            "bandas_aliadas",
+            "bandas_rivales",
+        ]
+        widgets = {
+            "nombres": forms.HiddenInput(),
+            "zonas_influencia": forms.HiddenInput(),
+            "bandas_aliadas": forms.SelectMultiple(attrs={"class": "form-select", "size": 6}),
+            "bandas_rivales": forms.SelectMultiple(attrs={"class": "form-select", "size": 6}),
+        }
+        labels = {
+            "nombres": "Nombres o alias",
+            "zonas_influencia": "Zonas de influencia",
+            "bandas_aliadas": "Bandas aliadas",
+            "bandas_rivales": "Bandas rivales",
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.is_bound:
+            valores = self.instance.nombres if getattr(self.instance, "nombres", None) else []
+            if isinstance(valores, str):
+                try:
+                    valores = json.loads(valores)
+                except json.JSONDecodeError:
+                    valores = [valores] if valores else []
+            self.fields["nombres"].initial = json.dumps(valores or [], ensure_ascii=False)
+            zonas = getattr(self.instance, "zonas_influencia", []) or []
+            if isinstance(zonas, str):
+                try:
+                    zonas = json.loads(zonas)
+                except json.JSONDecodeError:
+                    zonas = []
+            self.fields["zonas_influencia"].initial = json.dumps(zonas or [], ensure_ascii=False)
+
+    def clean_nombres(self):
+        raw = self.cleaned_data.get("nombres")
+        if isinstance(raw, list):
+            nombres = raw
+        else:
+            if not raw:
+                nombres = []
+            else:
+                try:
+                    nombres = json.loads(raw)
+                except json.JSONDecodeError as exc:
+                    raise forms.ValidationError(
+                        "No se pudieron procesar los nombres ingresados."
+                    ) from exc
+        nombres_limpios = []
+        for nombre in nombres:
+            if isinstance(nombre, str):
+                valor = nombre.strip()
+                if valor:
+                    nombres_limpios.append(valor)
+        if not nombres_limpios:
+            raise forms.ValidationError("Ingresá al menos un nombre para la banda.")
+        return nombres_limpios
+
+    def clean_zonas_influencia(self):
+        raw = self.cleaned_data.get("zonas_influencia")
+        if isinstance(raw, list):
+            zonas = raw
+        else:
+            if not raw:
+                zonas = []
+            else:
+                try:
+                    zonas = json.loads(raw)
+                except json.JSONDecodeError as exc:
+                    raise forms.ValidationError(
+                        "No se pudieron procesar las zonas de influencia."
+                    ) from exc
+
+        zonas_limpias = []
+        for zona in zonas:
+            if not isinstance(zona, dict):
+                continue
+            barrio = zona.get("barrio", "").strip()
+            localidad = zona.get("localidad", "").strip()
+            ciudad = zona.get("ciudad", "").strip()
+            provincia = zona.get("provincia", "").strip()
+            if any([barrio, localidad, ciudad, provincia]):
+                zonas_limpias.append(
+                    {
+                        "barrio": barrio,
+                        "localidad": localidad,
+                        "ciudad": ciudad,
+                        "provincia": provincia,
+                    }
+                )
+
+        if not zonas_limpias:
+            raise forms.ValidationError(
+                "Ingresá al menos una zona de influencia con algún dato."
+            )
+        return zonas_limpias
+
+
+class InformeBandaCriminalForm(forms.ModelForm):
+    antecedentes_json = forms.CharField(
         required=False,
-        widget=forms.SelectMultiple(attrs={"class": "form-select", "size": 8}),
-        label="Líderes",
-    )
-    miembros = forms.ModelMultipleChoiceField(
-        queryset=InformeIndividual.objects.all().order_by("apellido", "nombre"),
-        required=False,
-        widget=forms.SelectMultiple(attrs={"class": "form-select", "size": 8}),
-        label="Miembros",
+        widget=forms.HiddenInput(),
     )
 
     class Meta:
-        model = BandaCriminal
-        fields = ["nombres", "lideres", "miembros", "territorio_operacion"]
+        model = InformeBandaCriminal
+        fields = [
+            "banda",
+            "introduccion_descripcion",
+            "conclusion_relevante",
+            "posible_evolucion",
+            "desarrollo_titulo",
+            "desarrollo_contenido",
+            "conclusiones_desarrollo",
+        ]
         widgets = {
-            "nombres": forms.TextInput(attrs={"class": "form-control"}),
-            "territorio_operacion": forms.TextInput(attrs={"class": "form-control"}),
+            "banda": forms.Select(attrs={"class": "form-select"}),
+            "introduccion_descripcion": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+            "conclusion_relevante": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+            "posible_evolucion": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+            "desarrollo_titulo": forms.TextInput(attrs={"class": "form-control"}),
+            "desarrollo_contenido": forms.Textarea(attrs={"class": "form-control", "rows": 4}),
+            "conclusiones_desarrollo": forms.Textarea(attrs={"class": "form-control", "rows": 4}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["introduccion_descripcion"].required = False
+        self.fields["conclusion_relevante"].required = False
+        self.fields["posible_evolucion"].required = False
+        self.fields["desarrollo_titulo"].required = False
+        self.fields["desarrollo_contenido"].required = False
+        self.fields["conclusiones_desarrollo"].required = False
+        self.fields["desarrollo_titulo"].label = "Título"
+        self.fields["desarrollo_contenido"].label = "Contenido"
+        antecedentes_inicial = []
+        if self.instance and getattr(self.instance, "antecedentes", None):
+            antecedentes_inicial = self.instance.antecedentes
+        self.fields["antecedentes_json"].initial = json.dumps(
+            antecedentes_inicial or [], ensure_ascii=False
+        )
+        self._bandas_aliadas_auto = []
+        self._bandas_rivales_auto = []
+        self._lideres_auto = []
+        self._lugartenientes_auto = []
+
+    def _zonas_desde_banda(self, banda):
+        zonas = getattr(banda, "zonas_influencia", []) or []
+        if isinstance(zonas, str):
+            try:
+                zonas = json.loads(zonas)
+            except json.JSONDecodeError:
+                zonas = []
+        if not isinstance(zonas, list):
+            zonas = []
+        return zonas
+
+    def _lugartenientes_desde_banda(self, banda, lideres_ids):
+        lug_por_rol = banda.miembros.filter(rol__iexact="lugarteniente").exclude(
+            pk__in=lideres_ids
+        )
+        if lug_por_rol.exists():
+            return list(lug_por_rol)
+        integrantes = banda.miembros.exclude(pk__in=lideres_ids)
+        return list(integrantes)
+
+    def _aplicar_valores_por_defecto(self, banda):
+        lideres_actual = list(banda.lideres.all())
+        if not lideres_actual:
+            lideres_actual = list(
+                banda.miembros.filter(rol__iexact="lider")
+            )
+        lideres_ids = [miembro.pk for miembro in lideres_actual]
+        lugartenientes_actual = self._lugartenientes_desde_banda(
+            banda, lideres_ids
+        )
+        self._bandas_aliadas_auto = list(banda.bandas_aliadas.all())
+        self._bandas_rivales_auto = list(banda.bandas_rivales.all())
+        self._lideres_auto = lideres_actual
+        self._lugartenientes_auto = lugartenientes_actual
+
+    def save(self, commit=True):
+        banda = self.cleaned_data.get("banda")
+        if banda:
+            self._aplicar_valores_por_defecto(banda)
+        informe = super().save(commit=False)
+        if banda:
+            informe.zonas_influencia = self._zonas_desde_banda(banda)
+        informe.antecedentes = self.cleaned_data.get("antecedentes", [])
+        if commit:
+            informe.save()
+            self.save_m2m()
+        return informe
+
+    def _save_m2m(self):
+        super()._save_m2m()
+        informe = getattr(self, "instance", None)
+        if informe and informe.pk:
+            informe.bandas_aliadas.set(getattr(self, "_bandas_aliadas_auto", []))
+            informe.bandas_rivales.set(getattr(self, "_bandas_rivales_auto", []))
+            informe.jerarquias.all().delete()
+            relaciones = []
+            for miembro in getattr(self, "_lideres_auto", []):
+                relaciones.append(
+                    JerarquiaPrincipal(
+                        informe=informe,
+                        miembro=miembro,
+                        rol=JerarquiaPrincipal.Rol.LIDER,
+                    )
+                )
+            for miembro in getattr(self, "_lugartenientes_auto", []):
+                relaciones.append(
+                    JerarquiaPrincipal(
+                        informe=informe,
+                        miembro=miembro,
+                        rol=JerarquiaPrincipal.Rol.LUGARTENIENTE,
+                    )
+                )
+            if relaciones:
+                JerarquiaPrincipal.objects.bulk_create(relaciones)
 
 
 class ArticuloForm(forms.ModelForm):
@@ -154,17 +367,59 @@ class ArticuloForm(forms.ModelForm):
 
 
 class HechoDelictivoForm(forms.ModelForm):
+    ubicacion_calle = forms.CharField(
+        required=False,
+        label="Calle",
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+    ubicacion_numero = forms.CharField(
+        required=False,
+        label="Número",
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+    ubicacion_barrio = forms.CharField(
+        required=False,
+        label="Barrio",
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+    ubicacion_localidad = forms.CharField(
+        required=False,
+        label="Localidad",
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+    ubicacion_ciudad = forms.CharField(
+        required=False,
+        label="Ciudad",
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+    ubicacion_provincia = forms.CharField(
+        required=False,
+        label="Provincia",
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
     autor = forms.ModelMultipleChoiceField(
         queryset=InformeIndividual.objects.all(),
         required=False,
         widget=forms.SelectMultiple(attrs={"class": "form-select", "size": 8}),
         label="Autores",
     )
+    autor_desconocido = forms.BooleanField(
+        required=False,
+        label="Autor no identificado",
+        help_text="Tildá esta opción si todavía no tenés identificado al autor.",
+    )
     noticias = forms.ModelMultipleChoiceField(
         queryset=LinkRelevante.objects.all(),
         required=False,
         widget=forms.SelectMultiple(attrs={"class": "form-select", "size": 8}),
         label="Noticias relacionadas",
+    )
+    bandas = forms.ModelMultipleChoiceField(
+        queryset=BandaCriminal.objects.all(),
+        required=False,
+        widget=forms.SelectMultiple(attrs={"class": "form-select", "size": 8}),
+        label="Bandas involucradas",
+        help_text="Seleccioná las bandas relacionadas con el hecho, si corresponde.",
     )
 
     class Meta:
@@ -176,13 +431,15 @@ class HechoDelictivoForm(forms.ModelForm):
             "calificacion",
             "articulo",
             "autor",
+            "autor_desconocido",
             "descripcion",
             "noticias",
+            "bandas",
         ]
         widgets = {
             "fecha": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
             "categoria": forms.Select(attrs={"class": "form-select"}),
-            "ubicacion": forms.TextInput(attrs={"class": "form-control"}),
+            "ubicacion": forms.HiddenInput(),
             "calificacion": forms.Select(attrs={"class": "form-select"}),
             "articulo": forms.Select(attrs={"class": "form-select"}),
             "descripcion": forms.Textarea(attrs={"class": "form-control", "rows": 4}),
@@ -213,8 +470,58 @@ class HechoDelictivoForm(forms.ModelForm):
             self.fields["autor"].queryset = autores_queryset
 
         self.fields["noticias"].queryset = links_queryset
+        self.fields["bandas"].queryset = BandaCriminal.objects.order_by("nombres")
         self.fields["articulo"].queryset = articulo_queryset
         self.fields["articulo"].required = True
+
+        ubicacion_dict = self.instance._ubicacion_dict() if self.instance.pk else {}
+        self.fields["ubicacion_calle"].initial = ubicacion_dict.get("calle", "")
+        self.fields["ubicacion_numero"].initial = ubicacion_dict.get("numero", "")
+        self.fields["ubicacion_barrio"].initial = ubicacion_dict.get("barrio", "")
+        self.fields["ubicacion_localidad"].initial = ubicacion_dict.get("localidad", "")
+        self.fields["ubicacion_ciudad"].initial = ubicacion_dict.get("ciudad", "")
+        self.fields["ubicacion_provincia"].initial = ubicacion_dict.get("provincia", "")
+
+    def clean(self):
+        cleaned_data = super().clean()
+        ubicacion = {
+            "calle": cleaned_data.get("ubicacion_calle", "").strip(),
+            "numero": cleaned_data.get("ubicacion_numero", "").strip(),
+            "barrio": cleaned_data.get("ubicacion_barrio", "").strip(),
+            "localidad": cleaned_data.get("ubicacion_localidad", "").strip(),
+            "ciudad": cleaned_data.get("ubicacion_ciudad", "").strip(),
+            "provincia": cleaned_data.get("ubicacion_provincia", "").strip(),
+        }
+        cleaned_data["ubicacion"] = ubicacion
+        raw_antecedentes = cleaned_data.get("antecedentes_json") or "[]"
+        try:
+            data = json.loads(raw_antecedentes)
+        except json.JSONDecodeError:
+            raise forms.ValidationError(
+                "No se pudo procesar la información de antecedentes. Intentá nuevamente."
+            )
+        antecedentes_limpios = []
+        if isinstance(data, list):
+            for item in data:
+                titulo = (item.get("titulo") if isinstance(item, dict) else "").strip()
+                descripcion = (
+                    item.get("descripcion") if isinstance(item, dict) else ""
+                ).strip()
+                if titulo or descripcion:
+                    antecedentes_limpios.append(
+                        {"titulo": titulo, "descripcion": descripcion}
+                    )
+        cleaned_data["antecedentes"] = antecedentes_limpios
+        return cleaned_data
+
+
+class ConfiguracionSarcasmoForm(forms.ModelForm):
+    class Meta:
+        model = ConfiguracionSistema
+        fields = ["sarcasmo_mode"]
+        labels = {
+            "sarcasmo_mode": "Activar Modo Sarcasmo",
+        }
 
 
 class SolicitudInfoForm(forms.ModelForm):

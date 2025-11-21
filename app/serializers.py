@@ -376,7 +376,8 @@ class ArticuloSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "titulo",
-            "fecha",
+            "fecha",  # Campo fecha original
+            "fecha_hecho",  # ⚠️ NUEVO CAMPO AGREGADO
             "lugar",
             "descripcion",
             "categoria",
@@ -481,6 +482,8 @@ class ArticuloDetailSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "titulo",
+            "fecha",  # Campo fecha original
+            "fecha_hecho",  # ⚠️ NUEVO CAMPO AGREGADO
             "descripcion",
             "categoria",
             "fecha_creacion",

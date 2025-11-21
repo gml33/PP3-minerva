@@ -6,7 +6,7 @@ from django.http import QueryDict
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET
 from django.utils.dateparse import parse_date
-from django.db.models import Count, F, ExpressionWrapper, DurationField, Avg
+from django.db.models import Count, F, ExpressionWrapper, DurationField, Avg, Prefetch
 from django.conf import settings
 from django.template.loader import render_to_string
 import json
@@ -21,7 +21,16 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib import colors
 from reportlab.lib.units import cm
-from weasyprint import HTML
+try:
+    from docx import Document
+    from docx.shared import Inches
+except ImportError:
+    Document = None
+    Inches = None
+try:
+    from weasyprint import HTML
+except Exception:
+    HTML = None
 import pandas as pd
 import plotly.express as px
 from collections import defaultdict
@@ -66,6 +75,9 @@ from .models import (
     EstadoLink,
     LinkTvDigital,
     LinkRadioDigital,
+    InformeBandaCriminal,
+    JerarquiaPrincipal,
+    ConfiguracionSistema,
 )
 from .serializers import (
     UserProfileSerializer,
@@ -104,6 +116,8 @@ from .forms import (
     RadioDigitalForm,
     HechoDelictivoForm,
     BandaCriminalForm,
+    InformeBandaCriminalForm,
+    ConfiguracionSarcasmoForm,
 )
 
 # Asegúrate de que esta utilidad exista en tu proyecto
@@ -118,6 +132,17 @@ from django.contrib import messages
 import logging
 
 logger = logging.getLogger(__name__)
+
+WEASYPRINT_ERROR_MESSAGE = (
+    "No se puede generar el PDF porque las dependencias de WeasyPrint no están instaladas en el servidor."
+)
+
+
+def _weasyprint_unavailable_response(request, fallback_url=None):
+    messages.error(request, WEASYPRINT_ERROR_MESSAGE)
+    if fallback_url:
+        return redirect(fallback_url)
+    return HttpResponse(WEASYPRINT_ERROR_MESSAGE, status=503)
 
 # -------------------------- AUTENTICACIÓN --------------------------
 
@@ -206,6 +231,582 @@ def redaccion_view(request):
     )
 
 
+def _bandas_info_payload():
+    def persona_payload(persona):
+        alias = list(persona.alias.values_list("nombre", flat=True))
+        telefonos = list(persona.telefono.values_list("numero", flat=True))
+        return {
+            "id": persona.id,
+            "nombre": f"{persona.apellido}, {persona.nombre}".strip(", "),
+            "documento": persona.documento or "",
+            "rol": persona.get_rol_display() if persona.rol else "",
+            "situacion": persona.get_situacion_display() if persona.situacion else "",
+            "actividad": persona.actividad or "",
+            "banda": persona.banda or "",
+            "alias": alias,
+            "telefonos": telefonos,
+        }
+
+    personas_prefetch = InformeIndividual.objects.prefetch_related("alias", "telefono")
+    bandas = (
+        BandaCriminal.objects.all()
+        .prefetch_related(
+            "bandas_aliadas",
+            "bandas_rivales",
+            Prefetch("lideres", queryset=personas_prefetch, to_attr="prefetched_lideres"),
+            Prefetch("miembros", queryset=personas_prefetch, to_attr="prefetched_miembros"),
+        )
+        .order_by("nombres")
+    )
+
+    datos = []
+    for banda in bandas:
+        lideres = getattr(banda, "prefetched_lideres", banda.lideres.all())
+        miembros = getattr(banda, "prefetched_miembros", banda.miembros.all())
+        lugartenientes = [
+            miembro
+            for miembro in miembros
+            if (miembro.rol or "").lower() == "lugarteniente"
+        ]
+        if not lugartenientes:
+            lideres_ids = {miembro.pk for miembro in lideres}
+            lugartenientes = [
+                miembro for miembro in miembros if miembro.pk not in lideres_ids
+            ]
+        datos.append(
+            {
+                "id": banda.id,
+                "nombre": banda.nombre_principal,
+                "zonas": banda.zonas_influencia_detalle,
+                "lideres": [persona_payload(persona) for persona in lideres],
+                "lugartenientes": [persona_payload(persona) for persona in lugartenientes],
+                "miembros": [persona_payload(persona) for persona in miembros],
+                "bandas_aliadas": [
+                    {"id": aliada.id, "nombre": aliada.nombre_principal}
+                    for aliada in banda.bandas_aliadas.all()
+                ],
+                "bandas_rivales": [
+                    {"id": rival.id, "nombre": rival.nombre_principal}
+                    for rival in banda.bandas_rivales.all()
+                ],
+            }
+        )
+    return datos
+
+
+def _informes_banda_queryset():
+    return (
+        InformeBandaCriminal.objects.select_related("banda")
+        .prefetch_related(
+            "bandas_aliadas",
+            "bandas_rivales",
+            "jerarquias__miembro",
+        )
+        .order_by("-creado_en")
+    )
+
+
+@login_required
+def informe_banda_crear_view(request):
+    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.ADMIN]:
+        return render(request, "403.html", status=403)
+
+    if request.method == "POST":
+        form = InformeBandaCriminalForm(request.POST)
+        if form.is_valid():
+            informe = form.save()
+            log_actividad(
+                request,
+                TipoActividad.OTRO,
+                f"Informe de banda criminal creado (ID {informe.pk}).",
+            )
+            messages.success(request, "Informe de banda creado correctamente.")
+            return redirect("redaccion")
+        messages.error(
+            request,
+            "Revisá los campos del formulario. Hay errores que deben corregirse.",
+        )
+    else:
+        form = InformeBandaCriminalForm()
+
+    return render(
+        request,
+        "form_informe_banda.html",
+        {
+            "form": form,
+            "bandas_info": json.dumps(_bandas_info_payload(), ensure_ascii=False),
+            "informes": _informes_banda_queryset(),
+            "titulo_pagina": "Nuevo informe de banda criminal",
+            "descripcion_pagina": "Completá la información solicitada para registrar el informe.",
+            "volver_url": reverse("redaccion"),
+        },
+    )
+
+
+@login_required
+def informe_banda_detalle_view(request, pk):
+    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.ADMIN]:
+        return render(request, "403.html", status=403)
+
+    jerarquias_prefetch = Prefetch(
+        "jerarquias",
+        queryset=JerarquiaPrincipal.objects.select_related("miembro").prefetch_related(
+            "miembro__alias",
+            "miembro__telefono",
+        ),
+    )
+    informe = get_object_or_404(
+        InformeBandaCriminal.objects.select_related("banda").prefetch_related(
+            "bandas_aliadas",
+            "bandas_rivales",
+            jerarquias_prefetch,
+        ),
+        pk=pk,
+    )
+    lideres = [
+        jerarquia.miembro
+        for jerarquia in informe.jerarquias.all()
+        if jerarquia.rol == JerarquiaPrincipal.Rol.LIDER
+    ]
+    lugartenientes = [
+        jerarquia.miembro
+        for jerarquia in informe.jerarquias.all()
+        if jerarquia.rol == JerarquiaPrincipal.Rol.LUGARTENIENTE
+    ]
+    return render(
+        request,
+        "informe_banda_detalle.html",
+        {
+            "informe": informe,
+            "lideres": lideres,
+            "lugartenientes": lugartenientes,
+        },
+    )
+
+
+@login_required
+def informe_banda_editar_view(request, pk):
+    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.ADMIN]:
+        return render(request, "403.html", status=403)
+
+    informe = get_object_or_404(InformeBandaCriminal, pk=pk)
+    if request.method == "POST":
+        form = InformeBandaCriminalForm(request.POST, instance=informe)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Informe de banda actualizado correctamente.")
+            log_actividad(
+                request,
+                TipoActividad.OTRO,
+                f"Informe de banda criminal actualizado (ID {informe.pk}).",
+            )
+            return redirect("detalle_informe_banda", pk=informe.pk)
+        messages.error(
+            request,
+            "Revisá los campos del formulario. Hay errores que deben corregirse.",
+        )
+    else:
+        form = InformeBandaCriminalForm(instance=informe)
+
+    return render(
+        request,
+        "form_informe_banda.html",
+        {
+            "form": form,
+            "bandas_info": json.dumps(_bandas_info_payload(), ensure_ascii=False),
+            "titulo_pagina": "Editar informe de banda criminal",
+            "descripcion_pagina": f"Banda: {informe.banda.nombre_principal}",
+            "volver_url": reverse("detalle_informe_banda", args=[informe.pk]),
+        },
+    )
+
+
+@login_required
+def informe_banda_eliminar_view(request, pk):
+    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.ADMIN]:
+        return render(request, "403.html", status=403)
+
+    informe = get_object_or_404(InformeBandaCriminal, pk=pk)
+    if request.method == "POST":
+        nombre_banda = informe.banda.nombre_principal
+        informe.delete()
+        messages.success(
+            request,
+            f"Informe de la banda {nombre_banda or 'sin nombre'} fue eliminado.",
+        )
+        log_actividad(
+            request,
+            TipoActividad.OTRO,
+            f"Informe de banda criminal eliminado (ID {pk}).",
+        )
+        return redirect("crear_informe_banda")
+    messages.error(request, "Acción inválida para eliminar el informe.")
+    return redirect("detalle_informe_banda", pk=pk)
+
+
+@login_required
+def informe_banda_exportar_view(request, pk):
+    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.ADMIN]:
+        return render(request, "403.html", status=403)
+    if Document is None:
+        messages.error(
+            request,
+            "No es posible generar el documento porque falta la dependencia python-docx. Instalála y volvé a intentarlo.",
+        )
+        return redirect("detalle_informe_banda", pk=pk)
+
+    jerarquias_prefetch = Prefetch(
+        "jerarquias",
+        queryset=JerarquiaPrincipal.objects.select_related("miembro").prefetch_related(
+            "miembro__alias",
+            "miembro__telefono",
+        ),
+    )
+    articulo_links_prefetch = Prefetch(
+        "articulo__links_incluidos",
+        queryset=LinkRelevante.objects.order_by("-fecha_carga"),
+    )
+    hechos_prefetch = Prefetch(
+        "hechos_criminales_autor",
+        queryset=HechoDelictivo.objects.select_related("articulo")
+        .prefetch_related(articulo_links_prefetch)
+        .order_by("-fecha"),
+        to_attr="hechos_autor_prefetch",
+    )
+    personas_queryset = InformeIndividual.objects.prefetch_related(
+        "alias",
+        "telefono",
+        hechos_prefetch,
+    )
+    informe = get_object_or_404(
+        InformeBandaCriminal.objects.select_related("banda").prefetch_related(
+            "bandas_aliadas",
+            "bandas_rivales",
+            jerarquias_prefetch,
+            Prefetch("banda__bandas_aliadas"),
+            Prefetch("banda__bandas_rivales"),
+            Prefetch("banda__lideres", queryset=personas_queryset),
+            Prefetch("banda__miembros", queryset=personas_queryset),
+        ),
+        pk=pk,
+    )
+
+    banda = informe.banda
+    jerarquias = list(informe.jerarquias.all())
+    bandas_aliadas = list(banda.bandas_aliadas.all())
+    bandas_rivales = list(banda.bandas_rivales.all())
+    miembros_totales = list(banda.miembros.all())
+
+    lideres = [
+        jerarquia.miembro
+        for jerarquia in jerarquias
+        if jerarquia.rol == JerarquiaPrincipal.Rol.LIDER and jerarquia.miembro
+    ]
+    lugartenientes = [
+        jerarquia.miembro
+        for jerarquia in jerarquias
+        if jerarquia.rol == JerarquiaPrincipal.Rol.LUGARTENIENTE and jerarquia.miembro
+    ]
+
+    titulo_banda = banda.nombre_principal or "Sin nombre"
+    doc = Document()
+    doc.add_heading(f"Informe de banda {titulo_banda}", 0)
+
+    doc.add_heading("Fecha de solicitud", level=1)
+    fecha_solicitud = (
+        localtime(informe.creado_en).strftime("%d/%m/%Y %H:%M")
+        if informe.creado_en
+        else "Fecha no registrada."
+    )
+    doc.add_paragraph(fecha_solicitud)
+
+    def add_section_lines(lineas, bullet=False):
+        if not lineas:
+            doc.add_paragraph("Sin información disponible.")
+            return
+        for linea in lineas:
+            if not linea:
+                continue
+            if bullet:
+                doc.add_paragraph(linea, style="List Bullet")
+            else:
+                doc.add_paragraph(linea)
+
+    zonas = banda.zonas_influencia_detalle
+    zonas_listado = [
+        zona
+        for zona in [
+            ", ".join(
+                list(
+                    filter(
+                        None,
+                        [
+                            z.get("barrio") or "",
+                            z.get("localidad") or "",
+                            z.get("ciudad") or "",
+                            z.get("provincia") or "",
+                        ],
+                    )
+                )
+            )
+            for z in zonas or []
+        ]
+        if zona
+    ]
+
+    miembros_lineas = []
+    if lideres:
+        miembros_lineas.append("Líderes identificados:")
+        for lider in lideres:
+            miembros_lineas.append(
+                f"  - {lider} · Documento: {lider.documento or '-'} · Situación: {lider.get_situacion_display() or '-'}"
+            )
+    if lugartenientes:
+        miembros_lineas.append("Lugartenientes identificados:")
+        for lugarteniente in lugartenientes:
+            miembros_lineas.append(
+                f"  - {lugarteniente} · Documento: {lugarteniente.documento or '-'} · Situación: {lugarteniente.get_situacion_display() or '-'}"
+            )
+    miembros_sin_jerarquia = [
+        miembro
+        for miembro in miembros_totales
+        if miembro.pk not in {m.pk for m in lideres + lugartenientes if m}
+    ]
+    if miembros_sin_jerarquia:
+        miembros_lineas.append(
+            "Miembros registrados sin jerarquía: "
+            + ", ".join(str(miembro) for miembro in miembros_sin_jerarquia)
+        )
+    if not miembros_lineas:
+        miembros_lineas = ["No se registraron miembros ni jerarquías para esta banda."]
+
+    zonas_contenido = zonas_listado or ["No se cargaron zonas de influencia para la banda."]
+    aliadas_contenido = (
+        [aliada.nombre_principal or "-" for aliada in bandas_aliadas]
+        if bandas_aliadas
+        else ["Sin alianzas registradas."]
+    )
+    rivales_contenido = (
+        [rival.nombre_principal or "-" for rival in bandas_rivales]
+        if bandas_rivales
+        else ["Sin rivales registrados."]
+    )
+    conclusion_texto = (
+        informe.conclusion_relevante or "No se registró una conclusión relevante."
+    )
+    evolucion_texto = (
+        informe.posible_evolucion or "No se registró una posible evolución."
+    )
+
+    doc.add_heading("Anexo 1 - Resumen ejecutivo", level=1)
+    doc.add_heading("Miembros y jerarquías", level=2)
+    add_section_lines(miembros_lineas)
+    doc.add_heading("Zonas de influencia", level=2)
+    add_section_lines(zonas_contenido, bullet=True)
+    doc.add_heading("Bandas aliadas", level=2)
+    add_section_lines(aliadas_contenido, bullet=True)
+    doc.add_heading("Bandas rivales", level=2)
+    add_section_lines(rivales_contenido, bullet=True)
+    doc.add_heading("Conclusión", level=2)
+    doc.add_paragraph(conclusion_texto)
+    doc.add_heading("Evolución", level=2)
+    doc.add_paragraph(evolucion_texto)
+
+    introduccion_contenido = (
+        informe.introduccion_descripcion
+        or "No se registró una descripción de introducción para este informe."
+    )
+    doc.add_heading("Anexo 2 - Introducción", level=1)
+    doc.add_paragraph(introduccion_contenido)
+
+    hechos_relacionados = list(
+        banda.hechos_delictivos.select_related("articulo")
+        .prefetch_related("autor")
+        .order_by("-fecha")
+    )
+    doc.add_heading("Anexo 3 - Antecedentes", level=1)
+    doc.add_heading("Hechos delictivos asociados a la banda", level=2)
+    if hechos_relacionados:
+        for hecho in hechos_relacionados:
+            autores_texto = ", ".join([str(autor) for autor in hecho.autor.all()])
+            descripcion_hecho = (
+                hecho.descripcion.strip() if hecho.descripcion else "Sin descripción registrada."
+            )
+            doc.add_paragraph(
+                f"{hecho.fecha.strftime('%d/%m/%Y')} · {hecho.get_categoria_display() or 'Sin categoría'} · {hecho.ubicacion_texto} · Calificación {hecho.get_calificacion_display()} · Autores: {autores_texto or ('Autor no identificado' if hecho.autor_desconocido else 'Sin autores')}"
+            )
+            doc.add_paragraph(f"Descripción: {descripcion_hecho}")
+    else:
+        doc.add_paragraph("No se registraron hechos delictivos asociados.")
+    if informe.antecedentes:
+        doc.add_heading("Antecedentes personalizados", level=2)
+        for antecedente in informe.antecedentes:
+            titulo = antecedente.get("titulo") if isinstance(antecedente, dict) else ""
+            descripcion = (
+                antecedente.get("descripcion") if isinstance(antecedente, dict) else ""
+            )
+            doc.add_paragraph(
+                f"{titulo or 'Sin título'}: {descripcion or 'Sin descripción'}".strip()
+            )
+
+    doc.add_heading("Anexo 4 - Desarrollo", level=1)
+    desarrollo_titulo = informe.desarrollo_titulo or "Desarrollo"
+    doc.add_heading(desarrollo_titulo, level=2)
+    if informe.desarrollo_contenido:
+        bloques_desarrollo = [
+            bloque.strip() for bloque in informe.desarrollo_contenido.split("\n\n")
+        ]
+        for bloque in [b for b in bloques_desarrollo if b]:
+            doc.add_paragraph(bloque)
+        if not any(b for b in bloques_desarrollo if b):
+            doc.add_paragraph("No se registró contenido para el desarrollo.")
+    else:
+        doc.add_paragraph("No se registró contenido para el desarrollo.")
+
+    doc.add_heading("Anexo 5 - Hechos relevantes", level=1)
+    if hechos_relacionados:
+        for hecho in hechos_relacionados:
+            doc.add_heading(
+                f"{hecho.fecha.strftime('%d/%m/%Y')} - {hecho.ubicacion_texto}",
+                level=2,
+            )
+            doc.add_paragraph(
+                f"Fecha del hecho: {hecho.fecha.strftime('%d/%m/%Y')}"
+            )
+            descripcion = hecho.descripcion.strip() if hecho.descripcion else ""
+            doc.add_paragraph(
+                f"Descripción: {descripcion or 'Sin descripción registrada.'}"
+            )
+    else:
+        doc.add_paragraph("No se registraron hechos delictivos asociados a la banda.")
+
+    doc.add_heading("Anexo 6 - Conclusiones", level=1)
+    doc.add_paragraph(
+        informe.conclusiones_desarrollo
+        or "No se registraron conclusiones en este informe."
+    )
+
+    doc.add_heading("Anexo 7 - Fichas individuales", level=1)
+    personas_conocidas = []
+    vistos = set()
+    for persona in list(banda.lideres.all()) + list(banda.miembros.all()):
+        if persona and persona.pk not in vistos:
+            personas_conocidas.append(persona)
+            vistos.add(persona.pk)
+
+    if personas_conocidas:
+        for persona in personas_conocidas:
+            doc.add_heading(str(persona), level=2)
+            if persona.foto and hasattr(persona.foto, "path"):
+                try:
+                    doc.add_picture(persona.foto.path, width=Inches(1.8))
+                except Exception:
+                    doc.add_paragraph("No se pudo cargar la foto del individuo.")
+            alias = ", ".join(persona.alias.values_list("nombre", flat=True))
+            telefonos = ", ".join(
+                [str(numero) for numero in persona.telefono.values_list("numero", flat=True)]
+            )
+            info = [
+                ("Documento", persona.documento or "-"),
+                ("Rol", persona.get_rol_display() or "-"),
+                ("Situación", persona.get_situacion_display() or "-"),
+                ("Actividad", persona.actividad or "-"),
+                ("Alias", alias or "Sin alias"),
+                ("Teléfonos", telefonos or "Sin teléfonos"),
+            ]
+            table = doc.add_table(rows=len(info), cols=2)
+            for idx, (label, value) in enumerate(info):
+                row = table.rows[idx]
+                row.cells[0].text = label
+                row.cells[1].text = value
+            doc.add_paragraph("")
+    else:
+        doc.add_paragraph("No hay fichas individuales asociadas al informe.")
+
+    doc.add_heading("Anexo 8 - Historial delictivo de integrantes", level=1)
+    if personas_conocidas:
+        for persona in personas_conocidas:
+            doc.add_heading(str(persona), level=2)
+            hechos_integrante = list(
+                getattr(persona, "hechos_autor_prefetch", [])
+            )
+            if not hechos_integrante:
+                doc.add_paragraph(
+                    "Sin hechos delictivos registrados para este integrante."
+                )
+                continue
+            for hecho in hechos_integrante:
+                doc.add_paragraph(
+                    f"Hecho del {hecho.fecha.strftime('%d/%m/%Y')} · {hecho.get_categoria_display() or 'Sin categoría'} · {hecho.ubicacion_texto}"
+                )
+                descripcion = hecho.descripcion.strip() if hecho.descripcion else ""
+                doc.add_paragraph(
+                    f"Descripción: {descripcion or 'Sin descripción disponible.'}"
+                )
+                articulo = hecho.articulo
+                if articulo:
+                    articulo_fecha = (
+                        localtime(articulo.fecha_creacion).strftime("%d/%m/%Y %H:%M")
+                        if articulo.fecha_creacion
+                        else "Sin fecha de creación"
+                    )
+                    doc.add_paragraph(
+                        f"Artículo asociado ({articulo_fecha}): {articulo.titulo or 'Sin título'}"
+                    )
+                    links_relacionados = list(articulo.links_incluidos.all())
+                    if links_relacionados:
+                        doc.add_paragraph("Links relevantes relacionados:")
+                        for link in links_relacionados:
+                            link_fecha = (
+                                localtime(link.fecha_carga).strftime(
+                                    "%d/%m/%Y %H:%M"
+                                )
+                                if link.fecha_carga
+                                else "Sin fecha"
+                            )
+                            doc.add_paragraph(
+                                f"  - {link_fecha} · {link.url}",
+                                style="List Bullet",
+                            )
+                    else:
+                        doc.add_paragraph(
+                            "  - Sin links relevantes asociados.",
+                            style="List Bullet",
+                        )
+                else:
+                    doc.add_paragraph(
+                        "No se registró un artículo asociado a este hecho."
+                    )
+                doc.add_paragraph("")
+    else:
+        doc.add_paragraph(
+            "No se registraron integrantes con hechos delictivos vinculados en este informe."
+        )
+
+    InformeBandaCriminal.objects.filter(pk=informe.pk).update(
+        exportaciones=F("exportaciones") + 1
+    )
+    log_actividad(
+        request,
+        TipoActividad.EXPORTAR_INFORME_BANDA,
+        f"Informe exportado para {banda.nombre_principal or 'Banda sin nombre'} (ID {informe.pk})",
+    )
+
+    buffer = io.BytesIO()
+    doc.save(buffer)
+    buffer.seek(0)
+
+    nombre_slug = slugify(banda.nombre_principal or "banda")
+    response = HttpResponse(
+        buffer.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    )
+    response[
+        "Content-Disposition"
+    ] = f'attachment; filename="Informe_Banda_{nombre_slug}_{informe.pk}.docx"'
+    return response
+
+
 @login_required
 def hechos_delictivos_view(request):
     if request.user.userprofile.rol not in [Roles.REDACCION, Roles.ADMIN]:
@@ -254,11 +855,36 @@ def bandas_criminales_view(request):
     if request.user.userprofile.rol not in [Roles.REDACCION, Roles.ADMIN]:
         return render(request, "403.html", status=403)
 
-    bandas = (
-        BandaCriminal.objects.all()
-        .prefetch_related("lideres", "miembros")
-        .order_by("nombres")
+    filtros = {
+        "nombre": request.GET.get("nombre", "").strip(),
+        "zona": request.GET.get("zona", "").strip(),
+        "aliada": request.GET.get("aliada", "").strip(),
+        "rival": request.GET.get("rival", "").strip(),
+    }
+
+    bandas_queryset = BandaCriminal.objects.all().prefetch_related(
+        "lideres", "miembros", "bandas_aliadas", "bandas_rivales"
     )
+
+    if filtros["nombre"]:
+        bandas_queryset = bandas_queryset.filter(nombres__icontains=filtros["nombre"])
+    if filtros["zona"]:
+        bandas_queryset = bandas_queryset.filter(
+            zonas_influencia__icontains=filtros["zona"]
+        )
+    if filtros["aliada"]:
+        bandas_queryset = bandas_queryset.filter(
+            bandas_aliadas__nombres__icontains=filtros["aliada"]
+        )
+    if filtros["rival"]:
+        bandas_queryset = bandas_queryset.filter(
+            bandas_rivales__nombres__icontains=filtros["rival"]
+        )
+
+    bandas_queryset = bandas_queryset.distinct().order_by("nombres")
+    paginator = Paginator(bandas_queryset, 10)
+    pagina = request.GET.get("page")
+    bandas = paginator.get_page(pagina)
 
     if request.method == "POST":
         form = BandaCriminalForm(request.POST)
@@ -286,6 +912,7 @@ def bandas_criminales_view(request):
             "bandas": bandas,
             "modo_edicion": False,
             "form_action": reverse("bandas_criminales"),
+            "filtros": filtros,
         },
     )
 
@@ -296,6 +923,13 @@ def banda_criminal_editar_view(request, pk):
 
     if request.user.userprofile.rol not in [Roles.REDACCION, Roles.ADMIN]:
         return render(request, "403.html", status=403)
+
+    filtros = {
+        "nombre": request.GET.get("nombre", "").strip(),
+        "zona": request.GET.get("zona", "").strip(),
+        "aliada": request.GET.get("aliada", "").strip(),
+        "rival": request.GET.get("rival", "").strip(),
+    }
 
     if request.method == "POST":
         form = BandaCriminalForm(request.POST, instance=banda)
@@ -315,11 +949,27 @@ def banda_criminal_editar_view(request, pk):
     else:
         form = BandaCriminalForm(instance=banda)
 
-    bandas = (
-        BandaCriminal.objects.all()
-        .prefetch_related("lideres", "miembros")
-        .order_by("nombres")
+    bandas_queryset = BandaCriminal.objects.all().prefetch_related(
+        "lideres", "miembros", "bandas_aliadas", "bandas_rivales"
     )
+    if filtros["nombre"]:
+        bandas_queryset = bandas_queryset.filter(nombres__icontains=filtros["nombre"])
+    if filtros["zona"]:
+        bandas_queryset = bandas_queryset.filter(
+            zonas_influencia__icontains=filtros["zona"]
+        )
+    if filtros["aliada"]:
+        bandas_queryset = bandas_queryset.filter(
+            bandas_aliadas__nombres__icontains=filtros["aliada"]
+        )
+    if filtros["rival"]:
+        bandas_queryset = bandas_queryset.filter(
+            bandas_rivales__nombres__icontains=filtros["rival"]
+        )
+    bandas_queryset = bandas_queryset.distinct().order_by("nombres")
+    paginator = Paginator(bandas_queryset, 10)
+    pagina = request.GET.get("page")
+    bandas = paginator.get_page(pagina)
 
     return render(
         request,
@@ -330,6 +980,7 @@ def banda_criminal_editar_view(request, pk):
             "modo_edicion": True,
             "banda_actual": banda,
             "form_action": reverse("banda_criminal_editar", args=[banda.pk]),
+            "filtros": filtros,
         },
     )
 
@@ -342,7 +993,7 @@ def banda_criminal_eliminar_view(request, pk):
         return render(request, "403.html", status=403)
 
     if request.method == "POST":
-        nombre = banda.nombres
+        nombre = banda.nombres_como_texto or "Sin nombre"
         banda.delete()
         log_actividad(
             request,
@@ -506,54 +1157,41 @@ def solicitud_info_portal_detalle_view(request, pk):
     )
 
 
+# NUEVA VISTA: Editar solicitud de información
 @login_required
 def solicitud_info_portal_editar_view(request, pk):
     if request.user.userprofile.rol not in [Roles.REDACCION, Roles.ADMIN]:
         return render(request, "403.html", status=403)
 
     solicitud = get_object_or_404(
-        SolicitudInfo.objects.prefetch_related("articulos").select_related("usuario_creador"),
+        SolicitudInfo.objects.select_related("usuario_creador", "respondido_por").prefetch_related("articulos"),
         pk=pk,
     )
 
     if request.user.userprofile.rol == Roles.REDACCION and solicitud.usuario_creador != request.user:
         return render(request, "403.html", status=403)
 
-    solicitudes_usuario = (
-        SolicitudInfo.objects.select_related("respondido_por")
-        .prefetch_related("articulos")
-        .filter(usuario_creador=request.user)
-        .order_by("-fecha_creacion")
-    )
-
-    paginator = Paginator(solicitudes_usuario, 10)
-    page_number = request.GET.get("page")
-    solicitudes_page = paginator.get_page(page_number)
-
     if request.method == "POST":
         form = SolicitudInfoForm(request.POST, instance=solicitud, user=request.user)
         if form.is_valid():
-            solicitud_actualizada = form.save()
+            solicitud = form.save(commit=False)
+            solicitud.save()
             articulos_relacionados = form.cleaned_data.get("articulos")
-            if articulos_relacionados:
-                solicitud_actualizada.articulos.set(articulos_relacionados)
-            else:
-                solicitud_actualizada.articulos.clear()
+            if articulos_relacionados is not None:
+                solicitud.articulos.set(articulos_relacionados)
             log_actividad(
                 request,
                 TipoActividad.OTRO,
-                f"Solicitud de información actualizada (# {solicitud_actualizada.pk}).",
+                f"Solicitud de información editada (# {solicitud.pk}).",
             )
             messages.success(request, "Solicitud actualizada correctamente.")
             return redirect("solicitud_info_portal")
         messages.error(
             request,
-            "No se pudo actualizar la solicitud. Revisá los campos destacados.",
+            "No se pudo actualizar la solicitud. Por favor, revisá los campos destacados.",
         )
     else:
         form = SolicitudInfoForm(instance=solicitud, user=request.user)
-        seleccionados = list(solicitud.articulos.values_list("id", flat=True))
-        form.fields["articulos"].initial = seleccionados
 
     articulos_queryset = form.fields["articulos"].queryset.select_related("categoria")
     categorias_articulos = (
@@ -565,17 +1203,13 @@ def solicitud_info_portal_editar_view(request, pk):
 
     return render(
         request,
-        "solicitud_info_portal.html",
+        "solicitud_info_portal_editar.html",
         {
             "form": form,
-            "solicitudes_usuario": solicitudes_usuario,
-            "solicitudes_page": solicitudes_page,
+            "solicitud": solicitud,
             "articulos_disponibles": articulos_queryset,
             "categorias_articulos": list(categorias_articulos),
             "estados_articulo": Articulo.Estado.choices,
-            "modo_edicion": True,
-            "solicitud_en_edicion": solicitud,
-            "form_action": request.path,
         },
     )
 
@@ -812,6 +1446,8 @@ def exportar_actividades_pdf(request):
 
 @login_required
 def exportar_articulo_pdf(request, id):
+    if HTML is None:
+        return _weasyprint_unavailable_response(request, "redaccion")
     articulo = get_object_or_404(
         Articulo.objects.select_related("generado_por", "categoria").prefetch_related(
             "links_incluidos"
@@ -1904,6 +2540,7 @@ def informes_view(request):
             "informes": informes,
             "categorias": categorias,
             "usuarios": usuarios,
+            "bandas": BandaCriminal.objects.order_by("nombres"),
             "fecha_desde": fecha_desde,
             "fecha_hasta": fecha_hasta,
             "selected_categoria": int(categoria_id) if categoria_id and categoria_id.isdigit() else 0,
@@ -2079,6 +2716,7 @@ def informes_crear_view(request):
             "articulos": articulos,
             "categorias": Categoria.objects.all(),
             "usuarios": User.objects.all(),
+            "bandas": BandaCriminal.objects.order_by("nombres"),
             "selected_categoria": (
                 int(categoria_id) if categoria_id and categoria_id.isdigit() and categoria_id != "0" else 0
             ),
@@ -2121,6 +2759,8 @@ def api_detalle_informe(request, id):
         "documento": informe.documento,
         "cuit": informe.cuit,
         "nacionalidad": informe.nacionalidad,
+        "sexo": informe.sexo,
+        "sexo_display": informe.get_sexo_display(),
         "banda": informe.banda,
         "rol": informe.get_rol_display(),
         "situacion": informe.get_situacion_display(),
@@ -2229,16 +2869,21 @@ def consulta_informes_view(request):
     situacion = request.GET.get("situacion", "").strip()
     alias = request.GET.get("alias", "").strip()
     telefono = request.GET.get("telefono", "").strip()
+    sexo = request.GET.get("sexo", "").strip()
     calle = request.GET.get("calle", "").strip()
+    barrio = request.GET.get("barrio", "").strip()
+    localidad = request.GET.get("localidad", "").strip()
     ciudad = request.GET.get("ciudad", "").strip()
     provincia = request.GET.get("provincia", "").strip()
     vehiculo_marca = request.GET.get("vehiculo_marca", "").strip()
+    vehiculo_modelo = request.GET.get("vehiculo_modelo", "").strip()
     vehiculo_dominio = request.GET.get("vehiculo_dominio", "").strip()
     vehiculo_color = request.GET.get("vehiculo_color", "").strip()
     empleador_nombre = request.GET.get("empleador_nombre", "").strip()
     empleador_cuit = request.GET.get("empleador_cuit", "").strip()
     vinculo_nombre = request.GET.get("vinculo_nombre", "").strip()
     vinculo_dni = request.GET.get("vinculo_dni", "").strip()
+    vinculo_tipo = request.GET.get("vinculo_tipo", "").strip()
     altura_desde = request.GET.get("altura_desde")
     altura_hasta = request.GET.get("altura_hasta")
 
@@ -2267,6 +2912,8 @@ def consulta_informes_view(request):
         informes = informes.filter(banda__icontains=banda)
     if actividad:
         informes = informes.filter(actividad__icontains=actividad)
+    if sexo:
+        informes = informes.filter(sexo=sexo)
     if rol:
         informes = informes.filter(rol=rol)
     if situacion:
@@ -2279,12 +2926,18 @@ def consulta_informes_view(request):
         informes = informes.filter(telefono__numero__icontains=telefono)
     if calle:
         informes = informes.filter(domicilio__calle__icontains=calle)
+    if barrio:
+        informes = informes.filter(domicilio__barrio__icontains=barrio)
+    if localidad:
+        informes = informes.filter(domicilio__ciudad__icontains=localidad)
     if ciudad:
         informes = informes.filter(domicilio__ciudad__icontains=ciudad)
     if provincia:
         informes = informes.filter(domicilio__provincia__icontains=provincia)
     if vehiculo_marca:
         informes = informes.filter(vehiculos__marca__icontains=vehiculo_marca)
+    if vehiculo_modelo:
+        informes = informes.filter(vehiculos__modelo__icontains=vehiculo_modelo)
     if vehiculo_dominio:
         informes = informes.filter(vehiculos__dominio__icontains=vehiculo_dominio)
     if vehiculo_color:
@@ -2297,6 +2950,8 @@ def consulta_informes_view(request):
         informes = informes.filter(vinculos__nombre_apellido__icontains=vinculo_nombre)
     if vinculo_dni:
         informes = informes.filter(vinculos__dni__icontains=vinculo_dni)
+    if vinculo_tipo:
+        informes = informes.filter(vinculos__tipo__icontains=vinculo_tipo)
 
     # Fecha nacimiento aproximada
     if fecha_nacimiento_desde:
@@ -2352,7 +3007,7 @@ def estadisticas_view(request):
     usuarios = User.objects.filter(
         userprofile__rol__in=[Roles.ADMIN, Roles.PRENSA, Roles.CLASIFICACION]
     )
-    links = LinkRelevante.objects.select_related("cargado_por").prefetch_related(
+    links = LinkRelevante.objects.select_related("cargado_por", "diario_digital").prefetch_related(
         "categorias"
     )
 
@@ -2396,9 +3051,56 @@ def estadisticas_view(request):
         
     # Conteo por categoría
     categorias_counter = defaultdict(int)
+    diarios_counter = defaultdict(int)
     for link in links:
         for cat in link.categorias.all():
             categorias_counter[cat.nombre] += 1
+        nombre_diario = (
+            link.diario_digital.nombre if getattr(link, "diario_digital", None) else "Sin diario"
+        )
+        diarios_counter[nombre_diario] += 1
+
+    consultas_counter = defaultdict(int)
+    for informe in InformeBandaCriminal.objects.select_related("banda"):
+        nombre_banda = (
+            informe.banda.nombre_principal if informe.banda else "Sin banda"
+        )
+        consultas_counter[nombre_banda or "Sin banda"] += 1
+
+    integrantes_labels = []
+    integrantes_values = []
+    for banda in BandaCriminal.objects.prefetch_related("miembros"):
+        integrantes_labels.append(banda.nombre_principal or "Banda sin nombre")
+        integrantes_values.append(banda.miembros.count())
+
+    exportes_counter = defaultdict(int)
+    for informe in InformeBandaCriminal.objects.select_related("banda"):
+        nombre_banda = (
+            informe.banda.nombre_principal if informe.banda else "Sin banda"
+        )
+        exportes_counter[nombre_banda or "Sin banda"] += informe.exportaciones or 0
+
+    acciones_usuario = (
+        Actividad.objects.values("usuario__username")
+        .annotate(cantidad=Count("id"))
+        .order_by("-cantidad")
+    )
+    acciones_usuario_labels = [
+        (item["usuario__username"] or "Sin usuario") for item in acciones_usuario
+    ]
+    acciones_usuario_values = [item["cantidad"] for item in acciones_usuario]
+
+    rol_map = dict(Roles.choices)
+    acciones_por_rol = (
+        Actividad.objects.values("usuario__userprofile__rol")
+        .annotate(cantidad=Count("id"))
+        .order_by("-cantidad")
+    )
+    acciones_rol_labels = [
+        rol_map.get(item["usuario__userprofile__rol"], "Sin rol")
+        for item in acciones_por_rol
+    ]
+    acciones_rol_values = [item["cantidad"] for item in acciones_por_rol]
 
 
     return render(
@@ -2412,6 +3114,18 @@ def estadisticas_view(request):
             "barras_values": list(barras.values()),
             "categorias_labels": list(categorias_counter.keys()),
             "categorias_values": list(categorias_counter.values()),
+            "links_diario_labels": list(diarios_counter.keys()),
+            "links_diario_values": list(diarios_counter.values()),
+            "consultas_banda_labels": list(consultas_counter.keys()),
+            "consultas_banda_values": list(consultas_counter.values()),
+            "integrantes_banda_labels": integrantes_labels,
+            "integrantes_banda_values": integrantes_values,
+            "exports_banda_labels": list(exportes_counter.keys()),
+            "exports_banda_values": list(exportes_counter.values()),
+            "acciones_usuario_labels": acciones_usuario_labels,
+            "acciones_usuario_values": acciones_usuario_values,
+            "acciones_rol_labels": acciones_rol_labels,
+            "acciones_rol_values": acciones_rol_values,
             "filtros": {"usuario": usuario, "desde": desde, "hasta": hasta},
             "promedio_dias": promedio_dias,
             "promedio_horas": promedio_horas,
@@ -2421,6 +3135,8 @@ def estadisticas_view(request):
 
 @login_required
 def exportar_estadisticas_pdf(request):
+    if HTML is None:
+        return _weasyprint_unavailable_response(request, "estadisticas")
     if request.user.userprofile.rol not in [Roles.ADMIN, Roles.GERENCIA]:
         return render(request, "403.html", status=403)
         
@@ -2428,7 +3144,7 @@ def exportar_estadisticas_pdf(request):
     desde = request.GET.get("desde")
     hasta = request.GET.get("hasta")
 
-    links = LinkRelevante.objects.select_related("cargado_por").prefetch_related(
+    links = LinkRelevante.objects.select_related("cargado_por", "diario_digital").prefetch_related(
         "categorias"
     )
     if usuario:
@@ -2568,7 +3284,7 @@ def estadisticas_api_view(request):
     desde = request.GET.get("desde")
     hasta = request.GET.get("hasta")
     
-    links = LinkRelevante.objects.select_related("cargado_por").prefetch_related(
+    links = LinkRelevante.objects.select_related("cargado_por", "diario_digital").prefetch_related(
         "categorias"
     )
     
@@ -2590,9 +3306,54 @@ def estadisticas_api_view(request):
         
     # Conteo por categoría
     categorias = defaultdict(int)
+    diarios_counter = defaultdict(int)
     for link in links:
+        nombre_diario = link.diario_digital.nombre if getattr(link, "diario_digital", None) else "Sin diario"
+        diarios_counter[nombre_diario] += 1
         for cat in link.categorias.all():
             categorias[cat.nombre] += 1
+
+    consultas_counter = defaultdict(int)
+    for informe in InformeBandaCriminal.objects.select_related("banda"):
+        nombre_banda = (
+            informe.banda.nombre_principal if informe.banda else "Sin banda"
+        )
+        consultas_counter[nombre_banda or "Sin banda"] += 1
+
+    integrantes_labels = []
+    integrantes_values = []
+    for banda in BandaCriminal.objects.prefetch_related("miembros"):
+        integrantes_labels.append(banda.nombre_principal or "Banda sin nombre")
+        integrantes_values.append(banda.miembros.count())
+    
+    exportes_counter = defaultdict(int)
+    for informe in InformeBandaCriminal.objects.select_related("banda"):
+        nombre_banda = (
+            informe.banda.nombre_principal if informe.banda else "Sin banda"
+        )
+        exportes_counter[nombre_banda or "Sin banda"] += informe.exportaciones or 0
+
+    acciones_usuario = (
+        Actividad.objects.values("usuario__username")
+        .annotate(cantidad=Count("id"))
+        .order_by("-cantidad")
+    )
+    acciones_usuario_labels = [
+        (item["usuario__username"] or "Sin usuario") for item in acciones_usuario
+    ]
+    acciones_usuario_values = [item["cantidad"] for item in acciones_usuario]
+
+    rol_map = dict(Roles.choices)
+    acciones_por_rol = (
+        Actividad.objects.values("usuario__userprofile__rol")
+        .annotate(cantidad=Count("id"))
+        .order_by("-cantidad")
+    )
+    acciones_rol_labels = [
+        rol_map.get(item["usuario__userprofile__rol"], "Sin rol")
+        for item in acciones_por_rol
+    ]
+    acciones_rol_values = [item["cantidad"] for item in acciones_por_rol]
             
     # Datos de la tabla (limitados)
     tabla = [
@@ -2621,6 +3382,18 @@ def estadisticas_api_view(request):
             "barras_values": list(barras.values()),
             "categorias_labels": list(categorias.keys()),
             "categorias_values": list(categorias.values()),
+            "links_diario_labels": list(diarios_counter.keys()),
+            "links_diario_values": list(diarios_counter.values()),
+            "consultas_banda_labels": list(consultas_counter.keys()),
+            "consultas_banda_values": list(consultas_counter.values()),
+            "integrantes_banda_labels": integrantes_labels,
+            "integrantes_banda_values": integrantes_values,
+            "exports_banda_labels": list(exportes_counter.keys()),
+            "exports_banda_values": list(exportes_counter.values()),
+            "acciones_usuario_labels": acciones_usuario_labels,
+            "acciones_usuario_values": acciones_usuario_values,
+            "acciones_rol_labels": acciones_rol_labels,
+            "acciones_rol_values": acciones_rol_values,
             "tabla": tabla,
             "promedio_horas": promedio_horas
         }
@@ -2661,10 +3434,37 @@ def consultar_articulo_view(request, id):
 
 @login_required
 def configuraciones(request):
-    if request.user.userprofile.rol != Roles.GERENTE_PRODUCCION:
-        # CORRECCIÓN: Usar la plantilla 403.html
+    if request.user.userprofile.rol not in [Roles.GERENTE_PRODUCCION, Roles.ADMIN]:
         return render(request, "403.html", status=403)
-        
+
+    config_sistema = ConfiguracionSistema.obtener()
+    sarcasmo_form = ConfiguracionSarcasmoForm(instance=config_sistema)
+    if (
+        request.method == "POST"
+        and request.POST.get("formulario") == "sarcasmo"
+        and request.user.userprofile.rol == Roles.ADMIN
+    ):
+        sarcasmo_form = ConfiguracionSarcasmoForm(
+            request.POST, instance=config_sistema
+        )
+        if sarcasmo_form.is_valid():
+            sarcasmo_form.save()
+            if config_sistema.sarcasmo_mode:
+                messages.success(
+                    request,
+                    "Sarcasmo mode activado. Prepará los chistes.",
+                )
+            else:
+                messages.success(
+                    request,
+                    "Sarcasmo mode desactivado. Volvemos a la seriedad.",
+                )
+            return redirect("configuraciones")
+        else:
+            messages.error(
+                request, "No se pudo actualizar la configuración de sarcasmo."
+            )
+
     categorias = Categoria.objects.all()
     diarios = DiarioDigital.objects.all()
     redes_sociales = RedSocial.objects.all()
@@ -2679,6 +3479,7 @@ def configuraciones(request):
             "redes_sociales": redes_sociales,
             "tv_digital": tv_digital,
             "radios_digitales": radios_digitales,
+            "sarcasmo_form": sarcasmo_form,
         },
     )
 
@@ -3258,6 +4059,8 @@ def hecho_delictivo_detalle_view(request, id):
 
 @login_required
 def exportar_hecho_delictivo_pdf(request, id):
+    if HTML is None:
+        return _weasyprint_unavailable_response(request, "hechos_delictivos")
     hecho = get_object_or_404(
         HechoDelictivo.objects.select_related("creado_por", "articulo").prefetch_related(
             "autor", "noticias"
@@ -3336,6 +4139,8 @@ def links_list(request):
 
 @login_required
 def exportar_informe_pdf(request, informe_id):
+    if HTML is None:
+        return _weasyprint_unavailable_response(request, "informes")
     informe = get_object_or_404(InformeIndividual, id=informe_id)
 
     if request.user.userprofile.rol not in [Roles.ADMIN, Roles.GERENCIA, Roles.CLIENTE, Roles.INFORMES]:

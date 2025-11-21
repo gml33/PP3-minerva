@@ -40,40 +40,29 @@
                     <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                         {% if user.userprofile.rol == 'administrador' %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'prensa' %}">Prensa</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'clasificacion' %}">Clasificación</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'redaccion' %}">Redacción</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'solicitud_info_portal' %}">Solicitud de información</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'hechos_delictivos' %}">Hechos Delictivos</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'bandas_criminales' %}">Bandas Criminales</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'actividad' %}">Actividades</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'informes' %}">Informes</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'consulta_informes' %}">Consultas</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'estadisticas' %}">Estadísticas</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'herramientas_osint' %}">Herramientas OSINT</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'configuraciones' %}">Configuraciones</a>
+                            <a class="nav-link d-flex align-items-center gap-1 collapsed" data-bs-toggle="collapse" href="#adminMenuCollapse" role="button" aria-expanded="false" aria-controls="adminMenuCollapse">
+                                Paneles
+                                <span class="navbar-toggler-icon" style="width: 1rem; height: 1rem;"></span>
+                            </a>
+                            <div class="collapse" id="adminMenuCollapse">
+                                <div class="bg-secondary rounded-3 p-3 mt-2">
+                                    <div class="row g-2">
+                                        <div class="col-12 col-md-6"><a class="dropdown-item text-white" href="{% url 'prensa' %}">Prensa</a></div>
+                                        <div class="col-12 col-md-6"><a class="dropdown-item text-white" href="{% url 'clasificacion' %}">Clasificación</a></div>
+                                        <div class="col-12 col-md-6"><a class="dropdown-item text-white" href="{% url 'redaccion' %}">Redacción</a></div>
+                                        <div class="col-12 col-md-6"><a class="dropdown-item text-white" href="{% url 'solicitud_info_portal' %}">Solicitud de información</a></div>
+                                        <div class="col-12 col-md-6"><a class="dropdown-item text-white" href="{% url 'hechos_delictivos' %}">Hechos Delictivos</a></div>
+                                        <div class="col-12 col-md-6"><a class="dropdown-item text-white" href="{% url 'bandas_criminales' %}">Bandas Criminales</a></div>
+                                        <div class="col-12 col-md-6"><a class="dropdown-item text-white" href="{% url 'crear_informe_banda' %}">Informe de banda</a></div>
+                                        <div class="col-12 col-md-6"><a class="dropdown-item text-white" href="{% url 'actividad' %}">Actividades</a></div>
+                                        <div class="col-12 col-md-6"><a class="dropdown-item text-white" href="{% url 'informes' %}">Informes</a></div>
+                                        <div class="col-12 col-md-6"><a class="dropdown-item text-white" href="{% url 'consulta_informes' %}">Consultas</a></div>
+                                        <div class="col-12 col-md-6"><a class="dropdown-item text-white" href="{% url 'estadisticas' %}">Estadísticas</a></div>
+                                        <div class="col-12 col-md-6"><a class="dropdown-item text-white" href="{% url 'herramientas_osint' %}">Herramientas OSINT</a></div>
+                                        <div class="col-12 col-md-6"><a class="dropdown-item text-white" href="{% url 'configuraciones' %}">Configuraciones</a></div>
+                                    </div>
+                                </div>
+                            </div>
                         </li>
                         {% elif user.userprofile.rol == 'gerente_produccion' %}
                         <li class="nav-item">
@@ -104,6 +93,9 @@
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'bandas_criminales' %}">Bandas Criminales</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'crear_informe_banda' %}">Informe de banda</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'solicitud_info_portal' %}">Solicitud de información</a>

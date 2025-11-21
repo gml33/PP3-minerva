@@ -61,6 +61,7 @@
         <tr><th>Documento</th><td>{{ informe.documento }}</td></tr>
         <tr><th>Fecha de nacimiento</th><td>{{ informe.fecha_nacimiento }}</td></tr>
         <tr><th>Nacionalidad</th><td>{{ informe.nacionalidad }}</td></tr>
+        <tr><th>Sexo</th><td>{{ informe.get_sexo_display|default:"" }}</td></tr>
         <tr><th>Rol</th><td>{{ informe.rol }}</td></tr>
         <tr><th>Situación</th><td>{{ informe.situacion }}</td></tr>
         <tr><th>Banda</th><td>{{ informe.banda }}</td></tr>

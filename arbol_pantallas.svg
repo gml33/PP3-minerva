@@ -1,0 +1,31 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='544' height='600' font-family='monospace' font-size='14'>
+    <rect width='100%' height='100%' fill='white'/>
+    <text x='20' y='30' fill='black'>Login</text>
+    <text x='20' y='50' fill='black'>└── Panel según rol</text>
+    <text x='20' y='70' fill='black'>    ├── Administrador</text>
+    <text x='20' y='90' fill='black'>    │   ├── Prensa</text>
+    <text x='20' y='110' fill='black'>    │   ├── Clasificación</text>
+    <text x='20' y='130' fill='black'>    │   ├── Redacción</text>
+    <text x='20' y='150' fill='black'>    │   │   ├── Informe de banda (CRUD + PDF)</text>
+    <text x='20' y='170' fill='black'>    │   │   └── Artículos (editar/exportar)</text>
+    <text x='20' y='190' fill='black'>    │   ├── Solicitud de información (portal + gestión)</text>
+    <text x='20' y='210' fill='black'>    │   ├── Hechos delictivos (listado/CRUD/PDF)</text>
+    <text x='20' y='230' fill='black'>    │   ├── Bandas criminales (listar/editar/exportar)</text>
+    <text x='20' y='250' fill='black'>    │   ├── Actividades (vista/exports/debug)</text>
+    <text x='20' y='270' fill='black'>    │   ├── Informes (listado/consulta/exportar)</text>
+    <text x='20' y='290' fill='black'>    │   ├── Estadísticas (vista/PDF)</text>
+    <text x='20' y='310' fill='black'>    │   ├── Herramientas OSINT (CRUD/exportar/panel)</text>
+    <text x='20' y='330' fill='black'>    │   └── Configuraciones (categorías/diarios/redes/TV/radio)</text>
+    <text x='20' y='350' fill='black'>    ├── Gerente de producción</text>
+    <text x='20' y='370' fill='black'>    │   ├── Herramientas OSINT</text>
+    <text x='20' y='390' fill='black'>    │   ├── Exportaciones OSINT/links</text>
+    <text x='20' y='410' fill='black'>    │   └── Configuraciones</text>
+    <text x='20' y='430' fill='black'>    ├── Prensa</text>
+    <text x='20' y='450' fill='black'>    │   └── Prensa panel</text>
+    <text x='20' y='470' fill='black'>    └── Redacción</text>
+    <text x='20' y='490' fill='black'>        ├── Redacción panel</text>
+    <text x='20' y='510' fill='black'>        ├── Hechos delictivos</text>
+    <text x='20' y='530' fill='black'>        ├── Bandas criminales</text>
+    <text x='20' y='550' fill='black'>        ├── Informe de banda</text>
+    <text x='20' y='570' fill='black'>        └── Solicitud de información</text>
+</svg>

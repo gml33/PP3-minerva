@@ -30,6 +30,7 @@ from .models import (
     TvDigital,
     RadioDigital,
     LinkRadioDigital,
+    ConfiguracionSistema,
 )
 
 # Opcional: para personalizar visualización
@@ -158,14 +159,42 @@ class HechoDelictivoAdmin(admin.ModelAdmin):
     list_display = ("fecha", "categoria", "ubicacion", "calificacion", "articulo", "creado_por")
     list_filter = ("fecha", "categoria", "calificacion")
     search_fields = ("descripcion", "ubicacion")
-    filter_horizontal = ("autor", "noticias")
+    filter_horizontal = ("autor", "noticias", "bandas")
 
 
 @admin.register(BandaCriminal)
 class BandaCriminalAdmin(admin.ModelAdmin):
-    list_display = ("nombre",)
-    search_fields = ("nombre", "descripcion")
-    filter_horizontal = ("integrantes", "hechos")
+    list_display = (
+        "nombres_resumen",
+        "zonas_admin_resumen",
+        "cantidad_lideres",
+        "cantidad_miembros",
+    )
+    search_fields = ("nombres",)
+    filter_horizontal = ("lideres", "miembros", "bandas_aliadas", "bandas_rivales")
+
+    @admin.display(description="Nombres / alias")
+    def nombres_resumen(self, obj):
+        return obj.nombres_como_texto or "Sin nombre"
+
+    @admin.display(description="Zonas de influencia")
+    def zonas_admin_resumen(self, obj):
+        return obj.zonas_resumen or "Sin zonas"
+
+    @admin.display(description="Líderes")
+    def cantidad_lideres(self, obj):
+        return obj.lideres.count()
+
+    @admin.display(description="Miembros")
+    def cantidad_miembros(self, obj):
+        return obj.miembros.count()
+
+    def get_search_results(self, request, queryset, search_term):
+        queryset, use_distinct = super().get_search_results(request, queryset, search_term)
+        if search_term:
+            queryset |= self.model.objects.filter(nombres__icontains=search_term)
+            queryset |= self.model.objects.filter(zonas_influencia__icontains=search_term)
+        return queryset, use_distinct
 
 
 @admin.register(RedSocial)
@@ -194,6 +223,7 @@ admin.site.register(Empleador)
 admin.site.register(Alias)
 admin.site.register(Vinculo)
 admin.site.register(HechoDestacado)
+admin.site.register(ConfiguracionSistema)
 
 # Register any remaining models so they appear in the admin automatically.
 app_config = apps.get_app_config("app")

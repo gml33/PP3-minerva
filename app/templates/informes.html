@@ -16,11 +16,7 @@
 
 <body>
 
-    {% if messages %}
-    {% for message in messages %}
-    <div class="alert alert-{{ message.tags }} mt-3">{{ message }}</div>
-    {% endfor %}
-    {% endif %}
+    {% include "partials/messages.html" %}
 
     <h1 class="mb-4 text-center">Crear Informe Individual</h1>
 
@@ -74,15 +70,31 @@
                         </div>
 
                         <div class="row mb-3">
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label>Nacionalidad</label>
                                 <input type="text" name="nacionalidad" class="form-control">
                             </div>
-                            <div class="col-md-4">
-                                <label>Banda</label>
-                                <input type="text" name="banda" class="form-control">
+                            <div class="col-md-3">
+                                <label>Sexo</label>
+                                <select name="sexo" class="form-select">
+                                    <option value="">Seleccione sexo</option>
+                                    <option value="masculino">Masculino</option>
+                                    <option value="femenino">Femenino</option>
+                                    <option value="otro">Otro</option>
+                                </select>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
+                                <label>Banda</label>
+                                <select name="banda" class="form-select">
+                                    <option value="">Seleccione una banda</option>
+                                    {% for banda in bandas %}
+                                    {% with nombre=banda.nombre_principal|default:banda %}
+                                    <option value="{{ nombre }}">{{ nombre }}</option>
+                                    {% endwith %}
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
                                 <label>Actividad</label>
                                 <input type="text" name="actividad" class="form-control">
                             </div>
@@ -392,6 +404,7 @@
                     <th>Nombre</th>
                     <th>Apellido</th>
                     <th>Documento</th>
+                    <th>Sexo</th>
                     <th>Autor</th>
                     <th>Acciones</th>
                 </tr>
@@ -403,6 +416,7 @@
                     <td>{{ inf.nombre }}</td>
                     <td>{{ inf.apellido }}</td>
                     <td>{{ inf.documento }}</td>
+                    <td>{{ inf.get_sexo_display|default:"-" }}</td>
                     <td>{{ inf.generado_por.username }}</td>
                     <td>
                         <button type="button" class="btn btn-sm btn-info" onclick="verInforme({{ inf.id }})"
@@ -584,7 +598,7 @@
             const informesPagina = informes.slice(inicio, fin);
 
             if (informesPagina.length === 0) {
-                tbody.innerHTML = "<tr><td colspan='6' class='text-center text-muted'>No se encontraron informes</td></tr>";
+                tbody.innerHTML = "<tr><td colspan='7' class='text-center text-muted'>No se encontraron informes</td></tr>";
                 return;
             }
 
@@ -595,6 +609,7 @@
                     <td>${inf.nombre || '-'}</td>
                     <td>${inf.apellido || '-'}</td>
                     <td>${inf.documento || '-'}</td>
+                    <td>${inf.sexo_display || '-'}</td>
                     <td>${inf.generado_por ? inf.generado_por.username : '-'}</td>
                     <td>
                         <button type="button" class="btn btn-sm btn-info" onclick="verInforme(${inf.id})"
@@ -639,6 +654,7 @@
                     nombre: "{{ inf.nombre|escapejs }}",
                     apellido: "{{ inf.apellido|escapejs }}",
                     documento: "{{ inf.documento|escapejs }}",
+                    sexo_display: "{{ inf.get_sexo_display|default_if_none:''|escapejs }}",
                     fecha_creacion: "{{ inf.fecha_creacion|date:'c' }}",
                     generado_por: {% if inf.generado_por %}{ username: "{{ inf.generado_por.username|escapejs }}" }{% else %}null{% endif %}
                 },
