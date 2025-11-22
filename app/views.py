@@ -3401,6 +3401,150 @@ def _obtener_estadisticas_redaccion(desde=None, hasta=None):
         for user in usuarios
     }
 
+
+def _obtener_estadisticas_informes(desde=None, hasta=None):
+    usuarios = list(
+        User.objects.filter(userprofile__rol=Roles.INFORMES)
+        .order_by("first_name", "last_name", "username")
+    )
+
+    fecha_desde = parse_date(desde) if desde else None
+    fecha_hasta = parse_date(hasta) if hasta else None
+
+    if not usuarios:
+        return {
+            "usuarios": [],
+            "global": {
+                "informes": [],
+                "promedios_articulos": [],
+                "categorias": [],
+                "summary": {
+                    "total_informes": 0,
+                    "promedio_articulos": 0,
+                    "promedio_categoria": 0,
+                },
+            },
+        }
+
+    usuarios_ids = [u.id for u in usuarios]
+    stats_map = {
+        user.id: {
+            "id": user.id,
+            "username": user.username,
+            "nombre": user.get_full_name() or user.username,
+            "informes": 0,
+            "articulos_total": 0,
+            "categorias": defaultdict(int),
+        }
+        for user in usuarios
+    }
+
+    informes_qs = (
+        InformeIndividual.objects.filter(generado_por__in=usuarios_ids)
+        .select_related("generado_por")
+        .prefetch_related("articulos__categoria")
+    )
+    if fecha_desde:
+        informes_qs = informes_qs.filter(fecha_creacion__date__gte=fecha_desde)
+    if fecha_hasta:
+        informes_qs = informes_qs.filter(fecha_creacion__date__lte=fecha_hasta)
+
+    categorias_global_counter = defaultdict(int)
+    total_informes = 0
+    articulos_total_global = 0
+
+    for informe in informes_qs:
+        data = stats_map.get(informe.generado_por_id)
+        if not data:
+            continue
+        data["informes"] += 1
+        total_informes += 1
+        articulos = list(informe.articulos.all())
+        data["articulos_total"] += len(articulos)
+        articulos_total_global += len(articulos)
+        categorias_informe = set()
+        for articulo in articulos:
+            categoria = (
+                articulo.categoria.nombre
+                if getattr(articulo, "categoria", None)
+                else "Sin categoría"
+            )
+            categorias_informe.add(categoria)
+        if not categorias_informe:
+            categorias_informe.add("Sin categoría")
+        for categoria in categorias_informe:
+            data["categorias"][categoria] += 1
+            categorias_global_counter[categoria] += 1
+
+    usuarios_stats = []
+    informes_global = []
+    promedios_articulos_global = []
+
+    for user in usuarios:
+        data = stats_map[user.id]
+        promedio_articulos = (
+            round(data["articulos_total"] / data["informes"], 2)
+            if data["informes"]
+            else 0
+        )
+        usuarios_stats.append(
+            {
+                "id": data["id"],
+                "username": data["username"],
+                "nombre": data["nombre"],
+                "informes": data["informes"],
+                "promedio_articulos": promedio_articulos,
+                "categorias": sorted(
+                    (
+                        {"nombre": nombre, "cantidad": cantidad}
+                        for nombre, cantidad in data["categorias"].items()
+                    ),
+                    key=lambda x: x["cantidad"],
+                    reverse=True,
+                ),
+            }
+        )
+        informes_global.append(
+            {"nombre": data["nombre"], "cantidad": data["informes"]}
+        )
+        promedios_articulos_global.append(
+            {"nombre": data["nombre"], "cantidad": promedio_articulos}
+        )
+
+    categorias_global = sorted(
+        (
+            {"nombre": nombre, "cantidad": cantidad}
+            for nombre, cantidad in categorias_global_counter.items()
+        ),
+        key=lambda x: x["cantidad"],
+        reverse=True,
+    )
+
+    promedio_articulos_total = (
+        round(articulos_total_global / total_informes, 2)
+        if total_informes
+        else 0
+    )
+    promedio_categoria = (
+        round(total_informes / len(categorias_global), 2)
+        if categorias_global
+        else 0
+    )
+
+    return {
+        "usuarios": usuarios_stats,
+        "global": {
+            "informes": informes_global,
+            "promedios_articulos": promedios_articulos_global,
+            "categorias": categorias_global,
+            "summary": {
+                "total_informes": total_informes,
+                "promedio_articulos": promedio_articulos_total,
+                "promedio_categoria": promedio_categoria,
+            },
+        },
+    }
+
     articulos_qs = (
         Articulo.objects.filter(generado_por__in=usuarios_ids)
         .select_related("generado_por")
@@ -3529,6 +3673,10 @@ def estadisticas_view(request):
     redac_hasta_param = request.GET.get("redac_hasta")
     redac_desde = redac_desde_param or desde
     redac_hasta = redac_hasta_param or hasta
+    info_desde_param = request.GET.get("info_desde")
+    info_hasta_param = request.GET.get("info_hasta")
+    info_desde = info_desde_param or desde
+    info_hasta = info_hasta_param or hasta
 
     estadisticas, resumen_global, datos_globales = _obtener_estadisticas_prensa(
         desde=desde, hasta=hasta, username=usuario
@@ -3538,6 +3686,9 @@ def estadisticas_view(request):
     )
     redaccion = _obtener_estadisticas_redaccion(
         desde=redac_desde, hasta=redac_hasta
+    )
+    informes = _obtener_estadisticas_informes(
+        desde=info_desde, hasta=info_hasta
     )
 
     return render(
@@ -3549,6 +3700,7 @@ def estadisticas_view(request):
             "datos_globales": datos_globales,
             "clasificacion": clasificacion,
             "redaccion": redaccion,
+            "informes": informes,
             "filtros": {"usuario": usuario, "desde": desde, "hasta": hasta},
             "clas_filtros": {
                 "desde": clas_desde_param or desde,
@@ -3557,6 +3709,10 @@ def estadisticas_view(request):
             "redac_filtros": {
                 "desde": redac_desde_param or desde,
                 "hasta": redac_hasta_param or hasta,
+            },
+            "info_filtros": {
+                "desde": info_desde_param or desde,
+                "hasta": info_hasta_param or hasta,
             },
         },
     )
@@ -3720,6 +3876,10 @@ def estadisticas_api_view(request):
     redac_hasta_param = request.GET.get("redac_hasta")
     redac_desde = redac_desde_param or desde
     redac_hasta = redac_hasta_param or hasta
+    info_desde_param = request.GET.get("info_desde")
+    info_hasta_param = request.GET.get("info_hasta")
+    info_desde = info_desde_param or desde
+    info_hasta = info_hasta_param or hasta
 
     estadisticas, resumen_global, datos_globales = _obtener_estadisticas_prensa(
         desde=desde, hasta=hasta, username=usuario
@@ -3730,6 +3890,9 @@ def estadisticas_api_view(request):
     redaccion = _obtener_estadisticas_redaccion(
         desde=redac_desde, hasta=redac_hasta
     )
+    informes = _obtener_estadisticas_informes(
+        desde=info_desde, hasta=info_hasta
+    )
 
     return JsonResponse(
         {
@@ -3738,6 +3901,7 @@ def estadisticas_api_view(request):
             "datos_globales": datos_globales,
             "clasificacion": clasificacion,
             "redaccion": redaccion,
+            "informes": informes,
             "filtros": {"usuario": usuario, "desde": desde, "hasta": hasta},
             "clas_filtros": {
                 "desde": clas_desde_param or desde,
@@ -3746,6 +3910,10 @@ def estadisticas_api_view(request):
             "redac_filtros": {
                 "desde": redac_desde_param or desde,
                 "hasta": redac_hasta_param or hasta,
+            },
+            "info_filtros": {
+                "desde": info_desde_param or desde,
+                "hasta": info_hasta_param or hasta,
             },
         }
     )
