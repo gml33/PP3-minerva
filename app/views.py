@@ -3361,6 +3361,158 @@ def _obtener_estadisticas_clasificacion(desde=None, hasta=None):
     }
 
 
+def _obtener_estadisticas_redaccion(desde=None, hasta=None):
+    usuarios = list(
+        User.objects.filter(userprofile__rol=Roles.REDACCION)
+        .order_by("first_name", "last_name", "username")
+    )
+
+    fecha_desde = parse_date(desde) if desde else None
+    fecha_hasta = parse_date(hasta) if hasta else None
+
+    if not usuarios:
+        return {
+            "usuarios": [],
+            "global": {
+                "articulos": [],
+                "tiempos": [],
+                "links": [],
+                "summary": {
+                    "total_articulos": 0,
+                    "total_busquedas": 0,
+                    "total_hechos": 0,
+                },
+            },
+        }
+
+    usuarios_ids = [u.id for u in usuarios]
+    stats_map = {
+        user.id: {
+            "id": user.id,
+            "username": user.username,
+            "nombre": user.get_full_name() or user.username,
+            "articulos": 0,
+            "links_total": 0,
+            "tiempo_total": 0.0,
+            "tiempo_count": 0,
+            "ordenes_busqueda": 0,
+            "hechos_delictivos": 0,
+        }
+        for user in usuarios
+    }
+
+    articulos_qs = (
+        Articulo.objects.filter(generado_por__in=usuarios_ids)
+        .select_related("generado_por")
+        .prefetch_related("links_incluidos")
+    )
+    if fecha_desde:
+        articulos_qs = articulos_qs.filter(fecha_creacion__date__gte=fecha_desde)
+    if fecha_hasta:
+        articulos_qs = articulos_qs.filter(fecha_creacion__date__lte=fecha_hasta)
+
+    for articulo in articulos_qs:
+        data = stats_map.get(articulo.generado_por_id)
+        if not data:
+            continue
+        data["articulos"] += 1
+        links = list(articulo.links_incluidos.all())
+        data["links_total"] += len(links)
+        for link in links:
+            if not link.fecha_aprobacion:
+                continue
+            delta = articulo.fecha_creacion - link.fecha_aprobacion
+            segundos = delta.total_seconds()
+            if segundos < 0:
+                continue
+            data["tiempo_total"] += segundos
+            data["tiempo_count"] += 1
+
+    busquedas_qs = SolicitudInfo.objects.filter(usuario_creador__in=usuarios_ids)
+    if fecha_desde:
+        busquedas_qs = busquedas_qs.filter(fecha_creacion__date__gte=fecha_desde)
+    if fecha_hasta:
+        busquedas_qs = busquedas_qs.filter(fecha_creacion__date__lte=fecha_hasta)
+
+    for item in busquedas_qs.values("usuario_creador").annotate(total=Count("id")):
+        data = stats_map.get(item["usuario_creador"])
+        if data:
+            data["ordenes_busqueda"] = item["total"]
+
+    hechos_qs = HechoDelictivo.objects.filter(creado_por__in=usuarios_ids)
+    if fecha_desde:
+        hechos_qs = hechos_qs.filter(fecha__gte=fecha_desde)
+    if fecha_hasta:
+        hechos_qs = hechos_qs.filter(fecha__lte=fecha_hasta)
+
+    for item in hechos_qs.values("creado_por").annotate(total=Count("id")):
+        data = stats_map.get(item["creado_por"])
+        if data:
+            data["hechos_delictivos"] = item["total"]
+
+    usuarios_stats = []
+    articulos_global = []
+    tiempos_global = []
+    links_global = []
+    total_articulos_global = 0
+    total_busquedas_global = 0
+    total_hechos_global = 0
+
+    for user in usuarios:
+        data = stats_map[user.id]
+        promedio_links = (
+            round(data["links_total"] / data["articulos"], 2)
+            if data["articulos"]
+            else 0
+        )
+        promedio_tiempo_horas = (
+            round(data["tiempo_total"] / data["tiempo_count"] / 3600, 2)
+            if data["tiempo_count"]
+            else 0
+        )
+
+        usuarios_stats.append(
+            {
+                "id": data["id"],
+                "username": data["username"],
+                "nombre": data["nombre"],
+                "articulos": data["articulos"],
+                "promedio_links": promedio_links,
+                "promedio_tiempo_horas": promedio_tiempo_horas,
+                "ordenes_busqueda": data["ordenes_busqueda"],
+                "hechos_delictivos": data["hechos_delictivos"],
+            }
+        )
+
+        articulos_global.append(
+            {"nombre": data["nombre"], "cantidad": data["articulos"]}
+        )
+        tiempos_global.append(
+            {"nombre": data["nombre"], "cantidad": promedio_tiempo_horas}
+        )
+        links_global.append(
+            {"nombre": data["nombre"], "cantidad": promedio_links}
+        )
+
+        total_articulos_global += data["articulos"]
+        total_busquedas_global += data["ordenes_busqueda"]
+        total_hechos_global += data["hechos_delictivos"]
+
+    return {
+        "usuarios": usuarios_stats,
+        "global": {
+            "articulos": articulos_global,
+            "tiempos": tiempos_global,
+            "links": links_global,
+            "summary": {
+                "total_articulos": total_articulos_global,
+                "total_busquedas": total_busquedas_global,
+                "total_hechos": total_hechos_global,
+            },
+        },
+    }
+
+
 @login_required
 def estadisticas_view(request):
     if request.user.userprofile.rol not in [Roles.ADMIN, Roles.GERENCIA]:
@@ -3373,12 +3525,19 @@ def estadisticas_view(request):
     clas_hasta_param = request.GET.get("clas_hasta")
     clas_desde = clas_desde_param or desde
     clas_hasta = clas_hasta_param or hasta
+    redac_desde_param = request.GET.get("redac_desde")
+    redac_hasta_param = request.GET.get("redac_hasta")
+    redac_desde = redac_desde_param or desde
+    redac_hasta = redac_hasta_param or hasta
 
     estadisticas, resumen_global, datos_globales = _obtener_estadisticas_prensa(
         desde=desde, hasta=hasta, username=usuario
     )
     clasificacion = _obtener_estadisticas_clasificacion(
         desde=clas_desde, hasta=clas_hasta
+    )
+    redaccion = _obtener_estadisticas_redaccion(
+        desde=redac_desde, hasta=redac_hasta
     )
 
     return render(
@@ -3389,10 +3548,15 @@ def estadisticas_view(request):
             "resumen_global": resumen_global,
             "datos_globales": datos_globales,
             "clasificacion": clasificacion,
+            "redaccion": redaccion,
             "filtros": {"usuario": usuario, "desde": desde, "hasta": hasta},
             "clas_filtros": {
                 "desde": clas_desde_param or desde,
                 "hasta": clas_hasta_param or hasta,
+            },
+            "redac_filtros": {
+                "desde": redac_desde_param or desde,
+                "hasta": redac_hasta_param or hasta,
             },
         },
     )
@@ -3552,12 +3716,19 @@ def estadisticas_api_view(request):
     clas_hasta_param = request.GET.get("clas_hasta")
     clas_desde = clas_desde_param or desde
     clas_hasta = clas_hasta_param or hasta
+    redac_desde_param = request.GET.get("redac_desde")
+    redac_hasta_param = request.GET.get("redac_hasta")
+    redac_desde = redac_desde_param or desde
+    redac_hasta = redac_hasta_param or hasta
 
     estadisticas, resumen_global, datos_globales = _obtener_estadisticas_prensa(
         desde=desde, hasta=hasta, username=usuario
     )
     clasificacion = _obtener_estadisticas_clasificacion(
         desde=clas_desde, hasta=clas_hasta
+    )
+    redaccion = _obtener_estadisticas_redaccion(
+        desde=redac_desde, hasta=redac_hasta
     )
 
     return JsonResponse(
@@ -3566,10 +3737,15 @@ def estadisticas_api_view(request):
             "resumen_global": resumen_global,
             "datos_globales": datos_globales,
             "clasificacion": clasificacion,
+            "redaccion": redaccion,
             "filtros": {"usuario": usuario, "desde": desde, "hasta": hasta},
             "clas_filtros": {
                 "desde": clas_desde_param or desde,
                 "hasta": clas_hasta_param or hasta,
+            },
+            "redac_filtros": {
+                "desde": redac_desde_param or desde,
+                "hasta": redac_hasta_param or hasta,
             },
         }
     )

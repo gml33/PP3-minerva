@@ -330,6 +330,178 @@
     </div>
 {% endif %}
 
+<hr class="my-5">
+
+<h2 class="mb-3 text-center text-uppercase">Estadísticas del equipo de redacción</h2>
+<p class="text-muted text-center mb-4">
+    Analiza cómo trabajan los redactores: artículos generados, tiempos de respuesta luego de la clasificación,
+    promedio de links consultados y producción de órdenes de búsqueda y hechos delictivos.
+</p>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            {% if filtros.usuario %}<input type="hidden" name="usuario" value="{{ filtros.usuario }}">{% endif %}
+            {% if filtros.desde %}<input type="hidden" name="desde" value="{{ filtros.desde }}">{% endif %}
+            {% if filtros.hasta %}<input type="hidden" name="hasta" value="{{ filtros.hasta }}">{% endif %}
+            {% if clas_filtros.desde %}<input type="hidden" name="clas_desde" value="{{ clas_filtros.desde }}">{% endif %}
+            {% if clas_filtros.hasta %}<input type="hidden" name="clas_hasta" value="{{ clas_filtros.hasta }}">{% endif %}
+            <div class="col-md-4">
+                <label class="form-label">Redacción desde</label>
+                <input type="date" name="redac_desde" class="form-control" value="{{ redac_filtros.desde|default:'' }}">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Redacción hasta</label>
+                <input type="date" name="redac_hasta" class="form-control" value="{{ redac_filtros.hasta|default:'' }}">
+            </div>
+            <div class="col-md-4 text-md-end">
+                <button type="submit" class="btn btn-primary px-4">Aplicar filtros de redacción</button>
+                <a href="?{% if filtros.usuario %}usuario={{ filtros.usuario }}&{% endif %}{% if filtros.desde %}desde={{ filtros.desde }}&{% endif %}{% if filtros.hasta %}hasta={{ filtros.hasta }}&{% endif %}{% if clas_filtros.desde %}clas_desde={{ clas_filtros.desde }}&{% endif %}{% if clas_filtros.hasta %}clas_hasta={{ clas_filtros.hasta }}&{% endif %}" class="btn btn-outline-secondary ms-2">Limpiar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% with resumen=redaccion.global.summary %}
+<div class="row g-3 mb-4">
+    <div class="col-md-4 col-sm-6">
+        <div class="stat-card bg-primary text-white">
+            <span>Artículos generados</span>
+            <strong>{{ resumen.total_articulos|default:0 }}</strong>
+        </div>
+    </div>
+    <div class="col-md-4 col-sm-6">
+        <div class="stat-card bg-info text-white">
+            <span>Órdenes de búsqueda</span>
+            <strong>{{ resumen.total_busquedas|default:0 }}</strong>
+        </div>
+    </div>
+    <div class="col-md-4 col-sm-6">
+        <div class="stat-card bg-purple text-white" style="background:#7c3aed;">
+            <span>Hechos delictivos</span>
+            <strong>{{ resumen.total_hechos|default:0 }}</strong>
+        </div>
+    </div>
+</div>
+{% endwith %}
+
+<div class="row g-4 mb-5">
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-body-secondary">Artículos por redactor</div>
+            <div class="card-body">
+                <div class="chart-wrapper">
+                    <canvas id="chartRedaccionArticulos" height="320"></canvas>
+                    <p class="text-muted text-center small d-none" id="chartRedaccionArticulosEmpty">
+                        No hay artículos registrados para este rango.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-body-secondary">Promedio de horas tras la clasificación</div>
+            <div class="card-body">
+                <div class="chart-wrapper">
+                    <canvas id="chartRedaccionTiempos" height="320"></canvas>
+                    <p class="text-muted text-center small d-none" id="chartRedaccionTiemposEmpty">
+                        No hay datos suficientes para calcular el tiempo promedio.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-5">
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-body-secondary">Promedio de links por artículo</div>
+            <div class="card-body">
+                <div class="chart-wrapper">
+                    <canvas id="chartRedaccionLinks" height="320"></canvas>
+                    <p class="text-muted text-center small d-none" id="chartRedaccionLinksEmpty">
+                        No se registran links asociados en este rango.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-body-secondary">Órdenes vs Hechos</div>
+            <div class="card-body">
+                <div class="chart-wrapper">
+                    <canvas id="chartRedaccionResumen" height="320"></canvas>
+                    <p class="text-muted text-center small d-none" id="chartRedaccionResumenEmpty">
+                        Aún no hay órdenes de búsqueda ni hechos delictivos en este rango.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if redaccion.usuarios %}
+    {% for redactor in redaccion.usuarios %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header card-header-clasificacion d-flex flex-column flex-lg-row justify-content-lg-between align-items-lg-center">
+            <div>
+                <h5 class="mb-1">{{ redactor.nombre }}</h5>
+                <small class="text-muted">Usuario: {{ redactor.username }}</small>
+            </div>
+            <div class="d-flex flex-wrap gap-3 mt-3 mt-lg-0">
+                <div class="metric-pill metric-total">
+                    <span class="metric-label">Artículos</span>
+                    <span class="metric-value">{{ redactor.articulos }}</span>
+                </div>
+                <div class="metric-pill metric-tiempo">
+                    <span class="metric-label">Promedio (hs)</span>
+                    <span class="metric-value">{{ redactor.promedio_tiempo_horas }}</span>
+                </div>
+                <div class="metric-pill metric-links">
+                    <span class="metric-label">Links por artículo</span>
+                    <span class="metric-value">{{ redactor.promedio_links }}</span>
+                </div>
+                <div class="metric-pill metric-busquedas">
+                    <span class="metric-label">Órdenes</span>
+                    <span class="metric-value">{{ redactor.ordenes_busqueda }}</span>
+                </div>
+                <div class="metric-pill metric-hechos">
+                    <span class="metric-label">Hechos</span>
+                    <span class="metric-value">{{ redactor.hechos_delictivos }}</span>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <p class="text-muted mb-2">
+                Cada barra refleja el promedio de tiempo en el que {{ redactor.nombre }} transforma links clasificados en artículos,
+                junto con el nivel de investigación adicional requerido.
+            </p>
+            <ul class="list-group list-group-flush small">
+                <li class="list-group-item px-0 d-flex justify-content-between">
+                    <span>Total de artículos en el rango</span>
+                    <strong>{{ redactor.articulos }}</strong>
+                </li>
+                <li class="list-group-item px-0 d-flex justify-content-between">
+                    <span>Órdenes de búsqueda generadas</span>
+                    <strong>{{ redactor.ordenes_busqueda }}</strong>
+                </li>
+                <li class="list-group-item px-0 d-flex justify-content-between">
+                    <span>Hechos delictivos documentados</span>
+                    <strong>{{ redactor.hechos_delictivos }}</strong>
+                </li>
+            </ul>
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="alert alert-secondary">
+        No se encontraron registros de redacción para el rango seleccionado.
+    </div>
+{% endif %}
+
 <style>
     .stat-card {
         border-radius: .75rem;
@@ -377,6 +549,9 @@
     .metric-tiempo { background: #1d4ed8; }
     .metric-aprobados { background: #047857; }
     .metric-rechazados { background: #b91c1c; }
+    .metric-links { background: #0284c7; }
+    .metric-busquedas { background: #0d9488; }
+    .metric-hechos { background: #7c3aed; }
     .metric-pill .metric-value { color: #fff; }
     .card-header-clasificacion {
         background: #f8fafc;
@@ -388,12 +563,14 @@
 {{ estadisticas|json_script:"stats-data" }}
 {{ datos_globales|json_script:"global-data" }}
 {{ clasificacion|json_script:"clasificacion-data" }}
+{{ redaccion|json_script:"redaccion-data" }}
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script>
     const statsData = JSON.parse(document.getElementById("stats-data").textContent || "[]");
     const globalData = JSON.parse(document.getElementById("global-data").textContent || "{}");
     const clasificacionData = JSON.parse(document.getElementById("clasificacion-data").textContent || "{}");
+    const redaccionData = JSON.parse(document.getElementById("redaccion-data").textContent || "{}");
 
     const chartColors = [
         "#2563eb",
@@ -636,6 +813,61 @@
         renderDonut("chartClasificacionCategorias", "chartClasificacionCategoriasEmpty", categorias);
     };
 
+    const renderRedaccionBar = (dataset, canvasId, emptyId, title) => {
+        if (!dataset || !dataset.length) {
+            showFallback(emptyId);
+            return;
+        }
+        const labels = dataset.map((item) => item.nombre);
+        const values = dataset.map((item) => item.cantidad || 0);
+        const tieneDatos = values.some((value) => value > 0);
+        if (!tieneDatos) {
+            showFallback(emptyId);
+            return;
+        }
+        new Chart(document.getElementById(canvasId), {
+            type: "bar",
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: title,
+                        data: values,
+                        backgroundColor: "#0f172a"
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    title: { display: true, text: title, color: chartTextColor }
+                },
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    };
+
+    const renderRedaccionResumen = () => {
+        const summary = (redaccionData.global && redaccionData.global.summary) || {};
+        const busquedas = summary.total_busquedas || 0;
+        const hechos = summary.total_hechos || 0;
+        if (!busquedas && !hechos) {
+            showFallback("chartRedaccionResumenEmpty");
+            return;
+        }
+        renderDonut(
+            "chartRedaccionResumen",
+            "chartRedaccionResumenEmpty",
+            [
+                { nombre: "Órdenes", cantidad: busquedas },
+                { nombre: "Hechos", cantidad: hechos }
+            ]
+        );
+    };
+
     document.addEventListener("DOMContentLoaded", () => {
         renderBarTotales();
         renderBarAprobados();
@@ -644,6 +876,25 @@
         renderClasificacionTotales();
         renderClasificacionResultados();
         renderClasificacionCategorias();
+        renderRedaccionBar(
+            redaccionData.global ? redaccionData.global.articulos : [],
+            "chartRedaccionArticulos",
+            "chartRedaccionArticulosEmpty",
+            "Artículos generados"
+        );
+        renderRedaccionBar(
+            redaccionData.global ? redaccionData.global.tiempos : [],
+            "chartRedaccionTiempos",
+            "chartRedaccionTiemposEmpty",
+            "Horas promedio"
+        );
+        renderRedaccionBar(
+            redaccionData.global ? redaccionData.global.links : [],
+            "chartRedaccionLinks",
+            "chartRedaccionLinksEmpty",
+            "Links por artículo"
+        );
+        renderRedaccionResumen();
     });
 </script>
 {% endblock %}
