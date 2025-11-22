@@ -1,409 +1,377 @@
 {% extends 'base.html' %}
-{% block title %}Estadísticas de Links{% endblock %}
+{% block title %}Estadísticas de Prensa{% endblock %}
 
 {% block content %}
-<h1 class="mb-4 text-center">Estadísticas de Links Relevantes</h1>
+<h1 class="mb-3 text-center text-uppercase">Panel de estadísticas para prensa</h1>
+<p class="text-muted text-center mb-4">
+    Visualiza cuántos links relevantes cargó cada usuario con rol de prensa, cómo fueron evaluados por
+    clasificación y desde qué diarios digitales o redes sociales procede la información.
+</p>
 
-<div class="pdf-container mx-auto">
-    <form id="filtros-estadisticas" class="row g-3 mb-4" onsubmit="return false;">
-        <div class="col-md-4">
-            <label class="form-label">Usuario</label>
-            <select name="usuario" class="form-select">
-                <option value="">Todos</option>
-                {% for u in usuarios %}
-                <option value="{{ u.username }}">{{ u.username }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-4">
-            <label class="form-label">Desde</label>
-            <input type="date" name="desde" class="form-control">
-        </div>
-        <div class="col-md-4">
-            <label class="form-label">Hasta</label>
-            <input type="date" name="hasta" class="form-control">
-        </div>
-        <div class="col-12 text-end">
-            <button type="button" class="btn btn-primary" onclick="cargarEstadisticas()">🔍 Aplicar filtros</button>
-            <a id="btnExportarPDF" href="{% url 'exportar_estadisticas_pdf' %}" class="btn btn-outline-danger"
-                target="_blank">📄 Exportar PDF</a>
-        </div>
-    </form>
-
-    <div id="filtros-aplicados" class="alert alert-info mt-3 d-none"></div>
-
-    {% if promedio_dias > 0 %}
-    <div class="alert alert-info text-center">
-        ⏳ <strong>Tiempo promedio de aprobación:</strong> {{ promedio_dias }} días ({{ promedio_horas }} horas)
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label">Desde</label>
+                <input type="date" name="desde" class="form-control" value="{{ filtros.desde }}">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Hasta</label>
+                <input type="date" name="hasta" class="form-control" value="{{ filtros.hasta }}">
+            </div>
+            {% if filtros.usuario %}
+            <input type="hidden" name="usuario" value="{{ filtros.usuario }}">
+            {% endif %}
+            <div class="col-md-4 text-md-end">
+                <button type="submit" class="btn btn-primary px-4">Aplicar filtros</button>
+                <a href="{% url 'estadisticas' %}" class="btn btn-outline-secondary ms-2">Limpiar</a>
+            </div>
+        </form>
     </div>
-    {% else %}
-    <div class="alert alert-secondary text-center">
-        ⏳ <strong>No hay datos suficientes para calcular el tiempo promedio de aprobación de links relevantes.</strong>
-    </div>
-    {% endif %}
-
-    <div class="row mb-4">
-        <div class="col-md-6">
-            <canvas id="graficoTorta"></canvas>
-        </div>
-        <div class="col-md-6">
-            <canvas id="graficoBarras"></canvas>
-        </div>
-    </div>
-    <div class="row mb-4">
-        <div class="col-md-6">
-            <canvas id="graficoLinksCategoria"></canvas>
-        </div>
-        <div class="col-md-6">
-            <canvas id="graficoLinksDiario"></canvas>
-        </div>
-    </div>
-    <div class="row mb-4">
-        <div class="col-md-6">
-            <canvas id="graficoConsultasBanda"></canvas>
-        </div>
-        <div class="col-md-6">
-            <canvas id="graficoIntegrantesBanda"></canvas>
-        </div>
-    </div>
-    <div class="row mb-4">
-        <div class="col-md-6">
-            <canvas id="graficoExportesBanda"></canvas>
-        </div>
-        <div class="col-md-6">
-            <canvas id="graficoAccionesUsuario"></canvas>
-        </div>
-    </div>
-    <div class="row mb-4">
-        <div class="col-md-6">
-            <canvas id="graficoAccionesRol"></canvas>
-        </div>
-    </div>
-
-
-    <h4 class="mt-4">Links Relevantes</h4>
-<div class="mx-auto">
-    <table class="table table-dark table-striped table-bordered table-hover table-sm text-white" id="tablaLinks">
-        <thead class="table-dark">
-            <tr>
-                <th style="width: 150px;">Fecha</th>
-                <th>URL</th>
-                <th style="width: 120px;">Estado</th>
-                <th style="width: 120px;">Usuario</th>
-            </tr>
-        </thead>
-        <tbody>
-            <!-- JS inserta aquí las filas -->
-        </tbody>
-    </table>
 </div>
+
+<div class="row g-3 mb-5">
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card bg-primary text-white">
+            <span>Total de links cargados</span>
+            <strong>{{ resumen_global.total_links }}</strong>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card bg-success text-white">
+            <span>Aprobados por clasificación</span>
+            <strong>{{ resumen_global.total_aprobados }}</strong>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card bg-danger text-white">
+            <span>Rechazados por clasificación</span>
+            <strong>{{ resumen_global.total_rechazados }}</strong>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card bg-dark text-white">
+            <span>Links de redes sociales</span>
+            <strong>{{ resumen_global.total_redes_sociales }}</strong>
+        </div>
+    </div>
 </div>
+
+<div class="row g-4 mb-5">
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-body-secondary">Actividad general de usuarios</div>
+            <div class="card-body">
+                <div class="chart-wrapper">
+                    <canvas id="chartLinksUsuarios" height="320"></canvas>
+                    <p class="text-muted text-center small d-none" id="chartLinksUsuariosEmpty">
+                        No hay datos para mostrar en este gráfico.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-body-secondary">Resultados de clasificación</div>
+            <div class="card-body">
+                <div class="chart-wrapper">
+                    <canvas id="chartAprobados" height="320"></canvas>
+                    <p class="text-muted text-center small d-none" id="chartAprobadosEmpty">
+                        No hay datos para mostrar en este gráfico.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-5">
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-body-secondary">Diarios digitales más utilizados</div>
+            <div class="card-body">
+                <div class="chart-wrapper">
+                    <canvas id="chartDiarios" height="320"></canvas>
+                    <p class="text-muted text-center small d-none" id="chartDiariosEmpty">
+                        No hay registros suficientes de diarios digitales.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-body-secondary">Redes sociales más utilizadas</div>
+            <div class="card-body">
+                <div class="chart-wrapper">
+                    <canvas id="chartRedes" height="320"></canvas>
+                    <p class="text-muted text-center small d-none" id="chartRedesEmpty">
+                        No hay registros suficientes de redes sociales.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if estadisticas %}
+    {% for usuario in estadisticas %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header d-flex flex-column flex-lg-row justify-content-lg-between align-items-lg-center">
+            <div>
+                <h5 class="mb-1">{{ usuario.nombre }}</h5>
+                <small class="text-muted">Usuario: {{ usuario.username }}</small>
+            </div>
+            <div class="d-flex flex-wrap gap-2 mt-3 mt-lg-0">
+                <div class="badge bg-primary p-2">Totales: {{ usuario.total_links }}</div>
+                <div class="badge bg-success p-2">Aprobados: {{ usuario.aprobados }}</div>
+                <div class="badge bg-danger p-2">Rechazados: {{ usuario.rechazados }}</div>
+                <div class="badge bg-secondary p-2">Redes sociales: {{ usuario.total_redes_sociales }}</div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <h6 class="text-uppercase text-muted">Links por diario digital</h6>
+                    {% if usuario.diarios %}
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Diario</th>
+                                    <th class="text-end">Cantidad</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for diario in usuario.diarios %}
+                                <tr>
+                                    <td>{{ diario.nombre }}</td>
+                                    <td class="text-end fw-semibold">{{ diario.cantidad }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-light border">No se registraron diarios para este usuario en el rango seleccionado.</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6">
+                    <h6 class="text-uppercase text-muted">Links por red social</h6>
+                    {% if usuario.redes_sociales %}
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Red social</th>
+                                    <th class="text-end">Cantidad</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for red in usuario.redes_sociales %}
+                                <tr>
+                                    <td>{{ red.nombre }}</td>
+                                    <td class="text-end fw-semibold">{{ red.cantidad }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-light border">No se cargaron links de redes sociales para este usuario en el rango seleccionado.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="alert alert-secondary">
+        No se encontraron usuarios de prensa o registros en el rango de fechas indicado. Ajusta los filtros e intenta nuevamente.
+    </div>
+{% endif %}
 
 <style>
-    .pdf-container {
-        padding: 30px;
-        background: #1e1e1e;
-        font-size: 12px;
-        line-height: 1.5;
-        color: #fff;
-        max-width: 1000px;
+    .stat-card {
+        border-radius: .75rem;
+        padding: 1.25rem;
+        height: 100%;
+    }
+    .stat-card span {
+        display: block;
+        font-size: .9rem;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+    }
+    .stat-card strong {
+        font-size: 2rem;
+        line-height: 1;
+    }
+    .chart-wrapper {
+        position: relative;
+        min-height: 280px;
     }
 </style>
 
-<!-- Chart.js CDN -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+{{ estadisticas|json_script:"stats-data" }}
+{{ datos_globales|json_script:"global-data" }}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script>
-    let graficoTorta = null;
-    let graficoBarras = null;
-    let graficoLinksCategoria = null;
-    let graficoLinksDiario = null;
-    let graficoConsultasBanda = null;
-    let graficoIntegrantesBanda = null;
-    let graficoExportesBanda = null;
-    let graficoAccionesUsuario = null;
-    let graficoAccionesRol = null;
+    const statsData = JSON.parse(document.getElementById("stats-data").textContent || "[]");
+    const globalData = JSON.parse(document.getElementById("global-data").textContent || "{}");
 
-    function asegurarDatos(labels, values, placeholder) {
-        if (!labels || labels.length === 0) {
-            return { labels: [placeholder], values: [0] };
+    const chartColors = [
+        "#2563eb",
+        "#16a34a",
+        "#f97316",
+        "#dc2626",
+        "#9333ea",
+        "#0ea5e9",
+        "#6366f1",
+        "#d946ef"
+    ];
+    const chartTextColor = "#0f172a";
+
+    if (window.Chart) {
+        Chart.defaults.color = chartTextColor;
+        Chart.defaults.plugins.legend.labels.color = chartTextColor;
+        Chart.defaults.plugins.title.color = chartTextColor;
+    }
+
+    const showFallback = (elementId) => {
+        const el = document.getElementById(elementId);
+        if (el) {
+            el.classList.remove("d-none");
         }
-        return { labels, values };
-    }
+    };
 
-    function mostrarFiltrosAplicados(usuario, desde, hasta) {
-        const filtrosDiv = document.getElementById('filtros-aplicados');
-        let html = "<strong>Filtros aplicados:</strong><br>";
-        let alguno = false;
-        if (usuario) { html += `Usuario: <code>${usuario}</code><br>`; alguno = true; }
-        if (desde) { html += `Desde: <code>${desde}</code><br>`; alguno = true; }
-        if (hasta) { html += `Hasta: <code>${hasta}</code><br>`; alguno = true; }
-        filtrosDiv.innerHTML = html;
-        filtrosDiv.classList.toggle('d-none', !alguno);
-    }
-
-    function actualizarGraficos(data) {
-        const ctxTorta = document.getElementById('graficoTorta').getContext('2d');
-        const estados = Object.keys(data.torta);
-        const cantidades = Object.values(data.torta);
-        const colores = estados.map(estado => {
-            if (estado.toLowerCase().includes('aprobado')) return '#28a745';     // Verde
-            if (estado.toLowerCase().includes('descartado')) return '#dc3545';   // Rojo
-            return '#ffc107'; // Por defecto (amarillo)
-        });
-
-        if (graficoTorta) { graficoTorta.destroy(); }
-        graficoTorta = new Chart(ctxTorta, {
-            type: 'pie',
-            data: {
-                labels: estados,
-                datasets: [{ data: cantidades, backgroundColor: colores }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: { display: true, labels: { color: '#fff' } },
-                    title: { display: true, color: '#fff', text: 'Distribución por Estado' }
-                }
-            }
-        });
-
-        const ctxBarras = document.getElementById('graficoBarras').getContext('2d');
-        if (graficoBarras) { graficoBarras.destroy(); }
-        graficoBarras = new Chart(ctxBarras, {
-            type: 'bar',
-            data: {
-                labels: data.barras_labels,
-                datasets: [{ label: 'Links por Día', data: data.barras_values }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: { display: false, labels: { color: '#fff' } },
-                    title: { display: true, color: '#fff', text: 'Links cargados por día' }
-                },
-                scales: {
-                    x: { title: { display: true, color: '#fff', text: 'Fecha' } },
-                    y: { title: { display: true, color: '#fff', text: 'Cantidad' }, beginAtZero: true }
-                }
-            }
-        });
-
-        const ctxLinksCategoria = document.getElementById('graficoLinksCategoria').getContext('2d');
-        if (graficoLinksCategoria) { graficoLinksCategoria.destroy(); }
-        const categoriasData = asegurarDatos(data.categorias_labels, data.categorias_values, "Sin datos");
-        graficoLinksCategoria = new Chart(ctxLinksCategoria, {
-            type: 'bar',
-            data: {
-                labels: categoriasData.labels,
-                datasets: [{ label: 'Links por Categoría', data: categoriasData.values }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: { display: false, labels: { color: '#fff' } },
-                    title: { display: true, color: '#fff', text: 'Links por Categoría' }
-                },
-                scales: {
-                    x: { title: { display: true, color: '#fff', text: 'Categoría' } },
-                    y: { title: { display: true, color: '#fff', text: 'Cantidad' }, beginAtZero: true }
-                }
-            }
-        });
-        const ctxLinksDiario = document.getElementById('graficoLinksDiario').getContext('2d');
-        if (graficoLinksDiario) { graficoLinksDiario.destroy(); }
-        const diariosData = asegurarDatos(data.links_diario_labels, data.links_diario_values, "Sin diario");
-        graficoLinksDiario = new Chart(ctxLinksDiario, {
-            type: 'bar',
-            data: {
-                labels: diariosData.labels,
-                datasets: [{ label: 'Links por Diario Digital', data: diariosData.values }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: { display: false, labels: { color: '#fff' } },
-                    title: { display: true, color: '#fff', text: 'Links por Diario Digital' }
-                },
-                scales: {
-                    x: { title: { display: true, color: '#fff', text: 'Diario' } },
-                    y: { title: { display: true, color: '#fff', text: 'Cantidad' }, beginAtZero: true }
-                }
-            }
-        });
-
-        const ctxConsultasBanda = document.getElementById('graficoConsultasBanda').getContext('2d');
-        if (graficoConsultasBanda) { graficoConsultasBanda.destroy(); }
-        const consultasData = asegurarDatos(data.consultas_banda_labels, data.consultas_banda_values, "Sin bandas");
-        graficoConsultasBanda = new Chart(ctxConsultasBanda, {
-            type: 'bar',
-            data: {
-                labels: consultasData.labels,
-                datasets: [{ label: 'Consultas por Banda', data: consultasData.values }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: { display: false, labels: { color: '#fff' } },
-                    title: { display: true, color: '#fff', text: 'Consultas por Banda Criminal' }
-                },
-                scales: {
-                    x: { title: { display: true, color: '#fff', text: 'Banda' } },
-                    y: { title: { display: true, color: '#fff', text: 'Cantidad' }, beginAtZero: true }
-                }
-            }
-        });
-
-        const ctxIntegrantesBanda = document.getElementById('graficoIntegrantesBanda').getContext('2d');
-        if (graficoIntegrantesBanda) { graficoIntegrantesBanda.destroy(); }
-        const integrantesData = asegurarDatos(data.integrantes_banda_labels, data.integrantes_banda_values, "Sin bandas");
-        graficoIntegrantesBanda = new Chart(ctxIntegrantesBanda, {
-            type: 'bar',
-            data: {
-                labels: integrantesData.labels,
-                datasets: [{ label: 'Integrantes', data: integrantesData.values }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: { display: false, labels: { color: '#fff' } },
-                    title: { display: true, color: '#fff', text: 'Integrantes por Banda Criminal' }
-                },
-                scales: {
-                    x: { title: { display: true, color: '#fff', text: 'Banda' } },
-                    y: { title: { display: true, color: '#fff', text: 'Integrantes' }, beginAtZero: true }
-                }
-            }
-        });
-
-        const ctxExportesBanda = document.getElementById('graficoExportesBanda').getContext('2d');
-        if (graficoExportesBanda) { graficoExportesBanda.destroy(); }
-        const exportesData = asegurarDatos(data.exports_banda_labels, data.exports_banda_values, "Sin bandas");
-        graficoExportesBanda = new Chart(ctxExportesBanda, {
-            type: 'bar',
-            data: {
-                labels: exportesData.labels,
-                datasets: [{ label: 'Exportaciones de Informes', data: exportesData.values }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: { display: false, labels: { color: '#fff' } },
-                    title: { display: true, color: '#fff', text: 'Exportaciones de informes por banda' }
-                },
-                scales: {
-                    x: { title: { display: true, color: '#fff', text: 'Banda' } },
-                    y: { title: { display: true, color: '#fff', text: 'Exportaciones' }, beginAtZero: true }
-                }
-            }
-        });
-
-        const ctxAccionesUsuario = document.getElementById('graficoAccionesUsuario').getContext('2d');
-        if (graficoAccionesUsuario) { graficoAccionesUsuario.destroy(); }
-        const accionesUsuData = asegurarDatos(data.acciones_usuario_labels, data.acciones_usuario_values, "Sin usuarios");
-        graficoAccionesUsuario = new Chart(ctxAccionesUsuario, {
-            type: 'bar',
-            data: {
-                labels: accionesUsuData.labels,
-                datasets: [{ label: 'Acciones', data: accionesUsuData.values }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: { display: false, labels: { color: '#fff' } },
-                    title: { display: true, color: '#fff', text: 'Acciones realizadas por usuario' }
-                },
-                scales: {
-                    x: { title: { display: true, color: '#fff', text: 'Usuario' } },
-                    y: { title: { display: true, color: '#fff', text: 'Acciones' }, beginAtZero: true }
-                }
-            }
-        });
-
-        const ctxAccionesRol = document.getElementById('graficoAccionesRol').getContext('2d');
-        if (graficoAccionesRol) { graficoAccionesRol.destroy(); }
-        const accionesRolData = asegurarDatos(data.acciones_rol_labels, data.acciones_rol_values, "Sin roles");
-        graficoAccionesRol = new Chart(ctxAccionesRol, {
-            type: 'bar',
-            data: {
-                labels: accionesRolData.labels,
-                datasets: [{ label: 'Acciones', data: accionesRolData.values }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: { display: false, labels: { color: '#fff' } },
-                    title: { display: true, color: '#fff', text: 'Acciones registradas por rol' }
-                },
-                scales: {
-                    x: { title: { display: true, color: '#fff', text: 'Rol' } },
-                    y: { title: { display: true, color: '#fff', text: 'Acciones' }, beginAtZero: true }
-                }
-            }
-        });
-    }
-
-    function actualizarTabla(data) {
-        const tbody = document.querySelector('#tablaLinks tbody');
-        tbody.innerHTML = '';
-        if (data.tabla.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4">No hay resultados para los filtros seleccionados.</td></tr>';
+    const renderBarTotales = () => {
+        if (!statsData.length) {
+            showFallback("chartLinksUsuariosEmpty");
             return;
         }
-        data.tabla.forEach(link => {
-            const fila = document.createElement('tr');
-            fila.innerHTML = `
-            <td>${link.fecha}</td>
-            <td style="max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                <a href="${link.url}" target="_blank">${link.url}</a>
-            </td>
-            <td>${link.estado}</td>
-            <td>${link.usuario}</td>
-        `;
-            tbody.appendChild(fila);
+        const ctx = document.getElementById("chartLinksUsuarios");
+        const labels = statsData.map((item) => item.nombre || item.username);
+        const totals = statsData.map((item) => item.total_links);
+
+        new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: "Links cargados",
+                        data: totals,
+                        backgroundColor: "#2563eb"
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { enabled: true },
+                    title: {
+                        display: true,
+                        text: "Links cargados por usuario",
+                        color: chartTextColor
+                    }
+                },
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
         });
-    }
+    };
 
-    function cargarEstadisticas() {
-        const usuario = document.querySelector('select[name="usuario"]').value;
-        const desde = document.querySelector('input[name="desde"]').value;
-        const hasta = document.querySelector('input[name="hasta"]').value;
-        mostrarFiltrosAplicados(usuario, desde, hasta);
-
-        let url = `/api/estadisticas/?`;
-        let urlPDF = `{% url 'exportar_estadisticas_pdf' %}?`;
-        if (usuario) {
-            url += `usuario=${encodeURIComponent(usuario)}&`;
-            urlPDF += `usuario=${encodeURIComponent(usuario)}&`;
+    const renderBarAprobados = () => {
+        if (!statsData.length) {
+            showFallback("chartAprobadosEmpty");
+            return;
         }
-        if (desde) {
-            url += `desde=${encodeURIComponent(desde)}&`;
-            urlPDF += `desde=${encodeURIComponent(desde)}&`;
-        }
-        if (hasta) {
-            url += `hasta=${encodeURIComponent(hasta)}&`;
-            urlPDF += `hasta=${encodeURIComponent(hasta)}&`;
-        }
+        const ctx = document.getElementById("chartAprobados");
+        const labels = statsData.map((item) => item.nombre || item.username);
+        const aprobados = statsData.map((item) => item.aprobados);
+        const rechazados = statsData.map((item) => item.rechazados);
 
-        document.getElementById('btnExportarPDF').href = urlPDF;
-
-        fetch(url)
-            .then(resp => resp.json())
-            .then(data => {
-                actualizarGraficos(data);
-                actualizarTabla(data);
-            })
-            .catch(err => {
-                alert("¡Oops! No se pudieron cargar las estadísticas. Esto es más raro que un lunes sin café.");
-            });
-    }
-
-    window.addEventListener('DOMContentLoaded', function () {
-        cargarEstadisticas();
-        document.querySelectorAll('#filtros-estadisticas select, #filtros-estadisticas input').forEach(el => {
-            el.addEventListener('change', cargarEstadisticas);
+        new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: "Aprobados",
+                        backgroundColor: "#16a34a",
+                        data: aprobados
+                    },
+                    {
+                        label: "Rechazados",
+                        backgroundColor: "#dc2626",
+                        data: rechazados
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    tooltip: { enabled: true },
+                    title: {
+                        display: true,
+                        text: "Resultados de clasificación",
+                        color: chartTextColor
+                    }
+                },
+                scales: {
+                    y: { stacked: true, beginAtZero: true },
+                    x: { stacked: true }
+                }
+            }
         });
+    };
+
+    const renderDonut = (elementId, emptyId, dataset = []) => {
+        if (!dataset.length) {
+            showFallback(emptyId);
+            return;
+        }
+        const ctx = document.getElementById(elementId);
+        const labels = dataset.map((item) => item.nombre);
+        const values = dataset.map((item) => item.cantidad);
+        const colors = labels.map((_, idx) => chartColors[idx % chartColors.length]);
+
+        new Chart(ctx, {
+            type: "doughnut",
+            data: {
+                labels,
+                datasets: [
+                    {
+                        data: values,
+                        backgroundColor: colors,
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: "bottom" },
+                    title: {
+                        display: true,
+                        text: elementId === "chartDiarios" ? "Participación por diario" : "Participación por red social",
+                        color: chartTextColor
+                    }
+                }
+            }
+        });
+    };
+
+    document.addEventListener("DOMContentLoaded", () => {
+        renderBarTotales();
+        renderBarAprobados();
+        renderDonut("chartDiarios", "chartDiariosEmpty", globalData.diarios || []);
+        renderDonut("chartRedes", "chartRedesEmpty", globalData.redes_sociales || []);
     });
 </script>
-
 {% endblock %}

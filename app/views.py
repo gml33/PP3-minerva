@@ -6,7 +6,7 @@ from django.http import QueryDict
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET
 from django.utils.dateparse import parse_date
-from django.db.models import Count, F, ExpressionWrapper, DurationField, Avg, Prefetch
+from django.db.models import Count, F, ExpressionWrapper, DurationField, Avg, Prefetch, Q
 from django.conf import settings
 from django.template.loader import render_to_string
 import json
@@ -2999,136 +2999,182 @@ def editar_individuo_view(request, id):
     )
 
 
+def _obtener_estadisticas_prensa(desde=None, hasta=None, username=None):
+    """Construye las estadísticas solicitadas para usuarios con rol de prensa."""
+
+    usuarios_qs = User.objects.filter(userprofile__rol=Roles.PRENSA).order_by(
+        "first_name", "last_name", "username"
+    )
+    if username:
+        usuarios_qs = usuarios_qs.filter(username=username)
+
+    usuarios = list(usuarios_qs)
+    if not usuarios:
+        return (
+            [],
+            {
+                "total_links": 0,
+                "total_aprobados": 0,
+                "total_rechazados": 0,
+                "total_redes_sociales": 0,
+            },
+            {"diarios": [], "redes_sociales": []},
+        )
+
+    fecha_desde = parse_date(desde) if desde else None
+    fecha_hasta = parse_date(hasta) if hasta else None
+    usuarios_ids = [u.id for u in usuarios]
+
+    stats_map = {}
+    for user in usuarios:
+        stats_map[user.id] = {
+            "id": user.id,
+            "username": user.username,
+            "nombre": user.get_full_name() or user.username,
+            "total_links": 0,
+            "aprobados": 0,
+            "rechazados": 0,
+            "diarios": defaultdict(int),
+            "redes_sociales": defaultdict(int),
+        }
+
+    links_qs = LinkRelevante.objects.filter(cargado_por__in=usuarios_ids)
+    if fecha_desde:
+        links_qs = links_qs.filter(fecha_carga__date__gte=fecha_desde)
+    if fecha_hasta:
+        links_qs = links_qs.filter(fecha_carga__date__lte=fecha_hasta)
+
+    conteos_por_usuario = (
+        links_qs.values("cargado_por_id")
+        .annotate(
+            total=Count("id"),
+            aprobados=Count("id", filter=Q(estado=EstadoLink.APROBADO)),
+            rechazados=Count("id", filter=Q(estado=EstadoLink.DESCARTADO)),
+        )
+    )
+    for item in conteos_por_usuario:
+        data = stats_map.get(item["cargado_por_id"])
+        if not data:
+            continue
+        data["total_links"] = item["total"]
+        data["aprobados"] = item["aprobados"]
+        data["rechazados"] = item["rechazados"]
+
+    diarios_por_usuario = (
+        links_qs.values("cargado_por_id", "diario_digital__nombre")
+        .annotate(total=Count("id"))
+        .order_by()
+    )
+    for item in diarios_por_usuario:
+        data = stats_map.get(item["cargado_por_id"])
+        if not data:
+            continue
+        nombre_diario = item["diario_digital__nombre"] or "Sin diario digital"
+        data["diarios"][nombre_diario] += item["total"]
+
+    redes_qs = LinkRedSocial.objects.filter(cargado_por__in=usuarios_ids)
+    if fecha_desde:
+        redes_qs = redes_qs.filter(fecha_carga__date__gte=fecha_desde)
+    if fecha_hasta:
+        redes_qs = redes_qs.filter(fecha_carga__date__lte=fecha_hasta)
+
+    redes_por_usuario = (
+        redes_qs.values("cargado_por_id", "red_social__nombre")
+        .annotate(total=Count("id"))
+        .order_by()
+    )
+    for item in redes_por_usuario:
+        data = stats_map.get(item["cargado_por_id"])
+        if not data:
+            continue
+        nombre_red = item["red_social__nombre"] or "Sin red social"
+        data["redes_sociales"][nombre_red] += item["total"]
+
+    stats_list = []
+    diarios_totales = defaultdict(int)
+    redes_totales = defaultdict(int)
+
+    for user in usuarios:
+        data = stats_map[user.id]
+        diarios_dict = data["diarios"]
+        redes_dict = data["redes_sociales"]
+
+        for nombre, cantidad in diarios_dict.items():
+            diarios_totales[nombre] += cantidad
+        for nombre, cantidad in redes_dict.items():
+            redes_totales[nombre] += cantidad
+
+        data["diarios"] = sorted(
+            (
+                {"nombre": nombre, "cantidad": cantidad}
+                for nombre, cantidad in diarios_dict.items()
+            ),
+            key=lambda x: x["cantidad"],
+            reverse=True,
+        )
+        data["redes_sociales"] = sorted(
+            (
+                {"nombre": nombre, "cantidad": cantidad}
+                for nombre, cantidad in redes_dict.items()
+            ),
+            key=lambda x: x["cantidad"],
+            reverse=True,
+        )
+        data["total_redes_sociales"] = sum(
+            item["cantidad"] for item in data["redes_sociales"]
+        )
+        stats_list.append(data)
+
+    resumen_global = {
+        "total_links": sum(item["total_links"] for item in stats_list),
+        "total_aprobados": sum(item["aprobados"] for item in stats_list),
+        "total_rechazados": sum(item["rechazados"] for item in stats_list),
+        "total_redes_sociales": sum(item["total_redes_sociales"] for item in stats_list),
+    }
+
+    datos_globales = {
+        "diarios": sorted(
+            (
+                {"nombre": nombre or "Sin diario digital", "cantidad": cantidad}
+                for nombre, cantidad in diarios_totales.items()
+            ),
+            key=lambda x: x["cantidad"],
+            reverse=True,
+        ),
+        "redes_sociales": sorted(
+            (
+                {"nombre": nombre or "Sin red social", "cantidad": cantidad}
+                for nombre, cantidad in redes_totales.items()
+            ),
+            key=lambda x: x["cantidad"],
+            reverse=True,
+        ),
+    }
+
+    return stats_list, resumen_global, datos_globales
+
+
 @login_required
 def estadisticas_view(request):
     if request.user.userprofile.rol not in [Roles.ADMIN, Roles.GERENCIA]:
         return render(request, "403.html", status=403)
 
-    usuarios = User.objects.filter(
-        userprofile__rol__in=[Roles.ADMIN, Roles.PRENSA, Roles.CLASIFICACION]
-    )
-    links = LinkRelevante.objects.select_related("cargado_por", "diario_digital").prefetch_related(
-        "categorias"
-    )
-
-    usuario = request.GET.get("usuario")
     desde = request.GET.get("desde")
     hasta = request.GET.get("hasta")
+    usuario = request.GET.get("usuario")
 
-    if usuario:
-        links = links.filter(cargado_por__username=usuario)
-    if desde:
-        links = links.filter(fecha_carga__date__gte=parse_date(desde))
-    if hasta:
-        links = links.filter(fecha_carga__date__lte=parse_date(hasta))
-
-    # ----------------------------
-    # PROMEDIO ENTRE CARGA Y APROBACIÓN
-    # ----------------------------
-    # Aseguramos que solo se calculen para links con fecha_aprobacion
-    links_aprobados = links.filter(estado='aprobado').exclude(fecha_aprobacion__isnull=True).annotate(
-        tiempo_aprobacion=ExpressionWrapper(
-            F("fecha_aprobacion") - F("fecha_carga"), output_field=DurationField()
-        )
+    estadisticas, resumen_global, datos_globales = _obtener_estadisticas_prensa(
+        desde=desde, hasta=hasta, username=usuario
     )
-    promedio = links_aprobados.aggregate(promedio=Avg("tiempo_aprobacion"))["promedio"]
-
-    promedio_dias = round(promedio.total_seconds() / 86400, 2) if promedio else 0
-    promedio_horas = round(promedio.total_seconds() / 3600, 2) if promedio else 0
-
-    # ----------------------------
-    # GRÁFICOS
-    # ----------------------------
-    # Conteo por estado
-    estado_count = links.values("estado").annotate(cantidad=Count("id"))
-    torta = {item["estado"]: item["cantidad"] for item in estado_count}
-
-    # Conteo por día de carga
-    barras = defaultdict(int)
-    for link in links:
-        dia = link.fecha_carga.date().isoformat()
-        barras[dia] += 1
-        
-    # Conteo por categoría
-    categorias_counter = defaultdict(int)
-    diarios_counter = defaultdict(int)
-    for link in links:
-        for cat in link.categorias.all():
-            categorias_counter[cat.nombre] += 1
-        nombre_diario = (
-            link.diario_digital.nombre if getattr(link, "diario_digital", None) else "Sin diario"
-        )
-        diarios_counter[nombre_diario] += 1
-
-    consultas_counter = defaultdict(int)
-    for informe in InformeBandaCriminal.objects.select_related("banda"):
-        nombre_banda = (
-            informe.banda.nombre_principal if informe.banda else "Sin banda"
-        )
-        consultas_counter[nombre_banda or "Sin banda"] += 1
-
-    integrantes_labels = []
-    integrantes_values = []
-    for banda in BandaCriminal.objects.prefetch_related("miembros"):
-        integrantes_labels.append(banda.nombre_principal or "Banda sin nombre")
-        integrantes_values.append(banda.miembros.count())
-
-    exportes_counter = defaultdict(int)
-    for informe in InformeBandaCriminal.objects.select_related("banda"):
-        nombre_banda = (
-            informe.banda.nombre_principal if informe.banda else "Sin banda"
-        )
-        exportes_counter[nombre_banda or "Sin banda"] += informe.exportaciones or 0
-
-    acciones_usuario = (
-        Actividad.objects.values("usuario__username")
-        .annotate(cantidad=Count("id"))
-        .order_by("-cantidad")
-    )
-    acciones_usuario_labels = [
-        (item["usuario__username"] or "Sin usuario") for item in acciones_usuario
-    ]
-    acciones_usuario_values = [item["cantidad"] for item in acciones_usuario]
-
-    rol_map = dict(Roles.choices)
-    acciones_por_rol = (
-        Actividad.objects.values("usuario__userprofile__rol")
-        .annotate(cantidad=Count("id"))
-        .order_by("-cantidad")
-    )
-    acciones_rol_labels = [
-        rol_map.get(item["usuario__userprofile__rol"], "Sin rol")
-        for item in acciones_por_rol
-    ]
-    acciones_rol_values = [item["cantidad"] for item in acciones_por_rol]
-
 
     return render(
         request,
         "estadisticas.html",
         {
-            "usuarios": usuarios,
-            "tabla": links.order_by("-fecha_carga"),
-            "torta": torta,
-            "barras_labels": list(barras.keys()),
-            "barras_values": list(barras.values()),
-            "categorias_labels": list(categorias_counter.keys()),
-            "categorias_values": list(categorias_counter.values()),
-            "links_diario_labels": list(diarios_counter.keys()),
-            "links_diario_values": list(diarios_counter.values()),
-            "consultas_banda_labels": list(consultas_counter.keys()),
-            "consultas_banda_values": list(consultas_counter.values()),
-            "integrantes_banda_labels": integrantes_labels,
-            "integrantes_banda_values": integrantes_values,
-            "exports_banda_labels": list(exportes_counter.keys()),
-            "exports_banda_values": list(exportes_counter.values()),
-            "acciones_usuario_labels": acciones_usuario_labels,
-            "acciones_usuario_values": acciones_usuario_values,
-            "acciones_rol_labels": acciones_rol_labels,
-            "acciones_rol_values": acciones_rol_values,
+            "estadisticas": estadisticas,
+            "resumen_global": resumen_global,
+            "datos_globales": datos_globales,
             "filtros": {"usuario": usuario, "desde": desde, "hasta": hasta},
-            "promedio_dias": promedio_dias,
-            "promedio_horas": promedio_horas,
         },
     )
 
@@ -3276,126 +3322,24 @@ def exportar_estadisticas_pdf(request):
 @login_required
 @require_GET
 def estadisticas_api_view(request):
-    # EndPoint JSON para estadísticas
+    """EndPoint JSON para las nuevas estadísticas de usuarios de prensa."""
     if request.user.userprofile.rol not in [Roles.ADMIN, Roles.GERENCIA]:
         return JsonResponse({"error": "Acceso denegado"}, status=403)
-        
+
     usuario = request.GET.get("usuario")
     desde = request.GET.get("desde")
     hasta = request.GET.get("hasta")
-    
-    links = LinkRelevante.objects.select_related("cargado_por", "diario_digital").prefetch_related(
-        "categorias"
-    )
-    
-    if usuario:
-        links = links.filter(cargado_por__username=usuario)
-    if desde:
-        links = links.filter(fecha_carga__date__gte=parse_date(desde))
-    if hasta:
-        links = links.filter(fecha_carga__date__lte=parse_date(hasta))
-        
-    # Conteo por estado
-    estado_count = links.values("estado").annotate(cantidad=Count("id"))
-    torta = {x["estado"]: x["cantidad"] for x in estado_count}
-    
-    # Conteo por día
-    barras = defaultdict(int)
-    for link in links:
-        barras[link.fecha_carga.date().isoformat()] += 1
-        
-    # Conteo por categoría
-    categorias = defaultdict(int)
-    diarios_counter = defaultdict(int)
-    for link in links:
-        nombre_diario = link.diario_digital.nombre if getattr(link, "diario_digital", None) else "Sin diario"
-        diarios_counter[nombre_diario] += 1
-        for cat in link.categorias.all():
-            categorias[cat.nombre] += 1
 
-    consultas_counter = defaultdict(int)
-    for informe in InformeBandaCriminal.objects.select_related("banda"):
-        nombre_banda = (
-            informe.banda.nombre_principal if informe.banda else "Sin banda"
-        )
-        consultas_counter[nombre_banda or "Sin banda"] += 1
-
-    integrantes_labels = []
-    integrantes_values = []
-    for banda in BandaCriminal.objects.prefetch_related("miembros"):
-        integrantes_labels.append(banda.nombre_principal or "Banda sin nombre")
-        integrantes_values.append(banda.miembros.count())
-    
-    exportes_counter = defaultdict(int)
-    for informe in InformeBandaCriminal.objects.select_related("banda"):
-        nombre_banda = (
-            informe.banda.nombre_principal if informe.banda else "Sin banda"
-        )
-        exportes_counter[nombre_banda or "Sin banda"] += informe.exportaciones or 0
-
-    acciones_usuario = (
-        Actividad.objects.values("usuario__username")
-        .annotate(cantidad=Count("id"))
-        .order_by("-cantidad")
+    estadisticas, resumen_global, datos_globales = _obtener_estadisticas_prensa(
+        desde=desde, hasta=hasta, username=usuario
     )
-    acciones_usuario_labels = [
-        (item["usuario__username"] or "Sin usuario") for item in acciones_usuario
-    ]
-    acciones_usuario_values = [item["cantidad"] for item in acciones_usuario]
-
-    rol_map = dict(Roles.choices)
-    acciones_por_rol = (
-        Actividad.objects.values("usuario__userprofile__rol")
-        .annotate(cantidad=Count("id"))
-        .order_by("-cantidad")
-    )
-    acciones_rol_labels = [
-        rol_map.get(item["usuario__userprofile__rol"], "Sin rol")
-        for item in acciones_por_rol
-    ]
-    acciones_rol_values = [item["cantidad"] for item in acciones_por_rol]
-            
-    # Datos de la tabla (limitados)
-    tabla = [
-        {
-            "fecha": l.fecha_carga.strftime("%Y-%m-%d %H:%M"),
-            "url": l.url,
-            "estado": l.get_estado_display(),
-            "usuario": l.cargado_por.username,
-        }
-        for l in links.order_by('-fecha_carga')[:100]
-    ]
-    
-    # Cálculo de promedio de aprobación
-    links_aprobados = links.filter(estado='aprobado').exclude(fecha_aprobacion__isnull=True).annotate(
-        tiempo_aprobacion=ExpressionWrapper(
-            F("fecha_aprobacion") - F("fecha_carga"), output_field=DurationField()
-        )
-    )
-    promedio = links_aprobados.aggregate(promedio=Avg("tiempo_aprobacion"))["promedio"]
-    promedio_horas = round(promedio.total_seconds() / 3600, 2) if promedio else 0
 
     return JsonResponse(
         {
-            "torta": torta,
-            "barras_labels": list(barras.keys()),
-            "barras_values": list(barras.values()),
-            "categorias_labels": list(categorias.keys()),
-            "categorias_values": list(categorias.values()),
-            "links_diario_labels": list(diarios_counter.keys()),
-            "links_diario_values": list(diarios_counter.values()),
-            "consultas_banda_labels": list(consultas_counter.keys()),
-            "consultas_banda_values": list(consultas_counter.values()),
-            "integrantes_banda_labels": integrantes_labels,
-            "integrantes_banda_values": integrantes_values,
-            "exports_banda_labels": list(exportes_counter.keys()),
-            "exports_banda_values": list(exportes_counter.values()),
-            "acciones_usuario_labels": acciones_usuario_labels,
-            "acciones_usuario_values": acciones_usuario_values,
-            "acciones_rol_labels": acciones_rol_labels,
-            "acciones_rol_values": acciones_rol_values,
-            "tabla": tabla,
-            "promedio_horas": promedio_horas
+            "estadisticas": estadisticas,
+            "resumen_global": resumen_global,
+            "datos_globales": datos_globales,
+            "filtros": {"usuario": usuario, "desde": desde, "hasta": hasta},
         }
     )
 
