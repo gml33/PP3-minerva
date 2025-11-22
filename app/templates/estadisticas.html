@@ -192,6 +192,144 @@
     </div>
 {% endif %}
 
+<hr class="my-5">
+
+<h2 class="mb-3 text-center text-uppercase">Estadísticas del equipo de clasificación</h2>
+<p class="text-muted text-center mb-4">
+    Monitorea el rendimiento de cada clasificador: volumen de links resueltos, velocidad de respuesta,
+    porcentajes de aprobación y las categorías más frecuentes que procesan.
+    Actualmente hay <strong>{{ clasificacion.pendientes }}</strong> links pendientes de clasificación.
+</p>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            {% if filtros.usuario %}<input type="hidden" name="usuario" value="{{ filtros.usuario }}">{% endif %}
+            {% if filtros.desde %}<input type="hidden" name="desde" value="{{ filtros.desde }}">{% endif %}
+            {% if filtros.hasta %}<input type="hidden" name="hasta" value="{{ filtros.hasta }}">{% endif %}
+            <div class="col-md-4">
+                <label class="form-label">Clasificación desde</label>
+                <input type="date" name="clas_desde" class="form-control" value="{{ clas_filtros.desde|default:'' }}">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Clasificación hasta</label>
+                <input type="date" name="clas_hasta" class="form-control" value="{{ clas_filtros.hasta|default:'' }}">
+            </div>
+            <div class="col-md-4 text-md-end">
+                <button type="submit" class="btn btn-primary px-4">Aplicar filtros de clasificación</button>
+                <a href="?{% if filtros.usuario %}usuario={{ filtros.usuario }}&{% endif %}{% if filtros.desde %}desde={{ filtros.desde }}&{% endif %}{% if filtros.hasta %}hasta={{ filtros.hasta }}&{% endif %}" class="btn btn-outline-secondary ms-2">Limpiar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="row g-4 mb-5">
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-body-secondary">Links clasificados por usuario</div>
+            <div class="card-body">
+                <div class="chart-wrapper">
+                    <canvas id="chartClasificacionTotales" height="320"></canvas>
+                    <p class="text-muted text-center small d-none" id="chartClasificacionTotalesEmpty">
+                        No hay datos para mostrar en este gráfico.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-body-secondary">Resultados por usuario</div>
+            <div class="card-body">
+                <div class="chart-wrapper">
+                    <canvas id="chartClasificacionResultados" height="320"></canvas>
+                    <p class="text-muted text-center small d-none" id="chartClasificacionResultadosEmpty">
+                        No hay decisiones registradas en este rango de fechas.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-5">
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-body-secondary">Categorías más clasificadas</div>
+            <div class="card-body">
+                <div class="chart-wrapper">
+                    <canvas id="chartClasificacionCategorias" height="320"></canvas>
+                    <p class="text-muted text-center small d-none" id="chartClasificacionCategoriasEmpty">
+                        Todavía no hay categorías asociadas a las clasificaciones en este rango.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if clasificacion.usuarios %}
+    {% for clasificador in clasificacion.usuarios %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header card-header-clasificacion d-flex flex-column flex-lg-row justify-content-lg-between align-items-lg-center">
+            <div>
+                <h5 class="mb-1">{{ clasificador.nombre }}</h5>
+                <small class="text-muted">Usuario: {{ clasificador.username }}</small>
+            </div>
+            <div class="d-flex flex-wrap gap-3 mt-3 mt-lg-0">
+                <div class="metric-pill metric-total">
+                    <span class="metric-label">Links clasificados</span>
+                    <span class="metric-value">{{ clasificador.links_clasificados }}</span>
+                </div>
+                <div class="metric-pill metric-tiempo">
+                    <span class="metric-label">Promedio (hs)</span>
+                    <span class="metric-value">{{ clasificador.promedio_horas }}</span>
+                </div>
+                <div class="metric-pill metric-aprobados">
+                    <span class="metric-label">Aprobados</span>
+                    <span class="metric-value">{{ clasificador.aprobados }}</span>
+                </div>
+                <div class="metric-pill metric-rechazados">
+                    <span class="metric-label">Rechazados</span>
+                    <span class="metric-value">{{ clasificador.rechazados }}</span>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="mb-4">
+                <div class="d-flex justify-content-between text-muted small mb-1">
+                    <span>Aprobados {{ clasificador.aprobados_pct }}%</span>
+                    <span>Rechazados {{ clasificador.rechazados_pct }}%</span>
+                </div>
+                <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+                    <div class="progress-bar bg-success" style="width: {{ clasificador.aprobados_pct }}%"></div>
+                    <div class="progress-bar bg-danger" style="width: {{ clasificador.rechazados_pct }}%"></div>
+                </div>
+            </div>
+            <div>
+                <h6 class="text-uppercase text-muted">Distribución de categorías</h6>
+                {% if clasificador.categorias %}
+                <div class="list-group list-group-flush small">
+                    {% for categoria in clasificador.categorias|slice:":6" %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <span>{{ categoria.nombre }}</span>
+                        <span class="fw-semibold">{{ categoria.porcentaje }}% <small class="text-muted">({{ categoria.cantidad }})</small></span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="alert alert-light border">Todavía no hay categorías asociadas a sus clasificaciones en este rango.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="alert alert-secondary">
+        No se registran actividades de clasificación para el rango seleccionado.
+    </div>
+{% endif %}
+
 <style>
     .stat-card {
         border-radius: .75rem;
@@ -212,15 +350,50 @@
         position: relative;
         min-height: 280px;
     }
+    .progress {
+        background-color: #e5e7eb;
+        height: 0.85rem;
+    }
+    .metric-pill {
+        border-radius: 0.85rem;
+        padding: 0.75rem 1rem;
+        display: flex;
+        flex-direction: column;
+        min-width: 150px;
+        color: #fff;
+    }
+    .metric-label {
+        text-transform: uppercase;
+        font-size: 0.72rem;
+        letter-spacing: 0.05em;
+        opacity: 0.9;
+    }
+    .metric-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        line-height: 1.1;
+    }
+    .metric-total { background: #0f172a; }
+    .metric-tiempo { background: #1d4ed8; }
+    .metric-aprobados { background: #047857; }
+    .metric-rechazados { background: #b91c1c; }
+    .metric-pill .metric-value { color: #fff; }
+    .card-header-clasificacion {
+        background: #f8fafc;
+        color: #0f172a;
+        border-bottom: 1px solid #e2e8f0;
+    }
 </style>
 
 {{ estadisticas|json_script:"stats-data" }}
 {{ datos_globales|json_script:"global-data" }}
+{{ clasificacion|json_script:"clasificacion-data" }}
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script>
     const statsData = JSON.parse(document.getElementById("stats-data").textContent || "[]");
     const globalData = JSON.parse(document.getElementById("global-data").textContent || "{}");
+    const clasificacionData = JSON.parse(document.getElementById("clasificacion-data").textContent || "{}");
 
     const chartColors = [
         "#2563eb",
@@ -367,11 +540,110 @@
         });
     };
 
+    const renderClasificacionTotales = () => {
+        const usuarios = clasificacionData.usuarios || [];
+        if (!usuarios.length) {
+            showFallback("chartClasificacionTotalesEmpty");
+            return;
+        }
+        const ctx = document.getElementById("chartClasificacionTotales");
+        const labels = usuarios.map((u) => u.nombre || u.username);
+        const valores = usuarios.map((u) => u.links_clasificados || 0);
+        const tieneDatos = valores.some((value) => value > 0);
+        if (!tieneDatos) {
+            showFallback("chartClasificacionTotalesEmpty");
+            return;
+        }
+
+        new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: "Links clasificados",
+                        data: valores,
+                        backgroundColor: "#0f172a"
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { enabled: true },
+                    title: { display: true, text: "Clasificaciones realizadas", color: chartTextColor }
+                },
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    };
+
+    const renderClasificacionResultados = () => {
+        const usuarios = clasificacionData.usuarios || [];
+        if (!usuarios.length) {
+            showFallback("chartClasificacionResultadosEmpty");
+            return;
+        }
+        const labels = usuarios.map((u) => u.nombre || u.username);
+        const aprobados = usuarios.map((u) => u.aprobados || 0);
+        const rechazados = usuarios.map((u) => u.rechazados || 0);
+        const tieneDatos = usuarios.some((u) => (u.aprobados || 0) + (u.rechazados || 0) > 0);
+        if (!tieneDatos) {
+            showFallback("chartClasificacionResultadosEmpty");
+            return;
+        }
+        const ctx = document.getElementById("chartClasificacionResultados");
+
+        new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: "Aprobados",
+                        data: aprobados,
+                        backgroundColor: "#0f9d58"
+                    },
+                    {
+                        label: "Rechazados",
+                        data: rechazados,
+                        backgroundColor: "#d93025"
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    tooltip: { enabled: true },
+                    title: { display: true, text: "Resultados por clasificador", color: chartTextColor }
+                },
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    };
+
+    const renderClasificacionCategorias = () => {
+        const categorias = (clasificacionData.global && clasificacionData.global.categorias) || [];
+        if (!categorias.length) {
+            showFallback("chartClasificacionCategoriasEmpty");
+            return;
+        }
+        renderDonut("chartClasificacionCategorias", "chartClasificacionCategoriasEmpty", categorias);
+    };
+
     document.addEventListener("DOMContentLoaded", () => {
         renderBarTotales();
         renderBarAprobados();
         renderDonut("chartDiarios", "chartDiariosEmpty", globalData.diarios || []);
         renderDonut("chartRedes", "chartRedesEmpty", globalData.redes_sociales || []);
+        renderClasificacionTotales();
+        renderClasificacionResultados();
+        renderClasificacionCategorias();
     });
 </script>
 {% endblock %}

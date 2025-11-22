@@ -13,6 +13,7 @@ import json
 import io
 import os
 import base64
+import re
 from datetime import datetime
 import openpyxl
 from reportlab.lib.pagesizes import A4
@@ -2999,6 +3000,39 @@ def editar_individuo_view(request, id):
     )
 
 
+_LINK_ID_PATTERN = re.compile(
+    r"link(?: de)?(?: red social| tv digital| radio digital)? ID (\d+)", re.IGNORECASE
+)
+_ESTADO_PATTERN = re.compile(r"a '([^']+)'", re.IGNORECASE)
+
+
+def _extraer_link_id(descripcion):
+    if not descripcion:
+        return None
+    descripcion_lower = descripcion.lower()
+    if any(
+        tipo in descripcion_lower
+        for tipo in ["link de red social", "link de tv digital", "link de radio digital"]
+    ):
+        return None
+    match = _LINK_ID_PATTERN.search(descripcion)
+    if match:
+        try:
+            return int(match.group(1))
+        except (ValueError, TypeError):
+            return None
+    return None
+
+
+def _extraer_estado_nuevo(descripcion):
+    if not descripcion:
+        return None
+    match = _ESTADO_PATTERN.search(descripcion)
+    if match:
+        return match.group(1).strip().lower()
+    return None
+
+
 def _obtener_estadisticas_prensa(desde=None, hasta=None, username=None):
     """Construye las estadísticas solicitadas para usuarios con rol de prensa."""
 
@@ -3154,6 +3188,179 @@ def _obtener_estadisticas_prensa(desde=None, hasta=None, username=None):
     return stats_list, resumen_global, datos_globales
 
 
+def _obtener_estadisticas_clasificacion(desde=None, hasta=None):
+    usuarios = list(
+        User.objects.filter(userprofile__rol=Roles.CLASIFICACION)
+        .order_by("first_name", "last_name", "username")
+    )
+
+    fecha_desde = parse_date(desde) if desde else None
+    fecha_hasta = parse_date(hasta) if hasta else None
+
+    pendientes_qs = LinkRelevante.objects.filter(estado=EstadoLink.PENDIENTE)
+    if fecha_desde:
+        pendientes_qs = pendientes_qs.filter(fecha_carga__date__gte=fecha_desde)
+    if fecha_hasta:
+        pendientes_qs = pendientes_qs.filter(fecha_carga__date__lte=fecha_hasta)
+    pendientes_totales = pendientes_qs.count()
+
+    if not usuarios:
+        return {
+            "pendientes": pendientes_totales,
+            "usuarios": [],
+            "global": {
+                "total_clasificados": 0,
+                "total_aprobados": 0,
+                "total_rechazados": 0,
+                "categorias": [],
+            },
+        }
+
+    usuarios_ids = [u.id for u in usuarios]
+    stats_map = {}
+    for user in usuarios:
+        stats_map[user.id] = {
+            "id": user.id,
+            "username": user.username,
+            "nombre": user.get_full_name() or user.username,
+            "links_ids": set(),
+            "links_categorias": set(),
+            "categorias": defaultdict(int),
+            "aprobados": 0,
+            "rechazados": 0,
+            "duracion_total": 0.0,
+            "duracion_count": 0,
+        }
+
+    actividades = Actividad.objects.filter(
+        usuario_id__in=usuarios_ids,
+        tipo=TipoActividad.CAMBIO_ESTADO,
+    ).select_related("usuario")
+
+    if fecha_desde:
+        actividades = actividades.filter(fecha_hora__date__gte=fecha_desde)
+    if fecha_hasta:
+        actividades = actividades.filter(fecha_hora__date__lte=fecha_hasta)
+
+    eventos = []
+    link_ids = set()
+    for actividad in actividades:
+        link_id = _extraer_link_id(actividad.descripcion)
+        if not link_id:
+            continue
+        eventos.append((actividad, link_id))
+        link_ids.add(link_id)
+
+    links_map = {
+        link.id: link
+        for link in LinkRelevante.objects.filter(id__in=link_ids)
+        .prefetch_related("categorias")
+    }
+
+    for actividad, link_id in eventos:
+        link = links_map.get(link_id)
+        if not link:
+            continue
+        estado_nuevo = _extraer_estado_nuevo(actividad.descripcion)
+        if estado_nuevo not in {EstadoLink.APROBADO, EstadoLink.DESCARTADO}:
+            continue
+        data = stats_map.get(actividad.usuario_id)
+        if not data:
+            continue
+        if estado_nuevo == EstadoLink.APROBADO:
+            data["aprobados"] += 1
+        else:
+            data["rechazados"] += 1
+
+        data["links_ids"].add(link_id)
+
+        if link.fecha_carga:
+            delta = actividad.fecha_hora - link.fecha_carga
+            data["duracion_total"] += delta.total_seconds()
+            data["duracion_count"] += 1
+
+        if link_id not in data["links_categorias"]:
+            for categoria in link.categorias.all():
+                data["categorias"][categoria.nombre] += 1
+            data["links_categorias"].add(link_id)
+
+    usuarios_stats = []
+    categorias_global_counter = defaultdict(int)
+    total_aprobados_global = 0
+    total_rechazados_global = 0
+    total_clasificados_global = 0
+
+    for user in usuarios:
+        data = stats_map[user.id]
+        decisiones = data["aprobados"] + data["rechazados"]
+        promedio_horas = (
+            round(data["duracion_total"] / data["duracion_count"] / 3600, 2)
+            if data["duracion_count"]
+            else 0
+        )
+        aprobados_pct = (
+            round((data["aprobados"] / decisiones) * 100, 2) if decisiones else 0
+        )
+        rechazados_pct = 100 - aprobados_pct if decisiones else 0
+
+        categorias_dict = data["categorias"]
+        categorias_total = sum(categorias_dict.values())
+        categorias_pct = [
+            {
+                "nombre": nombre,
+                "cantidad": cantidad,
+                "porcentaje": round((cantidad / categorias_total) * 100, 2)
+                if categorias_total
+                else 0,
+            }
+            for nombre, cantidad in sorted(
+                categorias_dict.items(), key=lambda x: x[1], reverse=True
+            )
+        ]
+
+        for nombre, cantidad in categorias_dict.items():
+            categorias_global_counter[nombre] += cantidad
+
+        total_aprobados_global += data["aprobados"]
+        total_rechazados_global += data["rechazados"]
+        total_clasificados_global += len(data["links_ids"])
+
+        usuarios_stats.append(
+            {
+                "id": data["id"],
+                "username": data["username"],
+                "nombre": data["nombre"],
+                "links_clasificados": len(data["links_ids"]),
+                "aprobados": data["aprobados"],
+                "rechazados": data["rechazados"],
+                "aprobados_pct": aprobados_pct,
+                "rechazados_pct": rechazados_pct,
+                "promedio_horas": promedio_horas,
+                "categorias": categorias_pct,
+            }
+        )
+
+    global_categorias = sorted(
+        (
+            {"nombre": nombre, "cantidad": cantidad}
+            for nombre, cantidad in categorias_global_counter.items()
+        ),
+        key=lambda x: x["cantidad"],
+        reverse=True,
+    )
+
+    return {
+        "pendientes": pendientes_totales,
+        "usuarios": usuarios_stats,
+        "global": {
+            "total_clasificados": total_clasificados_global,
+            "total_aprobados": total_aprobados_global,
+            "total_rechazados": total_rechazados_global,
+            "categorias": global_categorias,
+        },
+    }
+
+
 @login_required
 def estadisticas_view(request):
     if request.user.userprofile.rol not in [Roles.ADMIN, Roles.GERENCIA]:
@@ -3162,9 +3369,16 @@ def estadisticas_view(request):
     desde = request.GET.get("desde")
     hasta = request.GET.get("hasta")
     usuario = request.GET.get("usuario")
+    clas_desde_param = request.GET.get("clas_desde")
+    clas_hasta_param = request.GET.get("clas_hasta")
+    clas_desde = clas_desde_param or desde
+    clas_hasta = clas_hasta_param or hasta
 
     estadisticas, resumen_global, datos_globales = _obtener_estadisticas_prensa(
         desde=desde, hasta=hasta, username=usuario
+    )
+    clasificacion = _obtener_estadisticas_clasificacion(
+        desde=clas_desde, hasta=clas_hasta
     )
 
     return render(
@@ -3174,7 +3388,12 @@ def estadisticas_view(request):
             "estadisticas": estadisticas,
             "resumen_global": resumen_global,
             "datos_globales": datos_globales,
+            "clasificacion": clasificacion,
             "filtros": {"usuario": usuario, "desde": desde, "hasta": hasta},
+            "clas_filtros": {
+                "desde": clas_desde_param or desde,
+                "hasta": clas_hasta_param or hasta,
+            },
         },
     )
 
@@ -3329,9 +3548,16 @@ def estadisticas_api_view(request):
     usuario = request.GET.get("usuario")
     desde = request.GET.get("desde")
     hasta = request.GET.get("hasta")
+    clas_desde_param = request.GET.get("clas_desde")
+    clas_hasta_param = request.GET.get("clas_hasta")
+    clas_desde = clas_desde_param or desde
+    clas_hasta = clas_hasta_param or hasta
 
     estadisticas, resumen_global, datos_globales = _obtener_estadisticas_prensa(
         desde=desde, hasta=hasta, username=usuario
+    )
+    clasificacion = _obtener_estadisticas_clasificacion(
+        desde=clas_desde, hasta=clas_hasta
     )
 
     return JsonResponse(
@@ -3339,7 +3565,12 @@ def estadisticas_api_view(request):
             "estadisticas": estadisticas,
             "resumen_global": resumen_global,
             "datos_globales": datos_globales,
+            "clasificacion": clasificacion,
             "filtros": {"usuario": usuario, "desde": desde, "hasta": hasta},
+            "clas_filtros": {
+                "desde": clas_desde_param or desde,
+                "hasta": clas_hasta_param or hasta,
+            },
         }
     )
 
