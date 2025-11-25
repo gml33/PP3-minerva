@@ -100,6 +100,7 @@
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'solicitud_info_portal' %}">Solicitud de información</a>
                         </li>
+<<<<<<< HEAD
                         {% elif user.userprofile.rol == 'cliente' or user.username == 'cliente1' %}
                         <!-- ENLACES PARA CLIENTE1 -->
                         <li class="nav-item">
@@ -110,6 +111,8 @@
                             <a class="nav-link {% if request.resolver_match.url_name == 'consulta_bandas' %}active{% endif %}" 
                                href="{% url 'consulta_bandas' %}">Consultar por Banda</a>
                         </li>
+=======
+>>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
                         {% endif %}
                     </ul>
                     <span class="navbar-text text-white me-3">
@@ -133,4 +136,8 @@
 
     </body>
 
+<<<<<<< HEAD
 </html>
+=======
+</html>
+>>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693

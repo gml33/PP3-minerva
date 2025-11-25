@@ -2,8 +2,11 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from django.shortcuts import redirect
 from rest_framework.authtoken.views import obtain_auth_token
+<<<<<<< HEAD
 from django.urls import path
 from . import views
+=======
+>>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
 
 from .views import (
     UserViewSet,
@@ -384,6 +387,7 @@ urlpatterns = [
         exportar_articulo_pdf,
         name="exportar_articulo_pdf",
     ),
+<<<<<<< HEAD
       # Consultas para cliente1
     path('consulta/informes/', views.consulta_informes_view, name='consulta_informes'),
     path('consulta/bandas/', views.consulta_bandas_view, name='consulta_bandas'),
@@ -395,4 +399,6 @@ urlpatterns = [
     # Exportaciones PDF
     path('exportar/informe/<int:informe_id>/pdf/', views.exportar_informe_pdf, name='exportar_informe_pdf'),
     path('exportar/banda/<int:banda_id>/pdf/', views.exportar_banda_pdf, name='exportar_banda_pdf')
+=======
+>>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
 ]

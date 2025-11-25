@@ -377,7 +377,11 @@
         </div>
     </div>
     <div class="col-md-4 col-sm-6">
+<<<<<<< HEAD
         <div class="stat-card bg-purple text-white" style="background:#7c3aed;">
+=======
+        <div class="stat-card bg-purple text-white">
+>>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
             <span>Hechos delictivos</span>
             <strong>{{ resumen.total_hechos|default:0 }}</strong>
         </div>
@@ -502,6 +506,153 @@
     </div>
 {% endif %}
 
+<<<<<<< HEAD
+=======
+<hr class="my-5">
+
+<h2 class="mb-3 text-center text-uppercase">Estadísticas del equipo de informes</h2>
+<p class="text-muted text-center mb-4">
+    Controla la generación de informes: volumen por analista, cuántos artículos consulta cada uno y en qué categorías
+    se están especializando.
+</p>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            {% if filtros.usuario %}<input type="hidden" name="usuario" value="{{ filtros.usuario }}">{% endif %}
+            {% if filtros.desde %}<input type="hidden" name="desde" value="{{ filtros.desde }}">{% endif %}
+            {% if filtros.hasta %}<input type="hidden" name="hasta" value="{{ filtros.hasta }}">{% endif %}
+            {% if clas_filtros.desde %}<input type="hidden" name="clas_desde" value="{{ clas_filtros.desde }}">{% endif %}
+            {% if clas_filtros.hasta %}<input type="hidden" name="clas_hasta" value="{{ clas_filtros.hasta }}">{% endif %}
+            {% if redac_filtros.desde %}<input type="hidden" name="redac_desde" value="{{ redac_filtros.desde }}">{% endif %}
+            {% if redac_filtros.hasta %}<input type="hidden" name="redac_hasta" value="{{ redac_filtros.hasta }}">{% endif %}
+            <div class="col-md-4">
+                <label class="form-label">Informes desde</label>
+                <input type="date" name="info_desde" class="form-control" value="{{ info_filtros.desde|default:'' }}">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Informes hasta</label>
+                <input type="date" name="info_hasta" class="form-control" value="{{ info_filtros.hasta|default:'' }}">
+            </div>
+            <div class="col-md-4 text-md-end">
+                <button type="submit" class="btn btn-primary px-4">Aplicar filtros de informes</button>
+                <a href="?{% if filtros.usuario %}usuario={{ filtros.usuario }}&{% endif %}{% if filtros.desde %}desde={{ filtros.desde }}&{% endif %}{% if filtros.hasta %}hasta={{ filtros.hasta }}&{% endif %}{% if clas_filtros.desde %}clas_desde={{ clas_filtros.desde }}&{% endif %}{% if clas_filtros.hasta %}clas_hasta={{ clas_filtros.hasta }}&{% endif %}{% if redac_filtros.desde %}redac_desde={{ redac_filtros.desde }}&{% endif %}{% if redac_filtros.hasta %}redac_hasta={{ redac_filtros.hasta }}&{% endif %}" class="btn btn-outline-secondary ms-2">Limpiar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% with resumen=informes.global.summary %}
+<div class="row g-3 mb-4">
+    <div class="col-md-4 col-sm-6">
+        <div class="stat-card bg-primary text-white">
+            <span>Total de informes</span>
+            <strong>{{ resumen.total_informes|default:0 }}</strong>
+        </div>
+    </div>
+    <div class="col-md-4 col-sm-6">
+        <div class="stat-card bg-success text-white">
+            <span>Promedio artículos por informe</span>
+            <strong>{{ resumen.promedio_articulos|default:0 }}</strong>
+        </div>
+    </div>
+    <div class="col-md-4 col-sm-6">
+        <div class="stat-card bg-dark text-white">
+            <span>Promedio por categoría</span>
+            <strong>{{ resumen.promedio_categoria|default:0 }}</strong>
+        </div>
+    </div>
+</div>
+{% endwith %}
+
+<div class="row g-4 mb-5">
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-body-secondary">Informes por analista</div>
+            <div class="card-body">
+                <div class="chart-wrapper">
+                    <canvas id="chartInformesUsuarios" height="320"></canvas>
+                    <p class="text-muted text-center small d-none" id="chartInformesUsuariosEmpty">
+                        Aún no se registran informes para este rango.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-body-secondary">Promedio de artículos por informe</div>
+            <div class="card-body">
+                <div class="chart-wrapper">
+                    <canvas id="chartInformesPromedio" height="320"></canvas>
+                    <p class="text-muted text-center small d-none" id="chartInformesPromedioEmpty">
+                        No hay datos suficientes para calcular el promedio.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-5">
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-body-secondary">Informes por categoría</div>
+            <div class="card-body">
+                <div class="chart-wrapper">
+                    <canvas id="chartInformesCategorias" height="320"></canvas>
+                    <p class="text-muted text-center small d-none" id="chartInformesCategoriasEmpty">
+                        No se identificaron categorías para los informes de este rango.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if informes.usuarios %}
+    {% for analista in informes.usuarios %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header card-header-clasificacion d-flex flex-column flex-lg-row justify-content-lg-between align-items-lg-center">
+            <div>
+                <h5 class="mb-1">{{ analista.nombre }}</h5>
+                <small class="text-muted">Usuario: {{ analista.username }}</small>
+            </div>
+            <div class="d-flex flex-wrap gap-3 mt-3 mt-lg-0">
+                <div class="metric-pill metric-total">
+                    <span class="metric-label">Informes</span>
+                    <span class="metric-value">{{ analista.informes }}</span>
+                </div>
+                <div class="metric-pill metric-links">
+                    <span class="metric-label">Artículos por informe</span>
+                    <span class="metric-value">{{ analista.promedio_articulos }}</span>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <h6 class="text-uppercase text-muted">Categorías destacadas</h6>
+            {% if analista.categorias %}
+            <div class="list-group list-group-flush small">
+                {% for categoria in analista.categorias|slice:":6" %}
+                <div class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                    <span>{{ categoria.nombre }}</span>
+                    <span class="fw-semibold">{{ categoria.cantidad }} informe(s)</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="alert alert-light border">No se registran categorías para los informes de este analista en el rango filtrado.</div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="alert alert-secondary">
+        No se registran informes para el rango seleccionado.
+    </div>
+{% endif %}
+
+>>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
 <style>
     .stat-card {
         border-radius: .75rem;
@@ -558,12 +709,20 @@
         color: #0f172a;
         border-bottom: 1px solid #e2e8f0;
     }
+<<<<<<< HEAD
+=======
+    .bg-purple { background: #7c3aed !important; }
+>>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
 </style>
 
 {{ estadisticas|json_script:"stats-data" }}
 {{ datos_globales|json_script:"global-data" }}
 {{ clasificacion|json_script:"clasificacion-data" }}
 {{ redaccion|json_script:"redaccion-data" }}
+<<<<<<< HEAD
+=======
+{{ informes|json_script:"informes-data" }}
+>>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script>
@@ -571,6 +730,10 @@
     const globalData = JSON.parse(document.getElementById("global-data").textContent || "{}");
     const clasificacionData = JSON.parse(document.getElementById("clasificacion-data").textContent || "{}");
     const redaccionData = JSON.parse(document.getElementById("redaccion-data").textContent || "{}");
+<<<<<<< HEAD
+=======
+    const informesData = JSON.parse(document.getElementById("informes-data").textContent || "{}");
+>>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
 
     const chartColors = [
         "#2563eb",
@@ -868,6 +1031,54 @@
         );
     };
 
+<<<<<<< HEAD
+=======
+    const renderInformesBar = (dataset, canvasId, emptyId, title) => {
+        if (!dataset || !dataset.length) {
+            showFallback(emptyId);
+            return;
+        }
+        const labels = dataset.map((item) => item.nombre);
+        const values = dataset.map((item) => item.cantidad || 0);
+        if (!values.some((value) => value > 0)) {
+            showFallback(emptyId);
+            return;
+        }
+        new Chart(document.getElementById(canvasId), {
+            type: "bar",
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: title,
+                        backgroundColor: "#0f172a",
+                        data: values,
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    title: { display: true, text: title, color: chartTextColor },
+                },
+                scales: {
+                    y: { beginAtZero: true },
+                },
+            },
+        });
+    };
+
+    const renderInformesCategorias = () => {
+        const categorias = (informesData.global && informesData.global.categorias) || [];
+        if (!categorias.length) {
+            showFallback("chartInformesCategoriasEmpty");
+            return;
+        }
+        renderDonut("chartInformesCategorias", "chartInformesCategoriasEmpty", categorias);
+    };
+
+>>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
     document.addEventListener("DOMContentLoaded", () => {
         renderBarTotales();
         renderBarAprobados();
@@ -895,6 +1106,22 @@
             "Links por artículo"
         );
         renderRedaccionResumen();
+<<<<<<< HEAD
+=======
+        renderInformesBar(
+            informesData.global ? informesData.global.informes : [],
+            "chartInformesUsuarios",
+            "chartInformesUsuariosEmpty",
+            "Informes por analista"
+        );
+        renderInformesBar(
+            informesData.global ? informesData.global.promedios_articulos : [],
+            "chartInformesPromedio",
+            "chartInformesPromedioEmpty",
+            "Promedio de artículos"
+        );
+        renderInformesCategorias();
+>>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
     });
 </script>
 {% endblock %}

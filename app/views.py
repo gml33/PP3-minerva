@@ -129,8 +129,11 @@ from urllib.parse import urlparse
 
 from django.contrib import messages
 
+<<<<<<< HEAD
 # Al inicio del archivo views.py, asegúrate de tener:
 from app.models import BandaCriminal, InformeIndividual
+=======
+>>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
 
 import logging
 
@@ -158,11 +161,14 @@ def login_view(request):
             login(request, user)
             log_actividad(request, TipoActividad.LOGIN, "Inicio de sesión exitoso")
             rol = getattr(user.userprofile, "rol", None)
+<<<<<<< HEAD
             
             # VERIFICACIÓN ESPECÍFICA PARA cliente1 - AGREGADO
             if user.username == 'cliente1':
                 return redirect("consulta_informes")
             
+=======
+>>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
             if rol == Roles.PRENSA:
                 return redirect("prensa")
             elif rol == Roles.CLASIFICACION:
@@ -539,6 +545,10 @@ def informe_banda_exportar_view(request, pk):
                 doc.add_paragraph(linea, style="List Bullet")
             else:
                 doc.add_paragraph(linea)
+<<<<<<< HEAD
+=======
+
+>>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
     zonas = banda.zonas_influencia_detalle
     zonas_listado = [
         zona
@@ -2615,7 +2625,11 @@ def informes_crear_view(request):
                 if nombre.strip():
                     informe.alias.add(Alias.objects.create(nombre=nombre))
 
+<<<<<<< HEAD
             # Teléfonos (asumiendo que es M2M or OneToMany - el modelo 'Telefono' lo dicta)
+=======
+            # Teléfonos (asumiendo que es M2M o OneToMany - el modelo 'Telefono' lo dicta)
+>>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
             # Asumiendo que `informe.telefono` es un ManyToManyField a Telefono
             for numero in request.POST.getlist("telefono[]"): 
                 if numero.strip():
@@ -2849,8 +2863,13 @@ def eliminar_informe_view(request, id):
 
 @login_required
 def consulta_informes_view(request):
+<<<<<<< HEAD
     # VERIFICACIÓN ESPECÍFICA PARA cliente1 Y ROL CLIENTE - MODIFICADO
     if not (request.user.userprofile.rol in [Roles.CLIENTE, Roles.ADMIN, Roles.GERENCIA] or request.user.username == 'cliente1'):
+=======
+    # Esta vista debe ser accesible para CLIENTE, ADMIN, GERENCIA
+    if request.user.userprofile.rol not in [Roles.CLIENTE, Roles.ADMIN, Roles.GERENCIA]:
+>>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
         return render(request, "403.html", status=403)
         
     informes = InformeIndividual.objects.select_related(
@@ -2898,6 +2917,12 @@ def consulta_informes_view(request):
     fecha_nacimiento_hasta = request.GET.get("fecha_nacimiento_hasta", "").strip()
 
     # Filtros de altura de domicilio
+<<<<<<< HEAD
+=======
+    # CORRECCIÓN: Se debe asegurar que el campo `altura` de Domicilio es un campo numérico
+    # Si es un CharField, el filtro no funcionará con `__gte` y `__lte`
+    # Asumiendo que es un campo numérico:
+>>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
     if altura_desde and altura_desde.isdigit():
         informes = informes.filter(domicilio__altura__gte=int(altura_desde))
     if altura_hasta and altura_hasta.isdigit():
@@ -2912,6 +2937,7 @@ def consulta_informes_view(request):
         informes = informes.filter(documento__icontains=documento)
     if nacionalidad:
         informes = informes.filter(nacionalidad__icontains=nacionalidad)
+<<<<<<< HEAD
     
     # CORRECCIÓN: Filtrar por banda usando las relaciones disponibles
     banda_id = request.GET.get("banda", "").strip()
@@ -2919,6 +2945,10 @@ def consulta_informes_view(request):
         # Intentar filtrar por bandas donde la persona es miembro
         informes = informes.filter(bandas_miembro__id=int(banda_id))
     
+=======
+    if banda:
+        informes = informes.filter(banda__icontains=banda)
+>>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
     if actividad:
         informes = informes.filter(actividad__icontains=actividad)
     if sexo:
@@ -2975,6 +3005,7 @@ def consulta_informes_view(request):
 
     informes = informes.distinct().order_by("-fecha_creacion")
 
+<<<<<<< HEAD
     # OBTENER BANDAS CRIMINALES PARA EL DROPDOWN
     from app.models import BandaCriminal
     bandas = BandaCriminal.objects.all().order_by("nombres")
@@ -2988,6 +3019,10 @@ def consulta_informes_view(request):
         "Roles": Roles,
         "bandas": bandas  # AGREGADO: Pasar bandas al contexto
     })
+=======
+    return render(request, "consulta_informes.html", {"informes": informes, "Roles": Roles})
+
+>>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
 
 @login_required
 def editar_individuo_view(request, id):
@@ -3420,6 +3455,153 @@ def _obtener_estadisticas_redaccion(desde=None, hasta=None):
         for user in usuarios
     }
 
+<<<<<<< HEAD
+=======
+
+def _obtener_estadisticas_informes(desde=None, hasta=None):
+    usuarios = list(
+        User.objects.filter(userprofile__rol=Roles.INFORMES)
+        .order_by("first_name", "last_name", "username")
+    )
+
+    fecha_desde = parse_date(desde) if desde else None
+    fecha_hasta = parse_date(hasta) if hasta else None
+
+    if not usuarios:
+        return {
+            "usuarios": [],
+            "global": {
+                "informes": [],
+                "promedios_articulos": [],
+                "categorias": [],
+                "summary": {
+                    "total_informes": 0,
+                    "promedio_articulos": 0,
+                    "promedio_categoria": 0,
+                },
+            },
+        }
+
+    usuarios_ids = [u.id for u in usuarios]
+    stats_map = {
+        user.id: {
+            "id": user.id,
+            "username": user.username,
+            "nombre": user.get_full_name() or user.username,
+            "informes": 0,
+            "articulos_total": 0,
+            "categorias": defaultdict(int),
+        }
+        for user in usuarios
+    }
+
+    informes_qs = (
+        InformeIndividual.objects.filter(generado_por__in=usuarios_ids)
+        .select_related("generado_por")
+        .prefetch_related("articulos__categoria")
+    )
+    if fecha_desde:
+        informes_qs = informes_qs.filter(fecha_creacion__date__gte=fecha_desde)
+    if fecha_hasta:
+        informes_qs = informes_qs.filter(fecha_creacion__date__lte=fecha_hasta)
+
+    categorias_global_counter = defaultdict(int)
+    total_informes = 0
+    articulos_total_global = 0
+
+    for informe in informes_qs:
+        data = stats_map.get(informe.generado_por_id)
+        if not data:
+            continue
+        data["informes"] += 1
+        total_informes += 1
+        articulos = list(informe.articulos.all())
+        data["articulos_total"] += len(articulos)
+        articulos_total_global += len(articulos)
+        categorias_informe = set()
+        for articulo in articulos:
+            categoria = (
+                articulo.categoria.nombre
+                if getattr(articulo, "categoria", None)
+                else "Sin categoría"
+            )
+            categorias_informe.add(categoria)
+        if not categorias_informe:
+            categorias_informe.add("Sin categoría")
+        for categoria in categorias_informe:
+            data["categorias"][categoria] += 1
+            categorias_global_counter[categoria] += 1
+
+    usuarios_stats = []
+    informes_global = []
+    promedios_articulos_global = []
+
+    for user in usuarios:
+        data = stats_map[user.id]
+        promedio_articulos = (
+            round(data["articulos_total"] / data["informes"], 2)
+            if data["informes"]
+            else 0
+        )
+        usuarios_stats.append(
+            {
+                "id": data["id"],
+                "username": data["username"],
+                "nombre": data["nombre"],
+                "informes": data["informes"],
+                "promedio_articulos": promedio_articulos,
+                "categorias": sorted(
+                    (
+                        {"nombre": nombre, "cantidad": cantidad}
+                        for nombre, cantidad in data["categorias"].items()
+                    ),
+                    key=lambda x: x["cantidad"],
+                    reverse=True,
+                ),
+            }
+        )
+        informes_global.append(
+            {"nombre": data["nombre"], "cantidad": data["informes"]}
+        )
+        promedios_articulos_global.append(
+            {"nombre": data["nombre"], "cantidad": promedio_articulos}
+        )
+
+    categorias_global = sorted(
+        (
+            {"nombre": nombre, "cantidad": cantidad}
+            for nombre, cantidad in categorias_global_counter.items()
+        ),
+        key=lambda x: x["cantidad"],
+        reverse=True,
+    )
+
+    promedio_articulos_total = (
+        round(articulos_total_global / total_informes, 2)
+        if total_informes
+        else 0
+    )
+    promedio_categoria = (
+        round(total_informes / len(categorias_global), 2)
+        if categorias_global
+        else 0
+    )
+
+    return {
+        "usuarios": usuarios_stats,
+        "global": {
+            "informes": informes_global,
+            "promedios_articulos": promedios_articulos_global,
+            "categorias": categorias_global,
+            "summary": {
+                "total_informes": total_informes,
+                "promedio_articulos": promedio_articulos_total,
+                "promedio_categoria": promedio_categoria,
+            },
+        },
+    }
+
+>>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
     articulos_qs = (
         Articulo.objects.filter(generado_por__in=usuarios_ids)
         .select_related("generado_por")
@@ -3548,6 +3730,13 @@ def estadisticas_view(request):
     redac_hasta_param = request.GET.get("redac_hasta")
     redac_desde = redac_desde_param or desde
     redac_hasta = redac_hasta_param or hasta
+<<<<<<< HEAD
+=======
+    info_desde_param = request.GET.get("info_desde")
+    info_hasta_param = request.GET.get("info_hasta")
+    info_desde = info_desde_param or desde
+    info_hasta = info_hasta_param or hasta
+>>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
 
     estadisticas, resumen_global, datos_globales = _obtener_estadisticas_prensa(
         desde=desde, hasta=hasta, username=usuario
@@ -3558,6 +3747,12 @@ def estadisticas_view(request):
     redaccion = _obtener_estadisticas_redaccion(
         desde=redac_desde, hasta=redac_hasta
     )
+<<<<<<< HEAD
+=======
+    informes = _obtener_estadisticas_informes(
+        desde=info_desde, hasta=info_hasta
+    )
+>>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
 
     return render(
         request,
@@ -3568,6 +3763,10 @@ def estadisticas_view(request):
             "datos_globales": datos_globales,
             "clasificacion": clasificacion,
             "redaccion": redaccion,
+<<<<<<< HEAD
+=======
+            "informes": informes,
+>>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
             "filtros": {"usuario": usuario, "desde": desde, "hasta": hasta},
             "clas_filtros": {
                 "desde": clas_desde_param or desde,
@@ -3577,6 +3776,13 @@ def estadisticas_view(request):
                 "desde": redac_desde_param or desde,
                 "hasta": redac_hasta_param or hasta,
             },
+<<<<<<< HEAD
+=======
+            "info_filtros": {
+                "desde": info_desde_param or desde,
+                "hasta": info_hasta_param or hasta,
+            },
+>>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
         },
     )
 
@@ -3739,6 +3945,13 @@ def estadisticas_api_view(request):
     redac_hasta_param = request.GET.get("redac_hasta")
     redac_desde = redac_desde_param or desde
     redac_hasta = redac_hasta_param or hasta
+<<<<<<< HEAD
+=======
+    info_desde_param = request.GET.get("info_desde")
+    info_hasta_param = request.GET.get("info_hasta")
+    info_desde = info_desde_param or desde
+    info_hasta = info_hasta_param or hasta
+>>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
 
     estadisticas, resumen_global, datos_globales = _obtener_estadisticas_prensa(
         desde=desde, hasta=hasta, username=usuario
@@ -3749,6 +3962,12 @@ def estadisticas_api_view(request):
     redaccion = _obtener_estadisticas_redaccion(
         desde=redac_desde, hasta=redac_hasta
     )
+<<<<<<< HEAD
+=======
+    informes = _obtener_estadisticas_informes(
+        desde=info_desde, hasta=info_hasta
+    )
+>>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
 
     return JsonResponse(
         {
@@ -3757,6 +3976,10 @@ def estadisticas_api_view(request):
             "datos_globales": datos_globales,
             "clasificacion": clasificacion,
             "redaccion": redaccion,
+<<<<<<< HEAD
+=======
+            "informes": informes,
+>>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
             "filtros": {"usuario": usuario, "desde": desde, "hasta": hasta},
             "clas_filtros": {
                 "desde": clas_desde_param or desde,
@@ -3766,6 +3989,13 @@ def estadisticas_api_view(request):
                 "desde": redac_desde_param or desde,
                 "hasta": redac_hasta_param or hasta,
             },
+<<<<<<< HEAD
+=======
+            "info_filtros": {
+                "desde": info_desde_param or desde,
+                "hasta": info_hasta_param or hasta,
+            },
+>>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
         }
     )
 
@@ -4021,6 +4251,7 @@ def exportar_links_relevantes(request):
     ws = wb.active
     ws.title = "Links Relevantes"
     ws.append(
+<<<<<<< HEAD
     [
         "Fecha de carga",
         "URL",
@@ -4030,6 +4261,18 @@ def exportar_links_relevantes(request):
         "Cargado por",
     ]
 )
+=======
+        [
+            "Fecha de carga",
+            "URL",
+            "Estado",
+            "Diario digital",
+            "Categorías",
+            "Cargado por",
+        ]
+    )
+
+>>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
     for link in links:
         categorias = ", ".join(cat.nombre for cat in link.categorias.all()) or "-"
         ws.append(
@@ -4512,8 +4755,12 @@ def exportar_informe_pdf(request, informe_id):
         return _weasyprint_unavailable_response(request, "informes")
     informe = get_object_or_404(InformeIndividual, id=informe_id)
 
+<<<<<<< HEAD
     # VERIFICACIÓN ESPECÍFICA PARA cliente1 Y ROL CLIENTE - MODIFICADO
     if not (request.user.userprofile.rol in [Roles.ADMIN, Roles.GERENCIA, Roles.CLIENTE, Roles.INFORMES] or request.user.username == 'cliente1'):
+=======
+    if request.user.userprofile.rol not in [Roles.ADMIN, Roles.GERENCIA, Roles.CLIENTE, Roles.INFORMES]:
+>>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
         return render(request, "403.html", status=403)
 
     # El prefetch lo hacemos aquí si el objeto no está cargado completamente:
@@ -4534,6 +4781,7 @@ def exportar_informe_pdf(request, informe_id):
     response = HttpResponse(pdf, content_type="application/pdf")
     response["Content-Disposition"] = f"attachment; filename={nombre_archivo}"
     return response
+<<<<<<< HEAD
 # ... (TODO TU CÓDIGO EXISTENTE SE MANTIENE IGUAL HASTA EL FINAL) ...
 
 # ========================
@@ -4775,3 +5023,5 @@ def exportar_banda_pdf(request, banda_id):
     response = HttpResponse(pdf, content_type="application/pdf")
     response["Content-Disposition"] = f"attachment; filename={nombre_archivo}"
     return response
+=======
+>>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
