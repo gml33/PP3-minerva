@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block title %}Solicitudes de Información{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Solicitudes de Información</h1>
+
+{% if pendientes %}
+<div class="alert alert-warning">
+    Hay {{ pendientes }} solicitud{{ pendientes|pluralize:'es' }} sin respuesta.
+</div>
+{% endif %}
+
+{% if solicitudes %}
+<div class="card">
+    <div class="card-header">Historial de solicitudes</div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table mb-0">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Creada</th>
+                        <th>Solicitada por</th>
+                        <th>Descripción</th>
+                        <th>Leída</th>
+                        <th>Respondida</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for solicitud in solicitudes %}
+                    <tr>
+                        <td>#{{ solicitud.id }}</td>
+                        <td>{{ solicitud.fecha_creacion|date:'d/m/Y H:i' }}</td>
+                        <td>{{ solicitud.usuario_creador.username }}</td>
+                        <td class="text-wrap" style="max-width: 320px;">{{ solicitud.descripcion|truncatechars:120 }}</td>
+                        <td>
+                            {% if solicitud.fecha_lectura %}
+                                {{ solicitud.fecha_lectura|date:'d/m/Y H:i' }}
+                            {% else %}
+                                <span class="badge bg-warning text-dark">Pendiente</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if solicitud.fecha_respuesta %}
+                                {{ solicitud.fecha_respuesta|date:'d/m/Y H:i' }}
+                            {% else %}
+                                <span class="badge bg-warning text-dark">Sin respuesta</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-primary" href="{% url 'solicitud_info_detalle' solicitud.pk %}">Ver detalle</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-info">
+    No se registran solicitudes de información.
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,38 @@
+{% if messages %}
+    {% if sarcasmo_mode %}
+        <script>
+            document.addEventListener("DOMContentLoaded", function () {
+                const frasesSarcasticas = [
+                    "Oh sí, porque esto era justo lo que necesitábamos ahora.",
+                    "Excelente. Todo bajo control... dijo nadie nunca.",
+                    "Perfecto, otro problema para la colección.",
+                    "Maravilloso. ¿Quién necesita estabilidad de todos modos?",
+                    "Genial. Nada dice productividad como este mensaje.",
+                ];
+                const iconMap = {
+                    success: "success",
+                    error: "error",
+                    warning: "warning",
+                    info: "info",
+                };
+                {% for message in messages %}
+                    (function(){
+                        const frase = frasesSarcasticas[Math.floor(Math.random() * frasesSarcasticas.length)];
+                        const textoOriginal = "{{ message|escapejs }}";
+                        const icono = iconMap["{{ message.tags }}"] || "info";
+                        Swal.fire({
+                            title: "Modo Sarcasmo activado",
+                            text: `${frase} Mensaje del sistema: ${textoOriginal}`,
+                            icon: icono,
+                            confirmButtonText: "Tenés razón, sigo adelante"
+                        });
+                    })();
+                {% endfor %}
+            });
+        </script>
+    {% else %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+{% endif %}

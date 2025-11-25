@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+
+{% block title %}Detalle de Solicitud{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Solicitud #{{ solicitud.id }}</h1>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Creada por</dt>
+            <dd class="col-sm-9">{{ solicitud.usuario_creador.username }}</dd>
+
+            <dt class="col-sm-3">Fecha de creación</dt>
+            <dd class="col-sm-9">{{ solicitud.fecha_creacion|date:'d/m/Y H:i' }}</dd>
+
+            <dt class="col-sm-3">Descripción</dt>
+            <dd class="col-sm-9">
+                <div class="border rounded p-3 text-body">
+                    {{ solicitud.descripcion|linebreaksbr }}
+                </div>
+            </dd>
+
+            <dt class="col-sm-3">Artículos relacionados</dt>
+            <dd class="col-sm-9">
+                {% if solicitud.articulos.all %}
+                    <ul class="mb-0 ps-3">
+                        {% for articulo in solicitud.articulos.all %}
+                            <li><strong>#{{ articulo.id }}</strong> - {{ articulo.titulo }}</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <span class="text-muted">Sin artículos asociados.</span>
+                {% endif %}
+            </dd>
+
+            <dt class="col-sm-3">Estado</dt>
+            <dd class="col-sm-9">
+                {% if solicitud.fecha_respuesta %}
+                    <span class="badge bg-success">Respondida</span>
+                {% else %}
+                    <span class="badge bg-warning text-dark">Pendiente</span>
+                {% endif %}
+            </dd>
+
+            <dt class="col-sm-3">Respuesta</dt>
+            <dd class="col-sm-9">
+                {% if solicitud.respuesta %}
+                    <div class="border rounded p-3 bg-body-secondary text-dark">
+                        {{ solicitud.respuesta|linebreaksbr }}
+                    </div>
+                    <div class="small text-muted mt-2">
+                        {% if solicitud.respondido_por %}
+                            Respondido por {{ solicitud.respondido_por.username }} el {{ solicitud.fecha_respuesta|date:'d/m/Y H:i' }}
+                        {% else %}
+                            Registrada el {{ solicitud.fecha_respuesta|date:'d/m/Y H:i' }}
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <span class="text-muted">No hay respuesta registrada.</span>
+                {% endif %}
+            </dd>
+        </dl>
+    </div>
+</div>
+
+<a class="btn btn-secondary" href="{% url 'solicitud_info_portal' %}">Volver a solicitudes</a>
+{% endblock %}

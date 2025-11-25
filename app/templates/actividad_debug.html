@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Debug Actividades</title>
+</head>
+<body>
+    <h2>Actividades (Debug)</h2>
+    <ul id="lista-actividades"></ul>
+
+    <script>
+        fetch("http://127.0.0.1:8000/api/actividades/")
+            .then(res => res.json())
+            .then(data => {
+                const ul = document.getElementById("lista-actividades");
+                data.forEach(act => {
+                    const li = document.createElement("li");
+                    li.textContent = `${new Date(act.fecha_hora).toLocaleString()} - ${act.usuario} - ${act.tipo} - ${act.descripcion}`;
+                    ul.appendChild(li);
+                });
+            });
+    </script>
+</body>
+</html>

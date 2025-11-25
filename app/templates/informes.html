@@ -1,0 +1,774 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Panel de Carga de Informes{% endblock %}
+
+{% block content %}
+
+<style>
+    .pagination {
+        margin-bottom: 0;
+    }
+    .page-link {
+        cursor: pointer;
+    }
+</style>
+
+<body>
+
+    {% include "partials/messages.html" %}
+
+    <h1 class="mb-4 text-center">Crear Informe Individual</h1>
+
+    <div id="error-articulos" class="alert alert-danger d-none" role="alert">
+        Debe seleccionar al menos un artículo relacionado para guardar el informe.
+    </div>
+    
+    <!-- FORMULARIO POST PARA CREAR INFORME -->
+    <form method="POST" id="formInforme" action="/informes/crear/" enctype="multipart/form-data">
+        {% csrf_token %}
+        {% if form.errors %}
+        <div class="alert alert-danger">
+            <ul>
+                {% for field in form %}
+                    {% for error in field.errors %}
+                        <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+                    {% endfor %}
+                {% endfor %}
+                {% for error in form.non_field_errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <!-- ACORDEÓN DE SECCIONES -->
+        <div class="accordion" id="accordionInforme">
+            
+            <!-- SECCIÓN DATOS PERSONALES -->
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingDatosPersonales">
+                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDatosPersonales" aria-expanded="true" aria-controls="collapseDatosPersonales">
+                        Datos Personales
+                    </button>
+                </h2>
+                <div id="collapseDatosPersonales" class="accordion-collapse collapse show" aria-labelledby="headingDatosPersonales" data-bs-parent="#accordionInforme">
+                    <div class="accordion-body">
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label>Apellido</label>
+                                <input type="text" name="apellido" class="form-control">
+                            </div>
+                            <div class="col-md-4">
+                                <label>Nombre</label>
+                                <input type="text" name="nombre" class="form-control">
+                            </div>
+                            <div class="col-md-4">
+                                <label>Documento</label>
+                                <input type="number" min="1000000" max="99999999" name="documento" class="form-control">
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-3">
+                                <label>Nacionalidad</label>
+                                <input type="text" name="nacionalidad" class="form-control">
+                            </div>
+                            <div class="col-md-3">
+                                <label>Sexo</label>
+                                <select name="sexo" class="form-select">
+                                    <option value="">Seleccione sexo</option>
+                                    <option value="masculino">Masculino</option>
+                                    <option value="femenino">Femenino</option>
+                                    <option value="otro">Otro</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label>Banda</label>
+                                <select name="banda" class="form-select">
+                                    <option value="">Seleccione una banda</option>
+                                    {% for banda in bandas %}
+                                    {% with nombre=banda.nombre_principal|default:banda %}
+                                    <option value="{{ nombre }}">{{ nombre }}</option>
+                                    {% endwith %}
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label>Actividad</label>
+                                <input type="text" name="actividad" class="form-control">
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label>Rol</label>
+                                <select name="rol" class="form-select">
+                                    <option value="">Seleccione un rol</option>
+                                    <option value="soldadito">Soldadito</option>
+                                    <option value="sicario">Sicario</option>
+                                    <option value="lugarteniente">Lugarteniente</option>
+                                    <option value="lider">Lider</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label>Situación</label>
+                                <select name="situacion" class="form-select">
+                                    <option value="">Seleccione situación</option>
+                                    <option value="libertad">Libertad</option>
+                                    <option value="fallecido">Fallecido</option>
+                                    <option value="detenido">Detenido</option>
+                                    <option value="domiciliaria">Domiciliaria</option>
+                                    <option value="profugo">Prófugo</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label>Fecha de Nacimiento</label>
+                                <input type="date" name="fecha_nacimiento" class="form-control">
+                            </div>
+                        </div>
+                        
+                        <!--Foto-->
+                        <div class="mb-3">
+                            <label>Foto</label>
+                            <input type="file" name="foto" class="form-control">
+                        </div>
+
+                        <!-- Alias -->
+                        <div class="mb-3">
+                            <label>Alias</label>
+                            <div class="alias-group">
+                                <input type="text" name="alias[]" class="form-control mb-2">
+                            </div>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="agregarCampo('alias')">Agregar otro alias</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- SECCIÓN DATOS FILIATORIOS -->
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingDatosFiliatorios">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDatosFiliatorios" aria-expanded="false" aria-controls="collapseDatosFiliatorios">
+                        Datos Filiatorios
+                    </button>
+                </h2>
+                <div id="collapseDatosFiliatorios" class="accordion-collapse collapse" aria-labelledby="headingDatosFiliatorios" data-bs-parent="#accordionInforme">
+                    <div class="accordion-body">
+                        <!-- Domicilios -->
+                        <div class="mb-3">
+                            <label>Domicilios</label>
+                            <div class="domicilio-group">
+                                <div class="input-group mb-2">
+                                    <input type="text" name="domicilio_calle[]" placeholder="Calle" class="form-control">
+                                    <input type="number" name="domicilio_altura[]" placeholder="Altura" class="form-control">
+                                    <input type="text" name="domicilio_barrio[]" placeholder="Barrio" class="form-control">
+                                    <input type="text" name="domicilio_ciudad[]" placeholder="Ciudad" class="form-control">
+                                    <input type="text" name="domicilio_provincia[]" placeholder="Provincia" class="form-control">
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="agregarDomicilio()">Agregar otro domicilio</button>
+                        </div>
+
+                        <!-- Vínculos -->
+                        <div class="mb-3">
+                            <label>Vínculos</label>
+                            <div class="vinculos-group">
+                                <div class="input-group mb-2">
+                                    <input type="text" name="vinculo_nombre_apellido[]" placeholder="Nombre y Apellido" class="form-control">
+                                    <input type="number" min="1000000" max="99999999" name="vinculo_dni[]" placeholder="DNI" class="form-control">
+                                    <input type="text" name="vinculo_tipo[]" placeholder="Tipo" class="form-control">
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="agregarVinculo()">Agregar otro vínculo</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- SECCIÓN CONTACTOS -->
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingContactos">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseContactos" aria-expanded="false" aria-controls="collapseContactos">
+                        Contactos
+                    </button>
+                </h2>
+                <div id="collapseContactos" class="accordion-collapse collapse" aria-labelledby="headingContactos" data-bs-parent="#accordionInforme">
+                    <div class="accordion-body">
+                        <!-- Telefonos -->
+                        <div class="mb-3">
+                            <label>Teléfonos</label>
+                            <div class="telefono-group">
+                                <input type="number" name="telefono[]" class="form-control mb-2">
+                            </div>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="agregarCampo('telefono')">Agregar otro teléfono</button>
+                        </div>
+
+                        <!-- Redes Sociales (agregué este campo como ejemplo) -->
+                        <div class="mb-3">
+                            <label>Redes Sociales</label>
+                            <div class="redes-group">
+                                <div class="input-group mb-2">
+                                    <select name="redes_tipo[]" class="form-select">
+                                        <option value="">Tipo</option>
+                                        <option value="facebook">Facebook</option>
+                                        <option value="instagram">Instagram</option>
+                                        <option value="twitter">Twitter</option>
+                                        <option value="whatsapp">WhatsApp</option>
+                                    </select>
+                                    <input type="text" name="redes_usuario[]" placeholder="Usuario" class="form-control">
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="agregarRedSocial()">Agregar otra red social</button>
+                        </div>
+
+                        <!-- Email -->
+                        <div class="mb-3">
+                            <label>Correo Electrónico</label>
+                            <div class="email-group">
+                                <input type="email" name="email[]" class="form-control mb-2">
+                            </div>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="agregarCampo('email')">Agregar otro email</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- SECCIÓN EMPLEADORES -->
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingEmpleadores">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEmpleadores" aria-expanded="false" aria-controls="collapseEmpleadores">
+                        Empleadores
+                    </button>
+                </h2>
+                <div id="collapseEmpleadores" class="accordion-collapse collapse" aria-labelledby="headingEmpleadores" data-bs-parent="#accordionInforme">
+                    <div class="accordion-body">
+                        <!-- Empleadores -->
+                        <div class="mb-3">
+                            <label>Empleadores</label>
+                            <div class="empleadores-group">
+                                <div class="input-group mb-2">
+                                    <input type="text" name="empleador_nombre[]" placeholder="Nombre" class="form-control">
+                                    <input type="number" min="10000000000" max="99999999999" name="empleador_cuit[]" placeholder="CUIT" class="form-control">
+                                    <input type="date" name="empleador_fecha_alta[]" class="form-control">
+                                    <input type="date" name="empleador_fecha_baja[]" class="form-control">
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="agregarEmpleador()">Agregar otro empleador</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- SECCIÓN VEHÍCULOS -->
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingVehiculos">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseVehiculos" aria-expanded="false" aria-controls="collapseVehiculos">
+                        Vehículos
+                    </button>
+                </h2>
+                <div id="collapseVehiculos" class="accordion-collapse collapse" aria-labelledby="headingVehiculos" data-bs-parent="#accordionInforme">
+                    <div class="accordion-body">
+                        <!-- Vehículos -->
+                        <div class="mb-3">
+                            <label>Vehículos</label>
+                            <div class="vehiculos-group">
+                                <div class="input-group mb-2">
+                                    <input type="text" name="vehiculo_marca[]" placeholder="Marca" class="form-control">
+                                    <input type="text" name="vehiculo_modelo[]" placeholder="Modelo" class="form-control">
+                                    <input type="text" name="vehiculo_dominio[]" placeholder="Dominio" class="form-control">
+                                    <input type="text" name="vehiculo_color[]" placeholder="Color" class="form-control">
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="agregarVehiculo()">Agregar otro vehículo</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end mt-3">
+            <button type="submit" class="btn btn-primary">Guardar Informe</button>
+        </div>
+    </form>
+    
+    <hr>
+    
+    <h2 class="mb-4 text-center">Artículos Elaborados</h2>
+    <!-- FILTROS DE ARTÍCULOS: formulario GET separado -->
+    <div class="card mb-3">
+        <div class="card-header">Filtrar Artículos</div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label>Desde:</label>
+                    <input type="date" name="fecha_desde" class="form-control" value="{{ fecha_desde }}">
+                </div>
+                <div class="col-md-3">
+                    <label>Hasta:</label>
+                    <input type="date" name="fecha_hasta" class="form-control" value="{{ fecha_hasta }}">
+                </div>
+                <div class="col-md-3">
+                    <label>Categoría:</label>
+                    <select name="categoria_id" class="form-select">
+                        <option value="">Todas</option>
+                        {% for cat in categorias %}
+                        <option value="{{ cat.id }}" {% if cat.id|stringformat:"s" == selected_categoria %}selected{% endif %}>{{ cat.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label>Generado por:</label>
+                    <select name="generado_por_id" class="form-select">
+                        <option value="">Todos</option>
+                        {% for u in usuarios %}
+                        <option value="{{ u.id }}" {% if u.id|stringformat:"s" == selected_usuario %}selected{% endif %}>{{ u.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-12 d-flex justify-content-end">
+                    <button type="submit" class="btn btn-primary mt-2">Aplicar filtros</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="card mb-3">
+        <table class="table table-striped" id="tabla-articulos-informes">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Título</th>
+                    <th>Categoría</th>
+                    <th>Autor</th>
+                    <th>Consultado</th>
+                    <th>Asociar</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="tbody-articulos-informes">
+                {% for art in articulos %}
+                <tr>
+                    <td>{{ art.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                    <td>{{ art.titulo }}</td>
+                    <td>{{ art.categoria.nombre|default:"-" }}</td>
+                    <td>{{ art.generado_por.username }}</td>
+                    <td class="consultado-cell">{% if art.revisado_redactor %}✔️{% else %}-{% endif %}</td>
+                    <td>
+                        <input type="checkbox" name="articulos[]" value="{{ art.id }}" {% if not art.revisado_redactor %}disabled{% endif %}>
+                    </td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-info" onclick="verArticulo({{ art.id }})"
+                            data-bs-toggle="modal" data-bs-target="#modalArticulo">Ver</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <!-- Paginación para artículos en informes -->
+        <nav id="paginacion-articulos-informes" class="mt-3">
+            <ul class="pagination justify-content-center">
+                {% if articulos.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ articulos.previous_page_number }}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if selected_categoria %}&categoria_id={{ selected_categoria }}{% endif %}{% if selected_usuario %}&generado_por_id={{ selected_usuario }}{% endif %}">Anterior</a>
+                    </li>
+                {% endif %}
+                
+                {% for num in articulos.paginator.page_range %}
+                    {% if articulos.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                    {% else %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if selected_categoria %}&categoria_id={{ selected_categoria }}{% endif %}{% if selected_usuario %}&generado_por_id={{ selected_usuario }}{% endif %}">{{ num }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if articulos.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ articulos.next_page_number }}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if selected_categoria %}&categoria_id={{ selected_categoria }}{% endif %}{% if selected_usuario %}&generado_por_id={{ selected_usuario }}{% endif %}">Siguiente</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+
+    <h2 class="mb-4 text-center">Informes Generados</h2>
+    <div class="card mb-3">
+        <table class="table table-striped" id="tabla-informes-generados">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Nombre</th>
+                    <th>Apellido</th>
+                    <th>Documento</th>
+                    <th>Sexo</th>
+                    <th>Autor</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="tbody-informes-generados">
+                {% for inf in informes %}
+                <tr>
+                    <td>{{ inf.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                    <td>{{ inf.nombre }}</td>
+                    <td>{{ inf.apellido }}</td>
+                    <td>{{ inf.documento }}</td>
+                    <td>{{ inf.get_sexo_display|default:"-" }}</td>
+                    <td>{{ inf.generado_por.username }}</td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-info" onclick="verInforme({{ inf.id }})"
+                            data-bs-toggle="modal" data-bs-target="#modalInforme">
+                            Ver
+                        </button>
+                        <button class="btn btn-sm btn-danger ms-1" data-bs-toggle="modal"
+                            data-bs-target="#modalEliminarInforme" data-id="{{ inf.id }}">
+                            Eliminar
+                        </button>
+                        <a href="{% url 'exportar_informe_pdf' inf.id %}" class="btn btn-sm btn-secondary ms-1"
+                            target="_blank">PDF</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <!-- Paginación para informes generados -->
+        <nav id="paginacion-informes-generados" class="mt-3">
+            <ul class="pagination justify-content-center">
+                {% if informes.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page_informes={{ informes.previous_page_number }}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if selected_categoria %}&categoria_id={{ selected_categoria }}{% endif %}{% if selected_usuario %}&generado_por_id={{ selected_usuario }}{% endif %}">Anterior</a>
+                    </li>
+                {% endif %}
+                
+                {% for num in informes.paginator.page_range %}
+                    {% if informes.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                    {% else %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page_informes={{ num }}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if selected_categoria %}&categoria_id={{ selected_categoria }}{% endif %}{% if selected_usuario %}&generado_por_id={{ selected_usuario }}{% endif %}">{{ num }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if informes.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page_informes={{ informes.next_page_number }}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if selected_categoria %}&categoria_id={{ selected_categoria }}{% endif %}{% if selected_usuario %}&generado_por_id={{ selected_usuario }}{% endif %}">Siguiente</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+
+    {% include 'partials/modal_y_scripts_informes.html' %}
+    
+    <!-- Script para funcionalidad adicional del acordeón -->
+    <script>
+        // Variables para la paginación de artículos en informes
+        let articulosInformesGlobal = [];
+        let paginaActualArticulos = 1;
+        const articulosPorPagina = 10;
+
+        // Variables para la paginación de informes generados
+        let informesGeneradosGlobal = [];
+        let paginaActualInformes = 1;
+        const informesPorPagina = 10;
+
+        // ===== PAGINACIÓN PARA ARTÍCULOS =====
+        function crearPaginacionArticulos(totalPaginas, paginaActual) {
+            const paginacionEl = document.getElementById('paginacion-articulos-informes');
+            const ul = paginacionEl.querySelector('ul');
+            ul.innerHTML = '';
+
+            if (totalPaginas <= 1) {
+                paginacionEl.classList.add('d-none');
+                return;
+            }
+            paginacionEl.classList.remove('d-none');
+
+            // Botón anterior
+            const liAnterior = document.createElement('li');
+            liAnterior.className = `page-item ${paginaActual === 1 ? 'disabled' : ''}`;
+            liAnterior.innerHTML = `<a class="page-link" onclick="cambiarPaginaArticulos(${paginaActual - 1})">Anterior</a>`;
+            ul.appendChild(liAnterior);
+
+            // Números de página
+            for (let i = 1; i <= totalPaginas; i++) {
+                const li = document.createElement('li');
+                li.className = `page-item ${i === paginaActual ? 'active' : ''}`;
+                li.innerHTML = `<a class="page-link" onclick="cambiarPaginaArticulos(${i})">${i}</a>`;
+                ul.appendChild(li);
+            }
+
+            // Botón siguiente
+            const liSiguiente = document.createElement('li');
+            liSiguiente.className = `page-item ${paginaActual === totalPaginas ? 'disabled' : ''}`;
+            liSiguiente.innerHTML = `<a class="page-link" onclick="cambiarPaginaArticulos(${paginaActual + 1})">Siguiente</a>`;
+            ul.appendChild(liSiguiente);
+        }
+
+        function cambiarPaginaArticulos(nuevaPagina) {
+            paginaActualArticulos = nuevaPagina;
+            mostrarArticulosPagina(articulosInformesGlobal, paginaActualArticulos);
+        }
+
+        function mostrarArticulosPagina(articulos, pagina) {
+            const tbody = document.getElementById("tbody-articulos-informes");
+            tbody.innerHTML = '';
+
+            const inicio = (pagina - 1) * articulosPorPagina;
+            const fin = inicio + articulosPorPagina;
+            const articulosPagina = articulos.slice(inicio, fin);
+
+            if (articulosPagina.length === 0) {
+                tbody.innerHTML = "<tr><td colspan='7' class='text-center text-muted'>No se encontraron artículos</td></tr>";
+                return;
+            }
+
+            articulosPagina.forEach(art => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${art.fecha_creacion ? new Date(art.fecha_creacion).toLocaleDateString('es-ES') + ' ' + new Date(art.fecha_creacion).toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'}) : '-'}</td>
+                    <td>${art.titulo || 'Sin título'}</td>
+                    <td>${art.categoria ? art.categoria.name : '-'}</td>
+                    <td>${art.generado_por ? art.generado_por.username : '-'}</td>
+                    <td class="consultado-cell">${art.revisado_redactor ? '✔️' : '-'}</td>
+                    <td>
+                        <input type="checkbox" name="articulos[]" value="${art.id}" ${art.revisado_redactor ? "" : "disabled"}>
+                    </td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-info" onclick="verArticulo(${art.id})"
+                            data-bs-toggle="modal" data-bs-target="#modalArticulo">Ver</button>
+                    </td>`;
+                tbody.appendChild(tr);
+            });
+
+            const totalPaginas = Math.ceil(articulos.length / articulosPorPagina);
+            crearPaginacionArticulos(totalPaginas, pagina);
+        }
+
+        // ===== PAGINACIÓN PARA INFORMES GENERADOS =====
+        function crearPaginacionInformes(totalPaginas, paginaActual) {
+            const paginacionEl = document.getElementById('paginacion-informes-generados');
+            const ul = paginacionEl.querySelector('ul');
+            ul.innerHTML = '';
+
+            if (totalPaginas <= 1) {
+                paginacionEl.classList.add('d-none');
+                return;
+            }
+            paginacionEl.classList.remove('d-none');
+
+            // Botón anterior
+            const liAnterior = document.createElement('li');
+            liAnterior.className = `page-item ${paginaActual === 1 ? 'disabled' : ''}`;
+            liAnterior.innerHTML = `<a class="page-link" onclick="cambiarPaginaInformes(${paginaActual - 1})">Anterior</a>`;
+            ul.appendChild(liAnterior);
+
+            // Números de página
+            for (let i = 1; i <= totalPaginas; i++) {
+                const li = document.createElement('li');
+                li.className = `page-item ${i === paginaActual ? 'active' : ''}`;
+                li.innerHTML = `<a class="page-link" onclick="cambiarPaginaInformes(${i})">${i}</a>`;
+                ul.appendChild(li);
+            }
+
+            // Botón siguiente
+            const liSiguiente = document.createElement('li');
+            liSiguiente.className = `page-item ${paginaActual === totalPaginas ? 'disabled' : ''}`;
+            liSiguiente.innerHTML = `<a class="page-link" onclick="cambiarPaginaInformes(${paginaActual + 1})">Siguiente</a>`;
+            ul.appendChild(liSiguiente);
+        }
+
+        function cambiarPaginaInformes(nuevaPagina) {
+            paginaActualInformes = nuevaPagina;
+            mostrarInformesPagina(informesGeneradosGlobal, paginaActualInformes);
+        }
+
+        function mostrarInformesPagina(informes, pagina) {
+            const tbody = document.getElementById("tbody-informes-generados");
+            tbody.innerHTML = '';
+
+            const inicio = (pagina - 1) * informesPorPagina;
+            const fin = inicio + informesPorPagina;
+            const informesPagina = informes.slice(inicio, fin);
+
+            if (informesPagina.length === 0) {
+                tbody.innerHTML = "<tr><td colspan='7' class='text-center text-muted'>No se encontraron informes</td></tr>";
+                return;
+            }
+
+            informesPagina.forEach(inf => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${inf.fecha_creacion ? new Date(inf.fecha_creacion).toLocaleDateString('es-ES') + ' ' + new Date(inf.fecha_creacion).toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'}) : '-'}</td>
+                    <td>${inf.nombre || '-'}</td>
+                    <td>${inf.apellido || '-'}</td>
+                    <td>${inf.documento || '-'}</td>
+                    <td>${inf.sexo_display || '-'}</td>
+                    <td>${inf.generado_por ? inf.generado_por.username : '-'}</td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-info" onclick="verInforme(${inf.id})"
+                            data-bs-toggle="modal" data-bs-target="#modalInforme">
+                            Ver
+                        </button>
+                        <button class="btn btn-sm btn-danger ms-1" data-bs-toggle="modal"
+                            data-bs-target="#modalEliminarInforme" data-id="${inf.id}">
+                            Eliminar
+                        </button>
+                        <a href="/informes/${inf.id}/exportar_pdf/" class="btn btn-sm btn-secondary ms-1"
+                            target="_blank">PDF</a>
+                    </td>`;
+                tbody.appendChild(tr);
+            });
+
+            const totalPaginas = Math.ceil(informes.length / informesPorPagina);
+            crearPaginacionInformes(totalPaginas, pagina);
+        }
+
+        // Inicializar la paginación cuando se carga la página
+        document.addEventListener('DOMContentLoaded', function() {
+            // Convertir los artículos de Django a un array JavaScript
+            const articulosData = [
+                {% for art in articulos %}
+                {
+                    id: {{ art.id }},
+                    titulo: "{{ art.titulo|escapejs }}",
+                    fecha_creacion: "{{ art.fecha_creacion|date:'c' }}",
+                    categoria: {% if art.categoria %}{ name: "{{ art.categoria.nombre|escapejs }}" }{% else %}null{% endif %},
+                    generado_por: {% if art.generado_por %}{ username: "{{ art.generado_por.username|escapejs }}" }{% else %}null{% endif %},
+                    revisado_redactor: {% if art.revisado_redactor %}true{% else %}false{% endif %}
+                },
+                {% endfor %}
+            ];
+
+            // Convertir los informes de Django a un array JavaScript
+            const informesData = [
+                {% for inf in informes %}
+                {
+                    id: {{ inf.id }},
+                    nombre: "{{ inf.nombre|escapejs }}",
+                    apellido: "{{ inf.apellido|escapejs }}",
+                    documento: "{{ inf.documento|escapejs }}",
+                    sexo_display: "{{ inf.get_sexo_display|default_if_none:''|escapejs }}",
+                    fecha_creacion: "{{ inf.fecha_creacion|date:'c' }}",
+                    generado_por: {% if inf.generado_por %}{ username: "{{ inf.generado_por.username|escapejs }}" }{% else %}null{% endif %}
+                },
+                {% endfor %}
+            ];
+
+            articulosInformesGlobal = articulosData;
+            informesGeneradosGlobal = informesData;
+            
+            if (articulosData.length > 0) {
+                paginaActualArticulos = 1;
+                mostrarArticulosPagina(articulosInformesGlobal, paginaActualArticulos);
+            }
+            
+            if (informesData.length > 0) {
+                paginaActualInformes = 1;
+                mostrarInformesPagina(informesGeneradosGlobal, paginaActualInformes);
+            }
+        });
+
+        // Función para agregar campos de redes sociales
+        function agregarRedSocial() {
+            const container = document.querySelector('.redes-group');
+            const newInput = document.createElement('div');
+            newInput.className = 'input-group mb-2';
+            newInput.innerHTML = `
+                <select name="redes_tipo[]" class="form-select">
+                    <option value="">Tipo</option>
+                    <option value="facebook">Facebook</option>
+                    <option value="instagram">Instagram</option>
+                    <option value="twitter">Twitter</option>
+                    <option value="whatsapp">WhatsApp</option>
+                </select>
+                <input type="text" name="redes_usuario[]" placeholder="Usuario" class="form-control">
+                <button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">X</button>
+            `;
+            container.appendChild(newInput);
+        }
+        
+        // Función genérica para agregar campos
+        function agregarCampo(tipo) {
+            const container = document.querySelector(`.${tipo}-group`);
+            const newInput = document.createElement('div');
+            newInput.className = 'input-group mb-2';
+            
+            let inputHTML = '';
+            if (tipo === 'alias' || tipo === 'telefono' || tipo === 'email') {
+                inputHTML = `
+                    <input type="${tipo === 'email' ? 'email' : tipo === 'telefono' ? 'number' : 'text'}" 
+                           name="${tipo}[]" class="form-control">
+                    <button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">X</button>
+                `;
+            }
+            
+            newInput.innerHTML = inputHTML;
+            container.appendChild(newInput);
+        }
+        
+        // Funciones para agregar otros campos (ya existentes)
+        function agregarDomicilio() {
+            const container = document.querySelector('.domicilio-group');
+            const newInput = document.createElement('div');
+            newInput.className = 'input-group mb-2';
+            newInput.innerHTML = `
+                <input type="text" name="domicilio_calle[]" placeholder="Calle" class="form-control">
+                <input type="number" name="domicilio_altura[]" placeholder="Altura" class="form-control">
+                <input type="text" name="domicilio_barrio[]" placeholder="Barrio" class="form-control">
+                <input type="text" name="domicilio_ciudad[]" placeholder="Ciudad" class="form-control">
+                <input type="text" name="domicilio_provincia[]" placeholder="Provincia" class="form-control">
+                <button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">X</button>
+            `;
+            container.appendChild(newInput);
+        }
+        
+        function agregarVehiculo() {
+            const container = document.querySelector('.vehiculos-group');
+            const newInput = document.createElement('div');
+            newInput.className = 'input-group mb-2';
+            newInput.innerHTML = `
+                <input type="text" name="vehiculo_marca[]" placeholder="Marca" class="form-control">
+                <input type="text" name="vehiculo_modelo[]" placeholder="Modelo" class="form-control">
+                <input type="text" name="vehiculo_dominio[]" placeholder="Dominio" class="form-control">
+                <input type="text" name="vehiculo_color[]" placeholder="Color" class="form-control">
+                <button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">X</button>
+            `;
+            container.appendChild(newInput);
+        }
+        
+        function agregarEmpleador() {
+            const container = document.querySelector('.empleadores-group');
+            const newInput = document.createElement('div');
+            newInput.className = 'input-group mb-2';
+            newInput.innerHTML = `
+                <input type="text" name="empleador_nombre[]" placeholder="Nombre" class="form-control">
+                <input type="number" min="10000000000" max="99999999999" name="empleador_cuit[]" placeholder="CUIT" class="form-control">
+                <input type="date" name="empleador_fecha_alta[]" class="form-control">
+                <input type="date" name="empleador_fecha_baja[]" class="form-control">
+                <button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">X</button>
+            `;
+            container.appendChild(newInput);
+        }
+        
+        function agregarVinculo() {
+            const container = document.querySelector('.vinculos-group');
+            const newInput = document.createElement('div');
+            newInput.className = 'input-group mb-2';
+            newInput.innerHTML = `
+                <input type="text" name="vinculo_nombre_apellido[]" placeholder="Nombre y Apellido" class="form-control">
+                <input type="number" min="1000000" max="99999999" name="vinculo_dni[]" placeholder="DNI" class="form-control">
+                <input type="text" name="vinculo_tipo[]" placeholder="Tipo" class="form-control">
+                <button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">X</button>
+            `;
+            container.appendChild(newInput);
+        }
+    </script>
+</body>
+{% endblock content %}

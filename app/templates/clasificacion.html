@@ -1,0 +1,556 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Clasificacion de links{% endblock %}
+
+{% block content %}
+<style>
+    .check-icon {
+        color: green;
+        font-weight: bold;
+        font-size: 1.2rem;
+    }
+    
+    .pagination {
+        margin-bottom: 0;
+    }
+    
+    .page-link {
+        color: #0d6efd;
+    }
+    
+    .page-item.active .page-link {
+        background-color: #0d6efd;
+        border-color: #0d6efd;
+    }
+</style>
+
+<h1 class="mb-4">Panel de Clasificación</h1>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Links Pendientes</span>
+        <span class="badge bg-primary" id="total-pendientes-count">0</span>
+    </div>
+    <div class="card-body">
+        <div class="row mb-3">
+            <div class="col">
+                <label>Desde:</label>
+                <input type="date" id="fecha_desde" class="form-control">
+            </div>
+            <div class="col">
+                <label>Hasta:</label>
+                <input type="date" id="fecha_hasta" class="form-control">
+            </div>
+            <div class="col">
+                <label>Diario:</label>
+                <select id="diario" class="form-select">
+                    <option value="">Todos</option>
+                </select>
+            </div>
+            <div class="col d-flex align-items-end">
+                <button class="btn btn-secondary w-100" onclick="cargarLinks(1)">Filtrar</button>
+            </div>
+        </div>
+        <table class="table table-striped" id="tabla-links">
+            <thead>
+                <tr>
+                    <th>Diario</th>
+                    <th>URL</th>
+                    <th>Fecha</th>
+                    <th>Estado</th>
+                    <th>Revisado</th>
+                    <th>Categorías</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        
+        <!-- Paginación para Links Pendientes -->
+        <nav aria-label="Paginación de links pendientes">
+            <ul class="pagination justify-content-center" id="pagination-pendientes">
+                <!-- La paginación se generará dinámicamente -->
+            </ul>
+        </nav>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div id="liveToast" class="toast align-items-center text-bg-primary border-0" role="alert" aria-live="assertive"
+        aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body" id="toastBody">Mensaje aquí</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"
+                aria-label="Cerrar"></button>
+        </div>
+    </div>
+</div>
+
+<hr>
+<h2 class="text-center">Links ya clasificados</h2>
+
+<!-- tabla de clasificados -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Links Clasificados</span>
+        <span class="badge bg-primary" id="total-clasificados-count">0</span>
+    </div>
+    <div class="card-body">
+        <div class="row mb-3">
+            <div class="col">
+                <label>Desde:</label>
+                <input type="date" id="clasif_fecha_desde" class="form-control">
+            </div>
+            <div class="col">
+                <label>Hasta:</label>
+                <input type="date" id="clasif_fecha_hasta" class="form-control">
+            </div>
+            <div class="col">
+                <label>Diario:</label>
+                <select id="clasif_diario" class="form-select">
+                    <option value="">Todos</option>
+                </select>
+            </div>
+            <div class="col">
+                <label>Estado:</label>
+                <select id="clasif_estado" class="form-select">
+                    <option value="">Todos</option>
+                    <option value="aprobado">Aprobado</option>
+                    <option value="descartado">Descartado</option>
+                </select>
+            </div>
+            <div class="col">
+                <label>Categoría:</label>
+                <select id="clasif_categoria" class="form-select">
+                    <option value="">Todas</option>
+                </select>
+            </div>
+            <div class="col d-flex align-items-end">
+                <button class="btn btn-secondary w-100" onclick="cargarLinksClasificados(1)">Filtrar</button>
+            </div>
+        </div>
+        <table class="table table-striped" id="tabla-clasificados">
+            <thead>
+                <tr>
+                    <th>Diario</th>
+                    <th>URL</th>
+                    <th>Fecha</th>
+                    <th>Estado</th>
+                    <th>Categorías</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        
+        <!-- Paginación para Links Clasificados -->
+        <nav aria-label="Paginación de links clasificados">
+            <ul class="pagination justify-content-center" id="pagination-clasificados">
+                <!-- La paginación se generará dinámicamente -->
+            </ul>
+        </nav>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    let currentPagePendientes = 1;
+    let currentPageClasificados = 1;
+    const itemsPerPage = 10;
+
+    function mostrarToast(mensaje, tipo = 'primary') {
+        const toastEl = document.getElementById('liveToast');
+        const toastBody = document.getElementById('toastBody');
+        toastEl.className = `toast align-items-center text-bg-${tipo} border-0`;
+        toastBody.textContent = mensaje;
+        const toast = new bootstrap.Toast(toastEl);
+        toast.show();
+    }
+
+    // Función para generar la paginación
+    function generarPaginacion(totalItems, currentPage, containerId, callback) {
+        const totalPages = Math.ceil(totalItems / itemsPerPage);
+        const paginationContainer = document.getElementById(containerId);
+        
+        if (totalPages <= 1) {
+            paginationContainer.innerHTML = '';
+            return;
+        }
+
+        let paginationHTML = '';
+        
+        // Botón anterior
+        if (currentPage > 1) {
+            paginationHTML += `
+                <li class="page-item">
+                    <a class="page-link" href="#" onclick="${callback}(${currentPage - 1}); return false;">
+                        &laquo; Anterior
+                    </a>
+                </li>`;
+        }
+
+        // Páginas
+        for (let i = 1; i <= totalPages; i++) {
+            if (i === currentPage) {
+                paginationHTML += `
+                    <li class="page-item active">
+                        <span class="page-link">${i}</span>
+                    </li>`;
+            } else {
+                paginationHTML += `
+                    <li class="page-item">
+                        <a class="page-link" href="#" onclick="${callback}(${i}); return false;">${i}</a>
+                    </li>`;
+            }
+        }
+
+        // Botón siguiente
+        if (currentPage < totalPages) {
+            paginationHTML += `
+                <li class="page-item">
+                    <a class="page-link" href="#" onclick="${callback}(${currentPage + 1}); return false;">
+                        Siguiente &raquo;
+                    </a>
+                </li>`;
+        }
+
+        paginationContainer.innerHTML = paginationHTML;
+    }
+
+    async function cargarDiarios() {
+        const selects = [document.getElementById("diario"), document.getElementById("clasif_diario")];
+        try {
+            const res = await fetch("/api/diarios/");
+            const diarios = await res.json();
+            diarios.forEach(d => {
+                selects.forEach(select => {
+                    const option = document.createElement("option");
+                    option.value = d.id;
+                    option.textContent = d.nombre;
+                    select.appendChild(option);
+                });
+            });
+        } catch (error) {
+            console.error("Error cargando diarios:", error);
+            mostrarToast("Error al cargar diarios", "danger");
+        }
+    }
+
+    async function cargarLinks(page = 1) {
+        currentPagePendientes = page;
+        const tabla = document.querySelector("#tabla-links tbody");
+        tabla.innerHTML = '<tr><td colspan="7" class="text-center"><div class="spinner-border spinner-border-sm"></div> Cargando...</td></tr>';
+
+        const desde = document.getElementById("fecha_desde").value;
+        const hasta = document.getElementById("fecha_hasta").value;
+        const diarioId = document.getElementById("diario").value;
+
+        let url = "/api/links_list/";
+        const params = [];
+        if (desde) params.push(`fecha_inicio=${desde}`);
+        if (hasta) params.push(`fecha_fin=${hasta}`);
+        if (diarioId) params.push(`diario_id=${diarioId}`);
+
+        // 👇 siempre trae solo pendientes
+        params.push(`estado=pendiente`);
+
+        if (params.length > 0) url += `?${params.join('&')}`;
+
+        try {
+            const res = await fetch(url);
+            const links = await res.json();
+
+            // Actualizar contador total
+            document.getElementById('total-pendientes-count').textContent = links.length;
+
+            if (links.length === 0) {
+                tabla.innerHTML = `<tr><td colspan="7" class="text-center">No hay links pendientes</td></tr>`;
+                document.getElementById('pagination-pendientes').innerHTML = '';
+                return;
+            }
+
+            // Calcular índices para la paginación
+            const startIndex = (page - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const paginatedLinks = links.slice(startIndex, endIndex);
+
+            // Limpiar tabla
+            tabla.innerHTML = "";
+
+            paginatedLinks.forEach(link => {
+                let badge = '';
+                switch (link.estado) {
+                    case 'pendiente': badge = `<span class="badge bg-warning text-dark">Pendiente</span>`; break;
+                    case 'aprobado': badge = `<span class="badge bg-success">Aprobado</span>`; break;
+                    case 'descartado': badge = `<span class="badge bg-danger">Descartado</span>`; break;
+                }
+                const revisado = link.revisado_clasificador ? `<span class="check-icon">✔</span>` : '';
+                const diarioLogo = link.diario_logo_url || '/static/img/default_logo.png';
+
+                const categoriasBadges = Array.isArray(link.categorias_info)
+                    ? link.categorias_info.map(cat => `<span class="badge bg-secondary me-1">${cat.nombre}</span>`).join("")
+                    : "-";
+
+                const deshabilitarClasificar = !link.revisado_clasificador ? 'disabled' : '';
+
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td><img src="${diarioLogo}" alt="logo" style="height:40px; max-width:60px;"></td>
+                    <td><a href="${link.url}" target="_blank" onclick="marcarRevisado(${link.id})">
+                        ${link.url.length > 50 ? link.url.slice(0, 50) + '…' : link.url}</a></td>
+                    <td>${new Date(link.fecha_carga).toLocaleDateString()}</td>
+                    <td>${badge}</td>
+                    <td>${revisado}</td>
+                    <td>${categoriasBadges}</td>
+                    <td><button class="btn btn-sm btn-primary" onclick="abrirModalClasificar(${link.id})" ${deshabilitarClasificar}>Clasificar</button></td>
+                `;
+                tabla.appendChild(row);
+            });
+
+            // Generar paginación
+            generarPaginacion(links.length, page, 'pagination-pendientes', 'cargarLinks');
+
+        } catch (error) {
+            console.error("Error cargando links:", error);
+            tabla.innerHTML = `<tr><td colspan="7" class="text-center text-danger">Error al cargar los datos</td></tr>`;
+            mostrarToast("Error al cargar los links", "danger");
+        }
+    }
+
+    async function marcarRevisado(id) {
+        try {
+            const res = await fetch(`/api/links/${id}/`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCookie("csrftoken")
+                },
+                body: JSON.stringify({ revisado_clasificador: true })
+            });
+            if (!res.ok) throw new Error("No se pudo marcar revisado");
+            mostrarToast("Link marcado como revisado", "success");
+            cargarLinks(currentPagePendientes);
+            cargarLinksClasificados(currentPageClasificados);
+        } catch (error) {
+            console.error("Error marcando revisado:", error);
+            mostrarToast("Error al marcar revisado", "danger");
+        }
+    }
+
+    async function abrirModalClasificar(id) {
+        try {
+            // Traemos primero las categorías actuales del link
+            const resLink = await fetch(`/api/links/${id}/`);
+            if (!resLink.ok) throw new Error("No se pudo obtener el link");
+            const linkData = await resLink.json();
+            const categoriasActuales = (linkData.categorias_info || []).map(cat => cat.id);
+
+            // Ahora traemos todas las categorías disponibles
+            const resCats = await fetch("/api/categorias/");
+            const categorias = await resCats.json();
+
+            let htmlCategorias = categorias.map(cat =>
+                `<div>
+                    <input type="checkbox" id="cat_${cat.id}" value="${cat.id}" ${categoriasActuales.includes(cat.id) ? 'checked' : ''}>
+                    <label for="cat_${cat.id}">${cat.nombre}</label>
+                </div>`
+            ).join("");
+
+            Swal.fire({
+                title: 'Clasificar Link',
+                html: `
+                    <div class="mb-2">
+                        <strong>Seleccionar categorías:</strong>
+                        ${htmlCategorias}
+                    </div>
+                    <button id="btnDescartar" class="swal2-confirm swal2-styled" style="background:#dc3545;margin-top:10px;">
+                        Descartar
+                    </button>`,
+                showCancelButton: true,
+                confirmButtonText: 'Aprobar',
+                preConfirm: () => {
+                    const seleccionados = [...document.querySelectorAll('input[type=checkbox]:checked')]
+                        .map(cb => parseInt(cb.value));
+                    return seleccionados;
+                },
+                didOpen: () => {
+                    document.getElementById('btnDescartar').addEventListener('click', async () => {
+                        const confirmar = await Swal.fire({
+                            title: '¿Seguro que quieres descartar este link?',
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonText: 'Sí, descartar',
+                            cancelButtonText: 'Cancelar'
+                        });
+                        if (confirmar.isConfirmed) {
+                            await actualizarLink(id, [], 'descartado');
+                            Swal.close();
+                        }
+                    });
+                }
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    await actualizarLink(id, result.value, 'aprobado');
+                }
+            });
+
+        } catch (error) {
+            console.error("Error cargando datos para reclasificación:", error);
+            mostrarToast("Error al abrir clasificación", "danger");
+        }
+    }
+
+    async function actualizarLink(id, categorias, estado) {
+        try {
+            const res = await fetch(`/api/links/${id}/`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCookie("csrftoken")
+                },
+                body: JSON.stringify({
+                    estado: estado,
+                    categorias: categorias
+                })
+            });
+            if (!res.ok) throw new Error("No se pudo actualizar");
+            mostrarToast(`Link ${estado === 'aprobado' ? 'aprobado' : 'descartado'}`, "success");
+            cargarLinks(currentPagePendientes);
+            cargarLinksClasificados(currentPageClasificados);
+        } catch (error) {
+            console.error("Error actualizando link:", error);
+            mostrarToast("Error al actualizar link", "danger");
+        }
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let cookie of cookies) {
+                cookie = cookie.trim();
+                if (cookie.startsWith(name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    async function cargarLinksClasificados(page = 1) {
+        currentPageClasificados = page;
+        const tabla = document.querySelector("#tabla-clasificados tbody");
+        tabla.innerHTML = '<tr><td colspan="6" class="text-center"><div class="spinner-border spinner-border-sm"></div> Cargando...</td></tr>';
+
+        const desde = document.getElementById("clasif_fecha_desde").value;
+        const hasta = document.getElementById("clasif_fecha_hasta").value;
+        const diarioId = document.getElementById("clasif_diario").value;
+        const estado = document.getElementById("clasif_estado").value;
+        const categoriaId = document.getElementById("clasif_categoria").value;
+
+        let url = "/api/links_list/";
+        const params = [];
+        if (desde) params.push(`fecha_inicio=${desde}`);
+        if (hasta) params.push(`fecha_fin=${hasta}`);
+        if (diarioId) params.push(`diario_id=${diarioId}`);
+        if (categoriaId) params.push(`categoria_id=${categoriaId}`);
+
+        if (estado && estado.trim() !== "") {
+            params.push(`estado=${estado.trim()}`);
+        } else {
+            params.push(`estado!=pendiente`);
+        }
+
+        if (params.length > 0) url += `?${params.join('&')}`;
+
+        try {
+            const res = await fetch(url);
+            const links = await res.json();
+            const clasificados = links.filter(link => link.estado !== "pendiente");
+
+            // Actualizar contador total
+            document.getElementById('total-clasificados-count').textContent = clasificados.length;
+
+            if (clasificados.length === 0) {
+                tabla.innerHTML = `<tr><td colspan="6" class="text-center">No hay links clasificados</td></tr>`;
+                document.getElementById('pagination-clasificados').innerHTML = '';
+                return;
+            }
+
+            // Calcular índices para la paginación
+            const startIndex = (page - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const paginatedLinks = clasificados.slice(startIndex, endIndex);
+
+            // Limpiar tabla
+            tabla.innerHTML = "";
+
+            paginatedLinks.forEach(link => {
+                let badge = '';
+                switch (link.estado) {
+                    case 'aprobado': badge = `<span class="badge bg-success">Aprobado</span>`; break;
+                    case 'descartado': badge = `<span class="badge bg-danger">Descartado</span>`; break;
+                }
+
+                const categoriasBadges = Array.isArray(link.categorias_info)
+                    ? link.categorias_info.map(cat => `<span class="badge bg-secondary me-1">${cat.nombre}</span>`).join("")
+                    : "-";
+
+                const diarioLogo = link.diario_logo_url || '/static/img/default_logo.png';
+
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td><img src="${diarioLogo}" alt="logo" style="height:40px; max-width:60px;"></td>
+                    <td><a href="${link.url}" target="_blank">${link.url.length > 50 ? link.url.slice(0,50)+'…' : link.url}</a></td>
+                    <td>${new Date(link.fecha_carga).toLocaleDateString()}</td>
+                    <td>${badge}</td>
+                    <td>${categoriasBadges}</td>
+                    <td><button class="btn btn-sm btn-warning" onclick="abrirModalClasificar(${link.id})">Reclasificar</button></td>
+                `;
+                tabla.appendChild(row);
+            });
+
+            // Generar paginación
+            generarPaginacion(clasificados.length, page, 'pagination-clasificados', 'cargarLinksClasificados');
+
+        } catch (error) {
+            console.error("Error cargando links clasificados:", error);
+            tabla.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Error al cargar los datos</td></tr>`;
+            mostrarToast("Error al cargar links clasificados", "danger");
+        }
+    }
+
+    async function cargarCategoriasClasif() {
+        try {
+            const res = await fetch("/api/categorias/");
+            const categorias = await res.json();
+            const select = document.getElementById("clasif_categoria");
+            categorias.forEach(cat => {
+                const option = document.createElement("option");
+                option.value = cat.id;
+                option.textContent = cat.nombre;
+                select.appendChild(option);
+            });
+        } catch (error) {
+            console.error("Error cargando categorías:", error);
+            mostrarToast("Error al cargar categorías", "danger");
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        cargarDiarios();
+        cargarCategoriasClasif();
+        cargarLinks(1);
+        cargarLinksClasificados(1);
+    });
+</script>
+
+</body>
+
+</html>
+{% endblock content %}

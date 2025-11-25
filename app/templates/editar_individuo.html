@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Editar Individuo{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Editar Informe Individual</h2>
+
+<form method="post" enctype="multipart/form-data" class="needs-validation">
+    {% csrf_token %}
+
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <label for="id_apellido_nombre" class="form-label">Apellido y Nombre</label>
+            {{ form.apellido_nombre|add_class:"form-control" }}
+        </div>
+        <div class="col-md-6">
+            <label for="id_rol" class="form-label">Rol</label>
+            {{ form.rol|add_class:"form-select" }}
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <label for="id_documento" class="form-label">Documento</label>
+            {{ form.documento|add_class:"form-control" }}
+        </div>
+        <div class="col-md-4">
+            <label for="id_alias" class="form-label">Alias</label>
+            {{ form.alias|add_class:"form-control" }}
+        </div>
+        <div class="col-md-4">
+            <label for="id_cuit" class="form-label">CUIT</label>
+            {{ form.cuit|add_class:"form-control" }}
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <label for="id_fecha_nacimiento" class="form-label">Fecha de Nacimiento</label>
+            {{ form.fecha_nacimiento|add_class:"form-control" }}
+        </div>
+        <div class="col-md-2">
+            <label for="id_edad" class="form-label">Edad</label>
+            {{ form.edad|add_class:"form-control" }}
+        </div>
+        <div class="col-md-6">
+            <label for="id_nacionalidad" class="form-label">Nacionalidad</label>
+            {{ form.nacionalidad|add_class:"form-control" }}
+        </div>
+    </div>
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <label for="id_sexo" class="form-label">Sexo</label>
+            {{ form.sexo|add_class:"form-select" }}
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col">
+            <label for="id_domicilio" class="form-label">Domicilio</label>
+            {{ form.domicilio|add_class:"form-control" }}
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col">
+            <label for="id_actividad" class="form-label">Actividad</label>
+            {{ form.actividad|add_class:"form-control" }}
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <label for="id_banda" class="form-label">Banda</label>
+            {{ form.banda|add_class:"form-control" }}
+        </div>
+        <div class="col-md-6">
+            <label for="id_situacion" class="form-label">Situación</label>
+            {{ form.situacion|add_class:"form-select" }}
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <label for="id_telefono" class="form-label">Teléfono</label>
+            {{ form.telefono|add_class:"form-control" }}
+        </div>
+        <div class="col-md-8">
+            <label for="id_vehiculos" class="form-label">Vehículos</label>
+            {{ form.vehiculos|add_class:"form-control" }}
+        </div>
+    </div>
+
+    <h5 class="mt-4">Hechos Destacados</h5>
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <label for="id_fecha_hecho" class="form-label">Fecha</label>
+            {{ form.fecha_hecho|add_class:"form-control" }}
+        </div>
+        <div class="col-md-8">
+            <label for="id_lugar_hecho" class="form-label">Lugar</label>
+            {{ form.lugar_hecho|add_class:"form-control" }}
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col">
+            <label for="id_hechos_destacados" class="form-label">Descripción</label>
+            {{ form.hechos_destacados|add_class:"form-control" }}
+        </div>
+    </div>
+
+    <div class="mb-3">
+  {{ form.articulos.label_tag }}
+  {{ form.articulos }}
+</div>
+
+    <div class="d-grid">
+        <button type="submit" class="btn btn-primary">Guardar</button>
+    </div>
+</form>
+
+{% endblock %}

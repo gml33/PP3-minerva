@@ -1,0 +1,471 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+
+{% block title %}Informe de banda{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 mb-0">{{ titulo_pagina|default:"Nuevo informe de banda criminal" }}</h1>
+        <p class="text-muted mb-0">{{ descripcion_pagina|default:"Completá la información solicitada para registrar el informe." }}</p>
+    </div>
+    {% if volver_url %}
+        <a href="{{ volver_url }}" class="btn btn-outline-secondary">Volver</a>
+    {% else %}
+        <a href="{% url 'redaccion' %}" class="btn btn-outline-secondary">Volver</a>
+    {% endif %}
+</div>
+
+{% include "partials/messages.html" %}
+
+<form method="post" class="card">
+    {% csrf_token %}
+    <div class="card-body">
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {% for error in form.non_field_errors %}
+                    <div>{{ error }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        <div class="row g-4">
+            <div class="col-md-6">
+                <label class="form-label">{{ form.banda.label }}</label>
+                {{ form.banda }}
+                {% if form.banda.help_text %}
+                    <div class="form-text">{{ form.banda.help_text }}</div>
+                {% endif %}
+                {% for error in form.banda.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label d-block">Zonas de influencia</label>
+                <div class="form-control" style="height:auto; min-height: 120px;" id="zonas-influencia-display">
+                    <span class="text-muted">Seleccioná una banda para ver sus zonas.</span>
+                </div>
+                <div class="form-text">
+                    Este dato se completa automáticamente tomando la información de la banda seleccionada.
+                </div>
+            </div>
+        </div>
+
+        <div class="alert alert-info mt-3">
+            Los integrantes, jerarquías, zonas y relaciones se completan automáticamente según la banda seleccionada.
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">Anexo 1 - Miembros y jerarquías</div>
+            <div class="card-body">
+                <div class="row g-4 mt-1">
+                    <div class="col-lg-6">
+                        <div class="border rounded p-3 h-100">
+                            <h5 class="mb-3">Líderes detectados</h5>
+                            <div id="info-lideres">
+                                <span class="text-muted">Seleccioná una banda para ver los líderes registrados.</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="border rounded p-3 h-100">
+                            <h5 class="mb-3">Lugartenientes detectados</h5>
+                            <div id="info-lugartenientes">
+                                <span class="text-muted">Seleccioná una banda para ver los lugartenientes registrados.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <h5>Integrantes de la banda</h5>
+                    <div class="border rounded p-3" id="info-miembros">
+                        <span class="text-muted">Seleccioná una banda para ver los integrantes asociados.</span>
+                    </div>
+                </div>
+
+                <div class="row g-4 mt-4">
+                    <div class="col-md-6">
+                        <div class="border rounded p-3 h-100">
+                            <h5>Bandas aliadas (automático)</h5>
+                            <div id="info-aliadas">
+                                <span class="text-muted">Sin datos disponibles.</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="border rounded p-3 h-100">
+                            <h5>Bandas rivales (automático)</h5>
+                            <div id="info-rivales">
+                                <span class="text-muted">Sin datos disponibles.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-4 mt-4">
+                    <div class="col-md-6">
+                        <label class="form-label">{{ form.conclusion_relevante.label }}</label>
+                        {{ form.conclusion_relevante }}
+                        {% for error in form.conclusion_relevante.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">{{ form.posible_evolucion.label }}</label>
+                        {{ form.posible_evolucion }}
+                        {% for error in form.posible_evolucion.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">Anexo 2 - Introducción</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">{{ form.introduccion_descripcion.label }}</label>
+                    {{ form.introduccion_descripcion }}
+                    {% for error in form.introduccion_descripcion.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Antecedentes personalizados (Anexo 3)</span>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="btn-agregar-antecedente">
+                    Agregar antecedente
+                </button>
+            </div>
+            <div class="card-body">
+                {{ form.antecedentes_json }}
+                <div id="antecedentes-dynamic-list" class="d-flex flex-column gap-3"></div>
+                <div class="form-text">
+                    Sumá tantos antecedentes como necesites. Cada antecedente tiene un título y una descripción que se incluirán en el anexo 3 del informe.
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">Anexo 4 - Desarrollo</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">{{ form.desarrollo_titulo.label }}</label>
+                    {{ form.desarrollo_titulo }}
+                    {% for error in form.desarrollo_titulo.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                    {% endfor %}
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">{{ form.desarrollo_contenido.label }}</label>
+                    {{ form.desarrollo_contenido }}
+                    {% for error in form.desarrollo_contenido.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">Anexo 6 - Conclusiones</div>
+            <div class="card-body">
+                <label class="form-label" for="{{ form.conclusiones_desarrollo.id_for_label }}">Desarrollo</label>
+                {{ form.conclusiones_desarrollo }}
+                {% for error in form.conclusiones_desarrollo.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+            </div>
+        </div>
+
+    </div>
+    <div class="card-footer d-flex justify-content-end gap-2">
+        <a href="{% url 'redaccion' %}" class="btn btn-outline-secondary">Cancelar</a>
+        <button type="submit" class="btn btn-primary">Guardar informe</button>
+    </div>
+</form>
+
+{% if informes %}
+<div class="card mt-5">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Informes elaborados</span>
+        <span class="badge bg-secondary">{{ informes|length }}</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-dark table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Banda</th>
+                    <th>Actualizado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for informe in informes %}
+                <tr>
+                    <td>
+                        <strong>{{ informe.banda.nombre_principal|default:"Banda sin nombre" }}</strong><br>
+                        <small class="text-muted">Creado el {{ informe.creado_en|date:"d/m/Y H:i" }}</small>
+                    </td>
+                    <td>{{ informe.actualizado_en|date:"d/m/Y H:i" }}</td>
+                    <td class="text-nowrap">
+                        <div class="btn-group btn-group-sm" role="group">
+                            <a class="btn btn-outline-light" href="{% url 'detalle_informe_banda' informe.pk %}">Ver</a>
+                            <a class="btn btn-outline-primary" href="{% url 'editar_informe_banda' informe.pk %}">Editar</a>
+                            <a class="btn btn-outline-secondary" href="{% url 'exportar_informe_banda' informe.pk %}">Exportar</a>
+                            <form action="{% url 'eliminar_informe_banda' informe.pk %}" method="post" class="d-inline form-eliminar-informe-banda">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-outline-danger">Eliminar</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center text-muted">No hay informes registrados.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+    {{ block.super }}
+    <script>
+        (function() {
+            const bandasInfo = JSON.parse('{{ bandas_info|default:"[]"|escapejs }}');
+            const zonasDisplay = document.getElementById('zonas-influencia-display');
+            const selectBanda = document.getElementById('id_banda');
+            const lideresDisplay = document.getElementById('info-lideres');
+            const lugartenientesDisplay = document.getElementById('info-lugartenientes');
+            const miembrosDisplay = document.getElementById('info-miembros');
+            const aliadasDisplay = document.getElementById('info-aliadas');
+            const rivalesDisplay = document.getElementById('info-rivales');
+            if (!selectBanda || !zonasDisplay) {
+                return;
+            }
+            const bandasMap = {};
+            bandasInfo.forEach((item) => {
+                bandasMap[item.id] = item;
+            });
+
+            function formatearZona(zona) {
+                if (!zona) {
+                    return '';
+                }
+                const partes = [zona.barrio, zona.localidad, zona.ciudad, zona.provincia]
+                    .filter(Boolean)
+                    .map(text => text.trim());
+                return partes.join(', ');
+            }
+
+            function renderPersonas(lista, contenedor, emptyText) {
+                if (!contenedor) return;
+                if (!lista || !lista.length) {
+                    contenedor.innerHTML = `<span class="text-muted">${emptyText}</span>`;
+                    return;
+                }
+                const fragment = document.createElement('div');
+                lista.forEach((persona) => {
+                    const block = document.createElement('div');
+                    block.className = 'mb-3 pb-2 border-bottom border-secondary';
+                    const alias = persona.alias && persona.alias.length ? `<br><small>Alias: ${persona.alias.join(', ')}</small>` : '';
+                    const telefonos = persona.telefonos && persona.telefonos.length ? `<br><small>Teléfonos: ${persona.telefonos.join(', ')}</small>` : '';
+                    block.innerHTML = `<strong>${persona.nombre || 'Sin nombre'}</strong><br>
+                        <small>Documento: ${persona.documento || '-'}</small><br>
+                        <small>Rol: ${persona.rol || '-'}</small><br>
+                        <small>Situación: ${persona.situacion || '-'}</small>${alias}${telefonos}`;
+                    fragment.appendChild(block);
+                });
+                contenedor.innerHTML = '';
+                contenedor.appendChild(fragment);
+            }
+
+            function renderListadoSimple(lista, contenedor, emptyText) {
+                if (!contenedor) return;
+                if (!lista || !lista.length) {
+                    contenedor.innerHTML = `<span class="text-muted">${emptyText}</span>`;
+                    return;
+                }
+                const ul = document.createElement('ul');
+                ul.className = 'mb-0';
+                lista.forEach((item) => {
+                    const li = document.createElement('li');
+                    li.textContent = item.nombre || 'Sin nombre';
+                    ul.appendChild(li);
+                });
+                contenedor.innerHTML = '';
+                contenedor.appendChild(ul);
+            }
+
+            function renderMiembros(lista) {
+                if (!miembrosDisplay) return;
+                if (!lista || !lista.length) {
+                    miembrosDisplay.innerHTML = '<span class="text-muted">No hay integrantes registrados.</span>';
+                    return;
+                }
+                const ul = document.createElement('ul');
+                ul.className = 'mb-0';
+                lista.forEach((persona) => {
+                    const datos = [persona.nombre, persona.rol].filter(Boolean).join(' · ');
+                    const li = document.createElement('li');
+                    li.textContent = datos || 'Integrante sin datos disponibles';
+                    ul.appendChild(li);
+                });
+                miembrosDisplay.innerHTML = '';
+                miembrosDisplay.appendChild(ul);
+            }
+
+            function actualizarPaneles() {
+                const id = parseInt(selectBanda.value, 10);
+                const data = bandasMap[id];
+                if (!data) {
+                    zonasDisplay.innerHTML = '<span class="text-muted">Seleccioná una banda para ver sus zonas.</span>';
+                    if (lideresDisplay) lideresDisplay.innerHTML = '<span class="text-muted">Seleccioná una banda.</span>';
+                    if (lugartenientesDisplay) lugartenientesDisplay.innerHTML = '<span class="text-muted">Seleccioná una banda.</span>';
+                    if (miembrosDisplay) miembrosDisplay.innerHTML = '<span class="text-muted">Seleccioná una banda.</span>';
+                    if (aliadasDisplay) aliadasDisplay.innerHTML = '<span class="text-muted">Seleccioná una banda.</span>';
+                    if (rivalesDisplay) rivalesDisplay.innerHTML = '<span class="text-muted">Seleccioná una banda.</span>';
+                    return;
+                }
+                const zonas = Array.isArray(data.zonas) ? data.zonas : [];
+                if (!zonas.length) {
+                    zonasDisplay.innerHTML = '<span class="text-warning">La banda seleccionada no tiene zonas cargadas.</span>';
+                    return;
+                }
+                const list = document.createElement('ul');
+                list.className = 'mb-0';
+                zonas.forEach((zona) => {
+                    const texto = formatearZona(zona);
+                    if (texto) {
+                        const li = document.createElement('li');
+                        li.textContent = texto;
+                        list.appendChild(li);
+                    }
+                });
+                zonasDisplay.innerHTML = '';
+                zonasDisplay.appendChild(list);
+                renderPersonas(data.lideres, lideresDisplay, 'No se registraron líderes para esta banda.');
+                renderPersonas(
+                    data.lugartenientes,
+                    lugartenientesDisplay,
+                    'No se registraron lugartenientes para esta banda.'
+                );
+                renderMiembros(data.miembros);
+                renderListadoSimple(
+                    data.bandas_aliadas,
+                    aliadasDisplay,
+                    'No se registraron bandas aliadas.'
+                );
+                renderListadoSimple(
+                    data.bandas_rivales,
+                    rivalesDisplay,
+                    'No se registraron bandas rivales.'
+                );
+            }
+
+            selectBanda.addEventListener('change', actualizarPaneles);
+            actualizarPaneles();
+        })();
+        (function () {
+            const hiddenField = document.getElementById("id_antecedentes_json");
+            const container = document.getElementById("antecedentes-dynamic-list");
+            const addButton = document.getElementById("btn-agregar-antecedente");
+            if (!hiddenField || !container || !addButton) {
+                return;
+            }
+
+            const crearItem = (titulo = "", descripcion = "") => {
+                const wrapper = document.createElement("div");
+                wrapper.className = "border rounded p-3 antecedente-item";
+                wrapper.innerHTML = `
+                    <div class="mb-3">
+                        <label class="form-label">Título</label>
+                        <input type="text" class="form-control antecedente-titulo" value="${titulo.replace(/"/g, "&quot;")}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Descripción</label>
+                        <textarea class="form-control antecedente-descripcion" rows="3">${descripcion}</textarea>
+                    </div>
+                    <div class="text-end">
+                        <button type="button" class="btn btn-sm btn-outline-danger btn-remove-antecedente">Eliminar</button>
+                    </div>
+                `;
+                container.appendChild(wrapper);
+            };
+
+            const sincronizarHidden = () => {
+                const datos = [];
+                container.querySelectorAll(".antecedente-item").forEach((item) => {
+                    const titulo = item.querySelector(".antecedente-titulo").value.trim();
+                    const descripcion = item
+                        .querySelector(".antecedente-descripcion")
+                        .value.trim();
+                    if (titulo || descripcion) {
+                        datos.push({ titulo, descripcion });
+                    }
+                });
+                hiddenField.value = JSON.stringify(datos);
+            };
+
+            addButton.addEventListener("click", () => {
+                crearItem();
+                sincronizarHidden();
+            });
+
+            container.addEventListener("input", sincronizarHidden);
+            container.addEventListener("click", (event) => {
+                if (event.target.matches(".btn-remove-antecedente")) {
+                    const item = event.target.closest(".antecedente-item");
+                    if (item) {
+                        item.remove();
+                        if (!container.querySelector(".antecedente-item")) {
+                            crearItem();
+                        }
+                        sincronizarHidden();
+                    }
+                }
+            });
+
+            try {
+                const iniciales = JSON.parse(hiddenField.value || "[]");
+                if (Array.isArray(iniciales) && iniciales.length) {
+                    iniciales.forEach((item) =>
+                        crearItem(item.titulo || "", item.descripcion || "")
+                    );
+                } else {
+                    crearItem();
+                }
+            } catch (error) {
+                crearItem();
+            }
+            sincronizarHidden();
+        })();
+        (function () {
+            document.querySelectorAll(".form-eliminar-informe-banda").forEach((form) => {
+                form.addEventListener("submit", function (event) {
+                    event.preventDefault();
+                    Swal.fire({
+                        title: "¿Eliminar este informe?",
+                        text: "Si lo borrás, la banda va a chismosear que lo rompiste. ¿Seguimos?",
+                        icon: "warning",
+                        showCancelButton: true,
+                        confirmButtonText: "Sí, igual borrarlo",
+                        cancelButtonText: "Mejor no",
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            form.submit();
+                        }
+                    });
+                });
+            });
+        })();
+    </script>
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block title %}Herramientas OSINT{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Herramientas OSINT</h1>
+
+{% if herramientas %}
+<div class="row g-4">
+    {% for herramienta in herramientas %}
+    <div class="col-md-4">
+        <div class="card h-100">
+            {% if herramienta.logo %}
+            <img src="{{ herramienta.logo.url }}" class="card-img-top" alt="Logo de {{ herramienta.nombre }}">
+            {% endif %}
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <h5 class="card-title mb-0">{{ herramienta.nombre }}</h5>
+                    <span class="badge bg-secondary">{{ herramienta.get_tipo_display }}</span>
+                </div>
+                <p class="card-text text-muted mt-2">{{ herramienta.descripcion|default:'Sin descripción disponible.' }}</p>
+            </div>
+            <div class="card-footer bg-transparent border-top-0">
+                <a href="{{ herramienta.url }}" class="btn btn-outline-primary w-100 mb-2" target="_blank" rel="noopener">
+                    Ir al sitio
+                </a>
+                <div class="d-flex" style="gap: 8px; justify-content: center;">
+                    <a href="/herramientas/editar/{{ herramienta.id }}/" class="btn btn-sm btn-outline-warning" style="min-width: 80px;">
+                        Editar
+                    </a>
+                    <a href="/herramientas/eliminar/{{ herramienta.id }}/" class="btn btn-sm btn-outline-danger" style="min-width: 80px;"
+                       onclick="return confirm('¿Estás seguro de que quieres eliminar esta herramienta?');">
+                        Eliminar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+    <div class="alert alert-info">Aún no hay herramientas cargadas.</div>
+{% endif %}
+{% endblock %}

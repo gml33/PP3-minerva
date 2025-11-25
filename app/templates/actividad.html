@@ -1,0 +1,381 @@
+{% extends 'base.html' %}
+{% block title %}Historial de Actividades{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">Historial de Actividades</h1>
+
+    <form id="filtro-actividad" class="row g-3 mb-4">
+        <div class="col-md-3">
+            <label for="usuario" class="form-label">Usuario</label>
+            <select id="usuario" class="form-select">
+                <option value="">Todos</option>
+            </select>
+        </div>
+
+        <div class="col-md-3">
+            <label for="tipo" class="form-label">Tipo de Actividad</label>
+            <select id="tipo" class="form-select">
+                <option value="">Todos</option>
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <label for="desde" class="form-label">Desde</label>
+            <input type="date" id="desde" class="form-control">
+        </div>
+
+        <div class="col-md-2">
+            <label for="hasta" class="form-label">Hasta</label>
+            <input type="date" id="hasta" class="form-control">
+        </div>
+
+        <div class="col-md-1 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+        </div>
+
+        <div class="col-md-1 d-flex align-items-end">
+            <button type="button" class="btn btn-success w-100" id="btnExportar">Excel</button>
+        </div>
+
+        <div class="col-md-1 d-flex align-items-end">
+            <button type="button" class="btn btn-danger w-100" id="btnExportarPDF">PDF</button>
+        </div>
+    </form>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped table-sm mb-3">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Usuario</th>
+                            <th>Tipo</th>
+                            <th>Descripción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-actividad">
+                        <!-- Aquí se renderizan las actividades con JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <nav aria-label="Paginación de actividades">
+                <ul class="pagination justify-content-center" id="paginacion-actividad"></ul>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row mt-4" id="resumen-actividad">
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">Actividades por Tipo</div>
+                <div class="card-body">
+                    <canvas id="grafico-por-tipo" height="240"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">Actividades por Usuario</div>
+                <div class="card-body">
+                    <canvas id="grafico-por-usuario" height="240"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const tablaBody = document.getElementById("tabla-actividad");
+        const filtroForm = document.getElementById("filtro-actividad");
+        const usuarioSelect = document.getElementById("usuario");
+        const tipoSelect = document.getElementById("tipo");
+        const desdeInput = document.getElementById("desde");
+        const hastaInput = document.getElementById("hasta");
+        const paginacion = document.getElementById("paginacion-actividad");
+        let currentPage = 1;
+        const pageSize = 20;
+        let totalActividades = 0;
+
+        cargarUsuarios();
+        cargarTipos();
+        cargarActividades(); // carga inicial sin filtros
+
+        filtroForm.addEventListener("submit", e => {
+            e.preventDefault();
+            cargarActividades(1);
+        });
+
+        document.getElementById("btnExportar").addEventListener("click", () => {
+            const usuario = usuarioSelect.value || "";
+            const tipo = tipoSelect.value || "";
+            const desde = desdeInput.value || "";
+            const hasta = hastaInput.value || "";
+
+            let url = "/actividades/exportar_excel/";
+            const filtros = [];
+
+            if (usuario) filtros.push(`usuario=${encodeURIComponent(usuario)}`);
+            if (tipo) filtros.push(`tipo=${encodeURIComponent(tipo)}`);
+            if (desde) filtros.push(`desde=${desde}`);
+            if (hasta) filtros.push(`hasta=${hasta}`);
+
+            if (filtros.length > 0) {
+                url += "?" + filtros.join("&");
+            }
+
+            window.open(url, "_blank");
+        });
+
+        document.getElementById("btnExportarPDF").addEventListener("click", () => {
+            const filtros = [];
+            if (usuarioSelect.value) filtros.push(`usuario=${usuarioSelect.value}`);
+            if (tipoSelect.value) filtros.push(`tipo=${tipoSelect.value}`);
+            if (desdeInput.value) filtros.push(`desde=${desdeInput.value}`);
+            if (hastaInput.value) filtros.push(`hasta=${hastaInput.value}`);
+
+            let url = "/actividades/exportar_pdf/";
+            if (filtros.length > 0) {
+                url += "?" + filtros.join("&");
+            }
+
+            window.open(url, "_blank");
+        });
+
+        async function cargarUsuarios() {
+            try {
+                const res = await fetch("/api/usuarios/");
+                if (!res.ok) throw new Error("No se pudieron obtener los usuarios");
+                const data = await res.json();
+                data.forEach(user => {
+                    const option = document.createElement("option");
+                    option.value = user.username;
+                    option.textContent = user.username;
+                    usuarioSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error("Error cargando usuarios:", error);
+            }
+        }
+
+        function cargarTipos() {
+            const tipos = {
+                login: "Inicio de sesión",
+                logout: "Cierre de sesión",
+                carga_link: "Carga de Link",
+                cambio_estado: "Cambio de Estado",
+                clic_link: "Clic en Link",
+                creacion_articulo: "Creación de Artículo",
+                otro: "Otro"
+            };
+            Object.entries(tipos).forEach(([clave, label]) => {
+                const option = document.createElement("option");
+                option.value = clave;
+                option.textContent = label;
+                tipoSelect.appendChild(option);
+            });
+        }
+
+        async function cargarActividades(page = 1) {
+            currentPage = page;
+            tablaBody.innerHTML = "";
+            paginacion.innerHTML = "";
+
+            const loadingRow = document.createElement("tr");
+            loadingRow.innerHTML = `
+                <td colspan="4" class="text-center text-muted">
+                    <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                    Cargando actividades...
+                </td>
+            `;
+            tablaBody.appendChild(loadingRow);
+
+            const filtros = [];
+            if (usuarioSelect.value) filtros.push(`usuario=${usuarioSelect.value}`);
+            if (tipoSelect.value) filtros.push(`tipo=${tipoSelect.value}`);
+            if (desdeInput.value) filtros.push(`desde=${desdeInput.value}`);
+            if (hastaInput.value) filtros.push(`hasta=${hastaInput.value}`);
+            filtros.push(`page=${page}`);
+            filtros.push(`page_size=${pageSize}`);
+
+            const url = `/api/actividades/?${filtros.join("&")}`;
+
+            try {
+                const res = await fetch(url);
+                if (!res.ok) throw new Error("No se pudo cargar el historial");
+                const data = await res.json();
+
+                const actividades = Array.isArray(data.results) ? data.results : data;
+                totalActividades = data.count ?? actividades.length;
+
+                tablaBody.innerHTML = "";
+
+                if (actividades.length === 0) {
+                    tablaBody.innerHTML = `
+                        <tr>
+                            <td colspan="4" class="text-center text-muted">No se encontraron actividades con los filtros aplicados.</td>
+                        </tr>
+                    `;
+                    paginacion.innerHTML = "";
+                    return;
+                }
+
+                const resumenTipos = {};
+                const resumenUsuarios = {};
+
+                actividades.forEach(act => {
+                    const row = document.createElement("tr");
+                    const nombreUsuario = act.usuario_nombre || act.usuario || "(anónimo)";
+                    row.innerHTML = `
+                        <td>${new Date(act.fecha_hora).toLocaleString()}</td>
+                        <td>${nombreUsuario}</td>
+                        <td>${(act.tipo || "").replaceAll("_", " ")}</td>
+                        <td>${act.descripcion}</td>
+                    `;
+                    tablaBody.appendChild(row);
+
+                    const claveTipo = (act.tipo || "otro").toLowerCase();
+                    resumenTipos[claveTipo] = (resumenTipos[claveTipo] || 0) + 1;
+
+                    const claveUsuario = nombreUsuario;
+                    resumenUsuarios[claveUsuario] = (resumenUsuarios[claveUsuario] || 0) + 1;
+                });
+
+                generarPaginacion(totalActividades, currentPage, pageSize);
+                actualizarGraficos(resumenTipos, resumenUsuarios);
+            } catch (error) {
+                console.error("Error cargando actividades:", error);
+                tablaBody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="text-center text-danger">No se pudieron cargar las actividades.</td>
+                    </tr>
+                `;
+                paginacion.innerHTML = "";
+            }
+        }
+
+        function generarPaginacion(total, paginaActual, limite) {
+            const totalPaginas = Math.max(1, Math.ceil(total / limite));
+
+            if (totalPaginas <= 1) {
+                paginacion.innerHTML = "";
+                return;
+            }
+
+            paginacion.innerHTML = "";
+
+            const crearItem = (label, page, disabled = false, active = false) => {
+                const li = document.createElement("li");
+                li.className = `page-item${disabled ? " disabled" : ""}${active ? " active" : ""}`;
+
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = "page-link";
+                button.textContent = label;
+                button.disabled = disabled;
+                if (!disabled && !active) {
+                    button.addEventListener("click", () => cargarActividades(page));
+                }
+
+                li.appendChild(button);
+                paginacion.appendChild(li);
+            };
+
+            crearItem("«", Math.max(1, paginaActual - 1), paginaActual === 1);
+
+            const ventana = 2;
+            const inicio = Math.max(1, paginaActual - ventana);
+            const fin = Math.min(totalPaginas, paginaActual + ventana);
+
+            for (let i = inicio; i <= fin; i++) {
+                crearItem(i, i, false, i === paginaActual);
+            }
+
+            crearItem("»", Math.min(totalPaginas, paginaActual + 1), paginaActual === totalPaginas);
+        }
+
+        let graficoPorTipo;
+        let graficoPorUsuario;
+
+        function actualizarGraficos(tipos, usuarios) {
+            const ctxTipos = document.getElementById("grafico-por-tipo");
+            const ctxUsuarios = document.getElementById("grafico-por-usuario");
+
+            if (!ctxTipos || !ctxUsuarios) return;
+
+            const labelsTipos = Object.keys(tipos);
+            const dataTipos = Object.values(tipos);
+
+            const labelsUsuarios = Object.keys(usuarios);
+            const dataUsuarios = Object.values(usuarios);
+
+            if (graficoPorTipo) graficoPorTipo.destroy();
+            if (graficoPorUsuario) graficoPorUsuario.destroy();
+
+            graficoPorTipo = new Chart(ctxTipos, {
+                type: labelsTipos.length > 6 ? "bar" : "doughnut",
+                data: {
+                    labels: labelsTipos.map((t) => t.replaceAll("_", " ")),
+                    datasets: [{
+                        label: "Actividades",
+                        data: dataTipos,
+                        backgroundColor: [
+                            "#2563eb", "#16a34a", "#f97316", "#dc2626", "#8b5cf6",
+                            "#0ea5e9", "#10b981", "#f59e0b", "#ec4899"
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: "bottom" },
+                        title: {
+                            display: labelsTipos.length === 0,
+                            text: labelsTipos.length === 0 ? "Sin datos" : ""
+                        }
+                    }
+                }
+            });
+
+            graficoPorUsuario = new Chart(ctxUsuarios, {
+                type: labelsUsuarios.length > 6 ? "bar" : "pie",
+                data: {
+                    labels: labelsUsuarios,
+                    datasets: [{
+                        label: "Actividades",
+                        data: dataUsuarios,
+                        backgroundColor: [
+                            "#6366f1", "#f97316", "#22c55e", "#ef4444", "#3b82f6",
+                            "#14b8a6", "#facc15", "#ec4899", "#8b5cf6"
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: "bottom" },
+                        title: {
+                            display: labelsUsuarios.length === 0,
+                            text: labelsUsuarios.length === 0 ? "Sin datos" : ""
+                        }
+                    },
+                    scales: labelsUsuarios.length > 6 ? {
+                        x: {
+                            ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 }
+                        },
+                        y: { beginAtZero: true }
+                    } : {}
+                }
+            });
+        }
+    });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+
+{% endblock %}

@@ -1,0 +1,281 @@
+<!-- Modal Detalle de Informe -->
+<div class="modal fade" id="modalInforme" tabindex="-1" aria-labelledby="tituloModalInforme" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content shadow">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="tituloModalInforme">Detalle del Informe</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div id="detalleInforme">
+                    <p class="text-muted">Cargando datos...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- MODAL ARTÍCULO DETALLE -->
+<div class="modal fade" id="modalArticulo" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitulo">Título del Artículo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Categoría:</strong> <span id="modalCategoria"></span></p>
+                <p><strong>Fecha:</strong> <span id="modalFecha"></span></p>
+                <hr>
+                <p id="modalDescripcion"></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL CONFIRMAR ELIMINACIÓN -->
+<div class="modal fade" id="modalEliminarInforme" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="formEliminarInforme" method="POST">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmar eliminación</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>¿Estás seguro que querés eliminar este informe?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger">Eliminar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const form = document.getElementById("formInforme");
+        const errorBox = document.getElementById("error-articulos");
+
+        form.addEventListener("submit", function (e) {
+            const checkboxes = document.querySelectorAll('input[name="articulos[]"]:checked');
+            if (checkboxes.length === 0) {
+                e.preventDefault();
+                errorBox.classList.remove("d-none");
+                errorBox.scrollIntoView({ behavior: "smooth" });
+            } else {
+                errorBox.classList.add("d-none");
+            }
+        });
+    });
+</script>
+
+
+<script>
+    const modalEliminar = document.getElementById("modalEliminarInforme");
+    modalEliminar.addEventListener("show.bs.modal", function (event) {
+        const button = event.relatedTarget;
+        const id = button.getAttribute("data-id");
+        const form = modalEliminar.querySelector("#formEliminarInforme");
+        form.action = `/informes/${id}/eliminar/`;
+    });
+</script>
+
+
+<script>
+    function agregarCampo(tipo) {
+        const group = document.querySelector(`.${tipo}-group`);
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.name = `${tipo}[]`;
+        input.className = 'form-control mb-2';
+        group.appendChild(input);
+    }
+
+    function agregarDomicilio() {
+        const group = document.querySelector(".domicilio-group");
+        const div = document.createElement('div');
+        div.className = "input-group mb-2";
+        div.innerHTML = `
+            <input type="text" name="domicilio_calle[]" placeholder="Calle" class="form-control">
+            <input type="number" name="domicilio_altura[]" placeholder="Altura" class="form-control">
+            <input type="text" name="domicilio_barrio[]" placeholder="Barrio" class="form-control">
+            <input type="text" name="domicilio_ciudad[]" placeholder="Ciudad" class="form-control">
+            <input type="text" name="domicilio_provincia[]" placeholder="Provincia" class="form-control">
+        `;
+        group.appendChild(div);
+    }
+
+    function agregarVehiculo() {
+        const group = document.querySelector(".vehiculos-group");
+        const div = document.createElement('div');
+        div.className = "input-group mb-2";
+        div.innerHTML = `
+            <input type="text" name="vehiculo_marca[]" placeholder="Marca" class="form-control">
+            <input type="text" name="vehiculo_modelo[]" placeholder="Modelo" class="form-control">
+            <input type="text" name="vehiculo_dominio[]" placeholder="Dominio" class="form-control">
+            <input type="text" name="vehiculo_color[]" placeholder="Color" class="form-control">
+        `;
+        group.appendChild(div);
+    }
+
+    function agregarEmpleador() {
+        const group = document.querySelector(".empleadores-group");
+        const div = document.createElement('div');
+        div.className = "input-group mb-2";
+        div.innerHTML = `
+            <input type="text" name="empleador_nombre[]" placeholder="Nombre" class="form-control">
+            <input type="number" min="10000000000" max="99999999999" name="empleador_cuit[]" placeholder="CUIT" class="form-control">
+            <input type="date" name="empleador_fecha_alta[]" class="form-control" title="Fecha alta">
+            <input type="date" name="empleador_fecha_baja[]" class="form-control" title="Fecha baja">
+        `;
+        group.appendChild(div);
+    }
+
+    function agregarVinculo() {
+        const group = document.querySelector(".vinculos-group");
+        const div = document.createElement('div');
+        div.className = "input-group mb-2";
+        div.innerHTML = `
+            <input type="text" name="vinculo_nombre_apellido[]" placeholder="Nombre y Apellido" class="form-control">
+            <input type="number" min="1000000" max="99999999" name="vinculo_dni[]" placeholder="DNI" class="form-control">
+            <input type="text" name="vinculo_tipo[]" placeholder="Tipo" class="form-control">
+        `;
+        group.appendChild(div);
+    }
+
+    function formatFecha(fechaIso) {
+        const fecha = new Date(fechaIso);
+        const dia = String(fecha.getDate()).padStart(2, '0');
+        const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+        const anio = fecha.getFullYear();
+        const horas = String(fecha.getHours()).padStart(2, '0');
+        const minutos = String(fecha.getMinutes()).padStart(2, '0');
+        return `${dia}/${mes}/${anio} ${horas}:${minutos}`;
+    }
+
+    function verArticulo(id) {
+        fetch(`/api/articulos/${id}/consultar/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "ok") {
+                    const art = data.articulo;
+                    document.getElementById("modalTitulo").innerText = art.titulo;
+                    document.getElementById("modalCategoria").innerText = art.categoria.nombre;
+                    document.getElementById("modalFecha").innerText = formatFecha(art.fecha_creacion);
+                    document.getElementById("modalDescripcion").innerText = art.descripcion;
+
+                    const checkbox = document.querySelector(`input[name="articulos[]"][value="${id}"]`);
+                    if (checkbox) {
+                        checkbox.disabled = false;
+                    }
+
+                    const row = document.querySelector(`button[onclick="verArticulo(${id})"]`).closest("tr");
+                    row.querySelector(".consultado-cell").innerHTML = "✔️";
+                }
+            })
+            .catch(err => console.error("Error al cargar el artículo:", err));
+    }
+
+    function verInforme(id) {
+    fetch(`/api/informes/${id}/detalle/`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === "ok") {
+            const inf = data.informe;
+            const sexo = inf.sexo_display || (inf.sexo ? inf.sexo.charAt(0).toUpperCase() + inf.sexo.slice(1) : "No informado");
+            console.log("VEHICULOS:", inf.vehiculos);
+
+            let html = `
+    ${inf.foto ? `<img src="${inf.foto}" alt="Foto del informe" class="img-fluid mb-3" style="max-height: 300px;">` : ''}
+    <div class="mb-2">
+        <small class="text-muted">Última edición:</small> 
+        <span class="badge bg-info text-dark">${inf.fecha_modificacion}</span>
+    </div>
+    <p><strong>Generado por:</strong> ${inf.generado_por}</p>
+    <p><strong>Fecha creación:</strong> ${inf.fecha_creacion}</p>
+    <hr>
+    <p><strong>Apellido:</strong> ${inf.apellido}</p>
+    <p><strong>Nombre:</strong> ${inf.nombre}</p>
+    <p><strong>Documento:</strong> ${inf.documento}</p>
+    <p><strong>CUIT:</strong> ${inf.cuit}</p>
+    <p><strong>Nacionalidad:</strong> ${inf.nacionalidad}</p>
+    <p><strong>Sexo:</strong> ${sexo}</p>
+    <p><strong>Banda:</strong> ${inf.banda}</p>
+    <p><strong>Rol:</strong> ${inf.rol}</p>
+    <p><strong>Situación:</strong> ${inf.situacion}</p>
+    <p><strong>Actividad:</strong> ${inf.actividad}</p>
+    <p><strong>Fecha nacimiento:</strong> ${inf.fecha_nacimiento}</p>
+    <hr>
+    <p><strong>Alias:</strong> ${inf.alias.join(", ")}</p>
+    <p><strong>Teléfonos:</strong> ${inf.telefonos.join(", ")}</p>
+    <hr>
+    <p><strong>Domicilios:</strong></p>
+    <ul>${inf.domicilios.map(d => 
+        `<li>${d.calle} ${d.altura}, ${d.barrio}, ${d.ciudad}, ${d.provincia}</li>`
+    ).join('')}</ul>
+    
+    <p><strong>Vehículos:</strong></p>
+    <ul>${inf.vehiculos.map(v => 
+        `<li>${v.marca} ${v.modelo} (${v.dominio}) - Color: ${v.color || '-'}</li>`
+    ).join('')}</ul>
+
+    <p><strong>Empleadores:</strong></p>
+    <ul>${inf.empleadores.map(e => 
+        `<li>${e.nombre} (CUIT: ${e.cuit}) - Alta: ${e.alta}, Baja: ${e.baja}</li>`
+    ).join('')}</ul>
+
+    <p><strong>Vínculos:</strong></p>
+    <ul>${inf.vinculos.map(v => 
+        `<li>${v.nombre_apellido} (DNI: ${v.dni}) - Tipo: ${v.tipo}</li>`
+    ).join('')}</ul>
+
+    <hr>
+    <p><strong>Artículos Asociados:</strong></p>
+    <table class="table table-sm">
+        <thead><tr><th>Título</th><th>Categoría</th><th>Fecha</th></tr></thead>
+        <tbody>${inf.articulos.map(a => 
+            `<tr><td>${a.titulo}</td><td>${a.categoria}</td><td>${a.fecha}</td></tr>`
+        ).join('')}</tbody>
+    </table>
+`;
+
+            document.getElementById("detalleInforme").innerHTML = html;
+        } else {
+            document.getElementById("detalleInforme").innerHTML = "<p class='text-danger'>No se pudo cargar el informe.</p>";
+        }
+    })
+    .catch(err => {
+        console.error("Error al cargar el informe:", err);
+        document.getElementById("detalleInforme").innerHTML = "<p class='text-danger'>Error al cargar el informe.</p>";
+    });
+}
+
+</script>
+<script>
+    document.getElementById("formInforme").addEventListener("submit", function (event) {
+        // Eliminar los inputs ocultos previos para evitar duplicados
+        document.querySelectorAll(".input-articulo-dinamico").forEach(el => el.remove());
+
+        // Obtener los checkboxes seleccionados
+        const seleccionados = document.querySelectorAll('input[name="articulos[]"]:checked');
+
+        // Por cada uno, crear un input hidden y agregarlo al form
+        seleccionados.forEach((checkbox) => {
+            const hiddenInput = document.createElement("input");
+            hiddenInput.type = "hidden";
+            hiddenInput.name = "articulos[]";
+            hiddenInput.value = checkbox.value;
+            hiddenInput.classList.add("input-articulo-dinamico");
+            this.appendChild(hiddenInput);
+        });
+    });
+</script>

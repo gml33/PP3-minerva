@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ action }} Herramienta OSINT{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">{{ action }} herramienta OSINT</h1>
+
+<form method="post" enctype="multipart/form-data" class="card">
+    {% csrf_token %}
+    <div class="card-body">
+        {% for field in form %}
+            <div class="mb-3">
+                {{ field.label_tag }}
+                {{ field }}
+                {% if field.help_text %}
+                    <div class="form-text">{{ field.help_text }}</div>
+                {% endif %}
+                {% if field.errors %}
+                    <div class="text-danger small">
+                        {% for error in field.errors %}{{ error }}{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+    <div class="card-footer d-flex justify-content-between">
+        <a class="btn btn-secondary" href="{% url 'herramientas_osint' %}">Cancelar</a>
+        <button type="submit" class="btn btn-primary">Guardar</button>
+    </div>
+</form>
+{% endblock %}

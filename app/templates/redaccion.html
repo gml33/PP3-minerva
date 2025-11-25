@@ -1,0 +1,1316 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Panel de Edición de articulos{% endblock %}
+
+{% block content %}
+
+<style>
+    .check-icon {
+        color: green;
+        font-weight: bold;
+        font-size: 1.2rem;
+    }
+    .loading-spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #3498db;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 2s linear infinite;
+        margin: 20px auto;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    .pagination {
+        margin-bottom: 0;
+    }
+    .page-link {
+        cursor: pointer;
+    }
+</style>
+
+<h1 class="mb-4">Redacción de Artículos</h1>
+
+{% include "partials/messages.html" %}
+
+<!-- Formulario -->
+<div class="card mb-4">
+    <div class="card-header">Nuevo Artículo</div>
+    <div class="card-body">
+        <form id="formArticulo">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Título</label>
+                    <input type="text" class="form-control" id="titulo" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Fecha del Hecho</label>
+                    <input type="date" class="form-control" id="fecha_hecho" required> <!-- CAMBIADO: id="fecha" → id="fecha_hecho" -->
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Descripción</label>
+                <textarea class="form-control" id="descripcion" rows="4" required></textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Categoría</label>
+                <select id="categoria" class="form-select">
+                    <option value="">Seleccione una categoría</option>
+                </select>
+            </div>
+            
+            <!-- NUEVO CAMPO: UBICACIÓN -->
+            <div class="mb-3">
+                <label class="form-label">Ubicación</label>
+                <div class="ubicacion-group">
+                    <div class="row mb-2">
+                        <div class="col-md-3">
+                            <input type="text" id="ubicacion_calle" placeholder="Calle" class="form-control">
+                        </div>
+                        <div class="col-md-2">
+                            <input type="number" id="ubicacion_numero" placeholder="N°" class="form-control">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" id="ubicacion_barrio" placeholder="Barrio" class="form-control">
+                        </div>
+                        <div class="col-md-4">
+                            <input type="text" id="ubicacion_localidad" placeholder="Localidad" class="form-control">
+                        </div>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-sm btn-secondary" onclick="agregarUbicacion()">Agregar otra ubicación</button>
+            </div>
+
+            <!-- NUEVO CAMPO: AUTORES -->
+            <div class="mb-3">
+                <label class="form-label">Autores</label>
+                <select id="autores" class="form-select" multiple>
+                    <!-- Los usuarios se cargarán dinámicamente -->
+                </select>
+                <small class="form-text text-muted">Mantén presionado Ctrl (Windows) o Command (Mac) para seleccionar múltiples autores.</small>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Estado</label>
+                <select id="estado" class="form-select" required>
+                    <option value="en redaccion">En redacción</option>
+                    <option value="pendiente de informacion">Pendiente de información</option>
+                    <option value="completo">Completo</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Guardar Artículo</button>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="modalEditarArticulo" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar artículo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar" id="btnCerrarEdicion"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formEditarArticulo">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label" for="edit-titulo">Título</label>
+                            <input type="text" class="form-control" id="edit-titulo" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="edit-fecha_hecho">Fecha del Hecho</label> <!-- CAMBIADO: for="edit-fecha" → for="edit-fecha_hecho" -->
+                            <input type="date" class="form-control" id="edit-fecha_hecho" required> <!-- CAMBIADO: id="edit-fecha" → id="edit-fecha_hecho" -->
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="edit-descripcion">Descripción</label>
+                        <textarea class="form-control" id="edit-descripcion" rows="4" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="edit-categoria">Categoría</label>
+                        <select id="edit-categoria" class="form-select">
+                            <option value="">Seleccione una categoría</option>
+                        </select>
+                    </div>
+                    
+                    <!-- NUEVO CAMPO: UBICACIÓN EN EDICIÓN -->
+                    <div class="mb-3">
+                        <label class="form-label">Ubicación</label>
+                        <div class="ubicacion-edit-group">
+                            <!-- Las ubicaciones se cargarán dinámicamente -->
+                        </div>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="agregarUbicacionEdicion()">Agregar otra ubicación</button>
+                    </div>
+
+                    <!-- NUEVO CAMPO: AUTORES EN EDICIÓN -->
+                    <div class="mb-3">
+                        <label class="form-label" for="edit-autores">Autores</label>
+                        <select id="edit-autores" class="form-select" multiple>
+                            <!-- Los usuarios se cargarán dinámicamente -->
+                        </select>
+                        <small class="form-text text-muted">Mantén presionado Ctrl (Windows) o Command (Mac) para seleccionar múltiples autores.</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="edit-estado">Estado</label>
+                        <select id="edit-estado" class="form-select" required>
+                            <option value="en redaccion">En redacción</option>
+                            <option value="pendiente de informacion">Pendiente de información</option>
+                            <option value="completo">Completo</option>
+                        </select>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="btnCancelarEdicion">Cancelar</button>
+                    </div>
+                </form>
+
+                <div class="mt-4">
+                    <h6>Solicitudes de información asociadas</h6>
+                    <ul id="listaSolicitudesArticulo" class="mb-0"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- El resto del código se mantiene igual -->
+<div class="accordion mb-4" id="accordionRedaccion">
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="headingLinks">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                data-bs-target="#collapseLinks" aria-expanded="false" aria-controls="collapseLinks">
+                Links aprobados
+            </button>
+        </h2>
+        <div id="collapseLinks" class="accordion-collapse collapse">
+            <div class="accordion-body">
+                <!-- Filtros -->
+                <div class="card mb-3">
+                    <div class="row m-3">
+                        <div class="col">
+                            <label>Desde:</label>
+                            <input type="date" id="fecha_desde" class="form-control">
+                        </div>
+                        <div class="col">
+                            <label>Hasta:</label>
+                            <input type="date" id="fecha_hasta" class="form-control">
+                        </div>
+                        <div class="col">
+                            <label>Diario:</label>
+                            <select id="diario" class="form-select">
+                                <option value="">Todos</option>
+                            </select>
+                        </div>
+                        <div class="col">
+                            <label>Categoría:</label>
+                            <select id="filtro_categoria" class="form-select">
+                                <option value="">Todas</option>
+                            </select>
+                        </div>
+                        <div class="col d-flex align-items-end">
+                            <button type="button" class="btn btn-secondary w-100" onclick="cargarLinksAprobados()">Filtrar</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabla -->
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Links Aprobados</span>
+                        <div>
+                            <input type="checkbox" id="checkTodos" onclick="toggleSeleccionarTodos()">
+                            <label for="checkTodos">Seleccionar todos</label>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-striped" id="tabla-links">
+                            <thead>
+                                <tr>
+                                    <th>Logo</th>
+                                    <th>Diario</th>
+                                    <th>Link</th>
+                                    <th>Fecha</th>
+                                    <th>Categorías</th>
+                                    <th>Seleccionar</th>
+                                    <th>Revisado</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                        <nav id="paginacion-links" class="mt-3 d-none">
+                            <ul class="pagination justify-content-center"></ul>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="headingSolicitudes">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                data-bs-target="#collapseSolicitudes" aria-expanded="false" aria-controls="collapseSolicitudes">
+                Mis solicitudes de información
+            </button>
+        </h2>
+        <div id="collapseSolicitudes" class="accordion-collapse collapse">
+            <div class="accordion-body">
+                <div class="card mb-0">
+                    <div class="card-body p-0">
+                        {% if solicitudes_usuario %}
+                        <div class="table-responsive">
+                            <table class="table mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Descripción</th>
+                                        <th>Artículo relacionado</th>
+                                        <th>Estado</th>
+                                        <th>Respuesta</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for solicitud in solicitudes_usuario %}
+                                    <tr>
+                                        <td style="white-space: nowrap;">{{ solicitud.fecha_creacion|date:'d/m/Y H:i' }}</td>
+                                        <td class="text-wrap" style="min-width: 220px; max-width: 320px;">{{ solicitud.descripcion|linebreaksbr }}</td>
+                                        <td class="text-wrap" style="min-width: 200px; max-width: 260px;">
+                                            {% with articulos=solicitud.articulos.all %}
+                                                {% if articulos %}
+                                                    {% for articulo in articulos %}
+                                                        <div>
+                                                            <a href="{% url 'articulo_editar' articulo.id %}" class="link-primary">
+                                                                #{{ articulo.id }} - {{ articulo.titulo|default:"Sin título" }}
+                                                            </a>
+                                                        </div>
+                                                    {% endfor %}
+                                                {% else %}
+                                                    <span class="text-muted">Sin artículo asociado.</span>
+                                                {% endif %}
+                                            {% endwith %}
+                                        </td>
+                                        <td style="white-space: nowrap;">
+                                            {% if solicitud.fecha_respuesta %}
+                                                <span class="badge bg-success">Respondida</span>
+                                                <div class="small text-muted">{{ solicitud.fecha_respuesta|date:'d/m/Y H:i' }}</div>
+                                            {% else %}
+                                                <span class="badge bg-warning text-dark">Pendiente</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-wrap" style="min-width: 220px;">
+                                            {% if solicitud.respuesta %}
+                                                <div class="mb-1">{{ solicitud.respuesta|linebreaksbr }}</div>
+                                                <div class="small text-muted">
+                                                    {% if solicitud.respondido_por %}
+                                                        {{ solicitud.respondido_por.username }} · {{ solicitud.fecha_respuesta|date:'d/m/Y H:i' }}
+                                                    {% else %}
+                                                        {{ solicitud.fecha_respuesta|date:'d/m/Y H:i' }}
+                                                    {% endif %}
+                                                </div>
+                                            {% else %}
+                                                <span class="text-muted">Sin respuesta registrada.</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                            <p class="mb-0 text-muted">Aún no registraste solicitudes de información.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="headingArticulos">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                data-bs-target="#collapseArticulos" aria-expanded="false" aria-controls="collapseArticulos">
+                Mis artículos
+            </button>
+        </h2>
+        <div id="collapseArticulos" class="accordion-collapse collapse">
+            <div class="accordion-body">
+                <div class="card mb-0">
+                    <div class="card-body">
+                        <table class="table table-striped" id="tabla-articulos-acordeon">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Título</th>
+                                    <th>Fecha del Hecho</th> <!-- CAMBIADO: "Fecha" → "Fecha del Hecho" -->
+                                    <th>Categoría</th>
+                                    <th>Estado</th>
+                                    <th>Autor</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="7" class="text-center" id="loading-acordeon">
+                                        <div class="loading-spinner"></div>
+                                        <div>Cargando artículos...</div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <!-- Paginación para el acordeón -->
+                        <nav id="paginacion-acordeon" class="mt-3 d-none">
+                            <ul class="pagination justify-content-center"></ul>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+
+<div class="modal fade" id="modalVerArticulo" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalVerTitulo">Título del artículo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Fecha del Hecho:</strong> <span id="modalVerFecha"></span></p> <!-- CAMBIADO: "Fecha" → "Fecha del Hecho" -->
+                <p><strong>Descripción:</strong> <span id="modalVerDescripcion"></span></p>
+                <p><strong>Estado:</strong> <span id="modalVerEstado"></span></p>
+                <p><strong>Categoría:</strong> <span id="modalVerCategoria"></span></p>
+                <p><strong>Ubicación:</strong> <span id="modalVerUbicacion"></span></p>
+                <p><strong>Autores:</strong> <span id="modalVerAutores"></span></p>
+                <hr>
+                <h6>Links asociados</h6>
+                <ul id="modalVerLinks"></ul>
+                <hr>
+                <h6>Solicitudes de información vinculadas</h6>
+                <ul id="modalVerSolicitudes"></ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div id="liveToast" class="toast align-items-center text-bg-primary border-0" role="alert" aria-live="assertive"
+        aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body" id="toastBody">Mensaje aquí</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"
+                aria-label="Cerrar"></button>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalConfirmarEliminar" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar eliminación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Está seguro de eliminar el artículo <strong id="modalArticuloEliminarTitulo"></strong>?</p>
+                <p class="text-danger mb-0">Esta acción no se puede deshacer.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" onclick="eliminarArticuloConfirmado()">Eliminar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Variables globales para la paginación
+    let linksGlobal = [];
+    let paginaActualLinks = 1;
+    const linksPorPagina = 10;
+    let articulosGlobal = [];
+    let paginaActualAcordeon = 1;
+    const articulosPorPagina = 10;
+
+    const modalEditarArticulo = document.getElementById("modalEditarArticulo");
+    const modalEditarArticuloInstance = modalEditarArticulo ? new bootstrap.Modal(modalEditarArticulo, { backdrop: 'static' }) : null;
+    const formEditarArticulo = document.getElementById("formEditarArticulo");
+    const listaSolicitudesArticulo = document.getElementById("listaSolicitudesArticulo");
+    const btnCancelarEdicion = document.getElementById("btnCancelarEdicion");
+    const btnCerrarEdicion = document.getElementById("btnCerrarEdicion");
+
+    document.addEventListener("DOMContentLoaded", () => {
+        console.log("Iniciando carga de componentes...");
+        cargarCategorias();
+        cargarDiarios();
+        cargarLinksAprobados();
+        cargarUsuarios(); // Nueva función para cargar usuarios/autores
+        
+        // Establecer fecha actual por defecto
+        const fechaInput = document.getElementById('fecha_hecho'); // CAMBIADO: 'fecha' → 'fecha_hecho'
+        if (fechaInput) {
+            const today = new Date().toISOString().split('T')[0];
+            fechaInput.value = today;
+        }
+        
+        // Cargar artículos con retardo para evitar conflictos
+        setTimeout(() => {
+            cargarArticulosAcordeon();
+        }, 500);
+        
+        configurarAcordeonRedaccion();
+    });
+
+    // NUEVA FUNCIÓN: Cargar usuarios para el campo de autores
+    async function cargarUsuarios() {
+        try {
+            const res = await fetch("/api/usuarios/");
+            const usuarios = await res.json();
+            const selects = [
+                document.getElementById("autores"),
+                document.getElementById("edit-autores")
+            ].filter(Boolean);
+            
+            selects.forEach(select => {
+                usuarios.forEach(usuario => {
+                    const option = new Option(usuario.username, usuario.id);
+                    select.add(option);
+                });
+            });
+        } catch (e) {
+            console.error("Error cargando usuarios:", e);
+        }
+    }
+
+    // FUNCIONES PARA MANEJAR UBICACIONES MÚLTIPLES
+    function agregarUbicacion() {
+        const container = document.querySelector('.ubicacion-group');
+        const newInput = document.createElement('div');
+        newInput.className = 'row mb-2';
+        newInput.innerHTML = `
+            <div class="col-md-3">
+                <input type="text" placeholder="Calle" class="form-control ubicacion-campo">
+            </div>
+            <div class="col-md-2">
+                <input type="number" placeholder="N°" class="form-control ubicacion-campo">
+            </div>
+            <div class="col-md-3">
+                <input type="text" placeholder="Barrio" class="form-control ubicacion-campo">
+            </div>
+            <div class="col-md-3">
+                <input type="text" placeholder="Localidad" class="form-control ubicacion-campo">
+            </div>
+            <div class="col-md-1">
+                <button type="button" class="btn btn-outline-danger" onclick="this.parentElement.parentElement.remove()">X</button>
+            </div>
+        `;
+        container.appendChild(newInput);
+    }
+
+    function agregarUbicacionEdicion() {
+        const container = document.querySelector('.ubicacion-edit-group');
+        const newInput = document.createElement('div');
+        newInput.className = 'row mb-2';
+        newInput.innerHTML = `
+            <div class="col-md-3">
+                <input type="text" placeholder="Calle" class="form-control ubicacion-edit-campo">
+            </div>
+            <div class="col-md-2">
+                <input type="number" placeholder="N°" class="form-control ubicacion-edit-campo">
+            </div>
+            <div class="col-md-3">
+                <input type="text" placeholder="Barrio" class="form-control ubicacion-edit-campo">
+            </div>
+            <div class="col-md-3">
+                <input type="text" placeholder="Localidad" class="form-control ubicacion-edit-campo">
+            </div>
+            <div class="col-md-1">
+                <button type="button" class="btn btn-outline-danger" onclick="this.parentElement.parentElement.remove()">X</button>
+            </div>
+        `;
+        container.appendChild(newInput);
+    }
+
+    // FUNCIONES PARA OBTENER DATOS DE UBICACIONES
+    function obtenerUbicaciones() {
+        const ubicaciones = [];
+        const primeraUbicacion = {
+            calle: document.getElementById('ubicacion_calle')?.value || '',
+            numero: document.getElementById('ubicacion_numero')?.value || '',
+            barrio: document.getElementById('ubicacion_barrio')?.value || '',
+            localidad: document.getElementById('ubicacion_localidad')?.value || ''
+        };
+        
+        if (primeraUbicacion.calle || primeraUbicacion.numero || primeraUbicacion.barrio || primeraUbicacion.localidad) {
+            ubicaciones.push(primeraUbicacion);
+        }
+
+        // Agregar ubicaciones adicionales
+        document.querySelectorAll('.ubicacion-group .row.mb-2').forEach((row, index) => {
+            if (index > 0) { // Saltar la primera que ya está en los campos principales
+                const inputs = row.querySelectorAll('.ubicacion-campo');
+                const ubicacion = {
+                    calle: inputs[0]?.value || '',
+                    numero: inputs[1]?.value || '',
+                    barrio: inputs[2]?.value || '',
+                    localidad: inputs[3]?.value || ''
+                };
+                if (ubicacion.calle || ubicacion.numero || ubicacion.barrio || ubicacion.localidad) {
+                    ubicaciones.push(ubicacion);
+                }
+            }
+        });
+
+        return ubicaciones;
+    }
+
+    function obtenerUbicacionesEdicion() {
+        const ubicaciones = [];
+        document.querySelectorAll('.ubicacion-edit-group .row.mb-2').forEach(row => {
+            const inputs = row.querySelectorAll('.ubicacion-edit-campo');
+            const ubicacion = {
+                calle: inputs[0]?.value || '',
+                numero: inputs[1]?.value || '',
+                barrio: inputs[2]?.value || '',
+                localidad: inputs[3]?.value || ''
+            };
+            if (ubicacion.calle || ubicacion.numero || ubicacion.barrio || ubicacion.localidad) {
+                ubicaciones.push(ubicacion);
+            }
+        });
+        return ubicaciones;
+    }
+
+    // FUNCIONES PARA CARGAR UBICACIONES EN EDICIÓN
+    function cargarUbicacionesEdicion(ubicaciones) {
+        const container = document.querySelector('.ubicacion-edit-group');
+        container.innerHTML = '';
+        
+        if (ubicaciones && ubicaciones.length > 0) {
+            ubicaciones.forEach(ubicacion => {
+                const newInput = document.createElement('div');
+                newInput.className = 'row mb-2';
+                newInput.innerHTML = `
+                    <div class="col-md-3">
+                        <input type="text" placeholder="Calle" class="form-control ubicacion-edit-campo" value="${ubicacion.calle || ''}">
+                    </div>
+                    <div class="col-md-2">
+                        <input type="number" placeholder="N°" class="form-control ubicacion-edit-campo" value="${ubicacion.numero || ''}">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" placeholder="Barrio" class="form-control ubicacion-edit-campo" value="${ubicacion.barrio || ''}">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" placeholder="Localidad" class="form-control ubicacion-edit-campo" value="${ubicacion.localidad || ''}">
+                    </div>
+                    <div class="col-md-1">
+                        <button type="button" class="btn btn-outline-danger" onclick="this.parentElement.parentElement.remove()">X</button>
+                    </div>
+                `;
+                container.appendChild(newInput);
+            });
+        } else {
+            // Agregar una ubicación vacía por defecto
+            agregarUbicacionEdicion();
+        }
+    }
+
+    function configurarAcordeonRedaccion() {
+        const botones = document.querySelectorAll('#accordionRedaccion .accordion-button');
+        botones.forEach((boton) => {
+            boton.addEventListener('click', (event) => {
+                event.preventDefault();
+
+                const targetSelector = boton.getAttribute('data-bs-target');
+                if (!targetSelector) return;
+                const target = document.querySelector(targetSelector);
+                if (!target) return;
+
+                const instancia = bootstrap.Collapse.getOrCreateInstance(target, { toggle: false });
+                const estaAbierto = target.classList.contains('show');
+
+                if (estaAbierto) {
+                    instancia.hide();
+                    boton.classList.add('collapsed');
+                    boton.setAttribute('aria-expanded', 'false');
+                } else {
+                    document
+                        .querySelectorAll('#accordionRedaccion .accordion-collapse.show')
+                        .forEach((otro) => {
+                            if (otro === target) return;
+                            bootstrap.Collapse.getOrCreateInstance(otro, { toggle: false }).hide();
+                            const botonAsociado = document.querySelector(
+                                `#accordionRedaccion .accordion-button[data-bs-target="#${otro.id}"]`
+                            );
+                            if (botonAsociado) {
+                                botonAsociado.classList.add('collapsed');
+                                botonAsociado.setAttribute('aria-expanded', 'false');
+                            }
+                        });
+
+                    instancia.show();
+                    boton.classList.remove('collapsed');
+                    boton.setAttribute('aria-expanded', 'true');
+                }
+            });
+        });
+    }
+
+    function mostrarToast(mensaje, tipo = 'primary') {
+        const toastEl = document.getElementById('liveToast');
+        const toastBody = document.getElementById('toastBody');
+        toastEl.className = `toast align-items-center text-bg-${tipo} border-0`;
+        toastBody.textContent = mensaje;
+        new bootstrap.Toast(toastEl).show();
+    }
+
+    function escapeHtml(str) {
+        if (str === null || str === undefined) {
+            return "";
+        }
+        return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
+    function cerrarPanelEdicion() {
+        if (modalEditarArticuloInstance) {
+            modalEditarArticuloInstance.hide();
+        }
+        if (formEditarArticulo) {
+            formEditarArticulo.reset();
+        }
+        if (listaSolicitudesArticulo) {
+            listaSolicitudesArticulo.innerHTML = "";
+        }
+        articuloEditandoId = null;
+    }
+
+    if (btnCancelarEdicion) {
+        btnCancelarEdicion.addEventListener('click', cerrarPanelEdicion);
+    }
+    if (btnCerrarEdicion) {
+        btnCerrarEdicion.addEventListener('click', cerrarPanelEdicion);
+    }
+
+    async function cargarCategorias() {
+        try {
+            const res = await fetch("/api/categorias/");
+            const categorias = await res.json();
+            const selects = [
+                document.getElementById("categoria"),
+                document.getElementById("filtro_categoria"),
+                document.getElementById("edit-categoria"),
+            ].filter(Boolean);
+            selects.forEach(select => {
+                categorias.forEach(cat => select.add(new Option(cat.nombre, cat.id)));
+            });
+        } catch (e) {
+            console.error("Error cargando categorías:", e);
+        }
+    }
+
+    async function cargarDiarios() {
+        try {
+            const res = await fetch("/api/diarios/");
+            const diarios = await res.json();
+            const diarioSelect = document.getElementById("diario");
+            diarios.forEach(d => diarioSelect.add(new Option(d.nombre, d.id)));
+        } catch (e) {
+            console.error("Error cargando diarios:", e);
+        }
+    }
+
+    async function cargarLinksAprobados() {
+        const tbody = document.querySelector("#tabla-links tbody");
+        const paginacionLinks = document.getElementById("paginacion-links");
+        if (!tbody) return;
+        tbody.innerHTML = "";
+
+        const desde = document.getElementById("fecha_desde").value;
+        const hasta = document.getElementById("fecha_hasta").value;
+        const diario = document.getElementById("diario").value;
+        const cat = document.getElementById("filtro_categoria").value;
+
+        let url = "/api/links_list/";
+        const params = [];
+        if (desde) params.push(`fecha_inicio=${desde}`);
+        if (hasta) params.push(`fecha_fin=${hasta}`);
+        if (diario) params.push(`diario_id=${diario}`);
+        if (cat) params.push(`categoria_id=${cat}`);
+        params.push(`estado=aprobado`);
+
+        if (params.length > 0) url += `?${params.join("&")}`;
+
+        try {
+            const res = await fetch(url);
+            if (!res.ok) {
+                throw new Error(`Error HTTP: ${res.status}`);
+            }
+            const links = await res.json();
+            linksGlobal = links.filter(link => link.estado === "aprobado");
+
+            if (linksGlobal.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">No hay links clasificados</td></tr>`;
+                paginacionLinks.classList.add("d-none");
+                paginacionLinks.querySelector("ul").innerHTML = "";
+                return;
+            }
+
+            paginaActualLinks = 1;
+            mostrarLinksPagina(linksGlobal, paginaActualLinks);
+        } catch (e) {
+            console.error("Error cargando links:", e);
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center text-danger">
+                        <strong>Error al cargar links</strong><br>
+                        <small>${e.message}</small><br>
+                        <button class="btn btn-sm btn-warning mt-2" onclick="cargarLinksAprobados()">Reintentar</button>
+                    </td>
+                </tr>
+            `;
+            paginacionLinks.classList.add("d-none");
+            paginacionLinks.querySelector("ul").innerHTML = "";
+        }
+    }
+
+    function toggleSeleccionarTodos() {
+        const checked = document.getElementById("checkTodos").checked;
+        document.querySelectorAll('input[name="link_seleccionado"]').forEach(cb => {
+            if (!cb.disabled) cb.checked = checked;
+        });
+    }
+
+    async function marcarRevisadoRedactor(linkId, el) {
+        const tr = el.closest("tr");
+        try {
+            const resp = await fetch(`/api/links/${linkId}/`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken") },
+                body: JSON.stringify({ revisado_redactor: true })
+            });
+            if (!resp.ok) throw new Error("No se pudo marcar en el backend");
+            tr.querySelector(".check-revisado").textContent = "✔";
+            tr.querySelector("input[type=checkbox]").disabled = false;
+            const linkGlobal = linksGlobal.find(link => link.id === linkId);
+            if (linkGlobal) {
+                linkGlobal.revisado_redactor = true;
+            }
+            mostrarToast("Marcado como revisado en el backend", "success");
+        } catch (e) {
+            console.error("Error:", e);
+            mostrarToast("Error al marcar revisado en backend", "danger");
+        }
+    }
+
+    document.getElementById("formArticulo").addEventListener("submit", async e => {
+        e.preventDefault();
+        const titulo = document.getElementById("titulo").value;
+        const fecha_hecho = document.getElementById("fecha_hecho").value; // CAMBIADO: fecha → fecha_hecho
+        const descripcion = document.getElementById("descripcion").value;
+        const categoria = document.getElementById("categoria").value;
+        const estado = document.getElementById("estado").value;
+        const links = [...document.querySelectorAll('input[name="link_seleccionado"]:checked')]
+            .map(cb => parseInt(cb.value));
+        
+        // NUEVOS CAMPOS: Obtener ubicaciones y autores
+        const ubicaciones = obtenerUbicaciones();
+        const autoresSelect = document.getElementById("autores");
+        const autores = Array.from(autoresSelect.selectedOptions).map(option => parseInt(option.value));
+
+        const payload = JSON.stringify({
+            titulo,
+            fecha_hecho, // CAMBIADO: fecha → fecha_hecho
+            descripcion,
+            categoria,
+            estado,
+            links_incluidos: links,
+            ubicaciones: ubicaciones, // Nuevo campo
+            autores: autores // Nuevo campo
+        });
+
+        try {
+            if (articuloEditandoId) {
+                await fetch(`/api/articulos/${articuloEditandoId}/`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken") },
+                    body: payload
+                });
+                mostrarToast("Artículo actualizado", "success");
+            } else {
+                await fetch("/api/articulos/", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken") },
+                    body: payload
+                });
+                mostrarToast("Artículo creado", "success");
+            }
+
+            e.target.reset();
+            
+            // Restablecer fecha actual
+            const fechaInput = document.getElementById('fecha_hecho'); // CAMBIADO: 'fecha' → 'fecha_hecho'
+            if (fechaInput) {
+                const today = new Date().toISOString().split('T')[0];
+                fechaInput.value = today;
+            }
+            
+            articuloEditandoId = null;
+            cargarLinksAprobados();
+            cargarArticulosAcordeon();
+        } catch (e) {
+            console.error("Error guardando artículo:", e);
+            mostrarToast("Error al guardar artículo", "danger");
+        }
+    });
+
+    if (formEditarArticulo) {
+        formEditarArticulo.addEventListener("submit", async e => {
+            e.preventDefault();
+            if (!articuloEditandoId) {
+                mostrarToast("No hay artículo seleccionado para editar", "warning");
+                return;
+            }
+
+            const titulo = document.getElementById("edit-titulo").value;
+            const fecha_hecho = document.getElementById("edit-fecha_hecho").value; // CAMBIADO: fecha → fecha_hecho
+            const descripcion = document.getElementById("edit-descripcion").value;
+            const categoria = document.getElementById("edit-categoria").value;
+            const estado = document.getElementById("edit-estado").value;
+            const links = [...document.querySelectorAll('input[name="link_seleccionado"]:checked')]
+                .map(cb => parseInt(cb.value));
+            
+            // NUEVOS CAMPOS: Obtener ubicaciones y autores en edición
+            const ubicaciones = obtenerUbicacionesEdicion();
+            const autoresSelect = document.getElementById("edit-autores");
+            const autores = Array.from(autoresSelect.selectedOptions).map(option => parseInt(option.value));
+
+            const payload = JSON.stringify({ 
+                titulo, 
+                fecha_hecho, // CAMBIADO: fecha → fecha_hecho
+                descripcion, 
+                categoria, 
+                estado, 
+                links_incluidos: links,
+                ubicaciones: ubicaciones, // Nuevo campo
+                autores: autores // Nuevo campo
+            });
+
+            try {
+                const resp = await fetch(`/api/articulos/${articuloEditandoId}/`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken") },
+                    body: payload,
+                });
+                if (!resp.ok) {
+                    const errorText = await resp.text();
+                    throw new Error(errorText || "No se pudo actualizar el artículo");
+                }
+
+                mostrarToast("Artículo actualizado", "success");
+                cerrarPanelEdicion();
+                cargarLinksAprobados();
+                cargarArticulosAcordeon();
+            } catch (error) {
+                console.error("Error actualizando artículo:", error);
+                mostrarToast("Error al actualizar artículo", "danger");
+            }
+        });
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie) {
+            document.cookie.split(';').forEach(cookie => {
+                cookie = cookie.trim();
+                if (cookie.startsWith(name + '=')) cookieValue = decodeURIComponent(cookie.slice(name.length + 1));
+            });
+        }
+        return cookieValue;
+    }
+
+    // Función para crear la paginación
+    function crearPaginacion(totalPaginas, paginaActual, tipo) {
+        const paginacionEl = document.getElementById(`paginacion-${tipo}`);
+        if (!paginacionEl) {
+            return;
+        }
+        const ul = paginacionEl.querySelector('ul');
+        if (!ul) {
+            return;
+        }
+        ul.innerHTML = '';
+
+        // Mostrar la paginación solo si hay más de una página
+        if (totalPaginas <= 1) {
+            paginacionEl.classList.add('d-none');
+            return;
+        }
+        paginacionEl.classList.remove('d-none');
+
+        // Botón anterior
+        const liAnterior = document.createElement('li');
+        liAnterior.className = `page-item ${paginaActual === 1 ? 'disabled' : ''}`;
+        liAnterior.innerHTML = `<a class="page-link" onclick="cambiarPagina(${paginaActual - 1}, '${tipo}')">Anterior</a>`;
+        ul.appendChild(liAnterior);
+
+        // Números de página
+        for (let i = 1; i <= totalPaginas; i++) {
+            const li = document.createElement('li');
+            li.className = `page-item ${i === paginaActual ? 'active' : ''}`;
+            li.innerHTML = `<a class="page-link" onclick="cambiarPagina(${i}, '${tipo}')">${i}</a>`;
+            ul.appendChild(li);
+        }
+
+        // Botón siguiente
+        const liSiguiente = document.createElement('li');
+        liSiguiente.className = `page-item ${paginaActual === totalPaginas ? 'disabled' : ''}`;
+        liSiguiente.innerHTML = `<a class="page-link" onclick="cambiarPagina(${paginaActual + 1}, '${tipo}')">Siguiente</a>`;
+        ul.appendChild(liSiguiente);
+    }
+
+    // Función para cambiar de página
+    function cambiarPagina(nuevaPagina, tipo) {
+        if (tipo === 'links') {
+            paginaActualLinks = nuevaPagina;
+            mostrarLinksPagina(linksGlobal, paginaActualLinks);
+        } else if (tipo === 'acordeon') {
+            paginaActualAcordeon = nuevaPagina;
+            mostrarArticulosPagina(articulosGlobal, paginaActualAcordeon, 'acordeon');
+        }
+    }
+
+    function mostrarLinksPagina(links, pagina) {
+        const tbody = document.querySelector("#tabla-links tbody");
+        if (!tbody) return;
+        tbody.innerHTML = "";
+
+        const checkTodos = document.getElementById("checkTodos");
+        if (checkTodos) {
+            checkTodos.checked = false;
+        }
+
+        const inicio = (pagina - 1) * linksPorPagina;
+        const fin = inicio + linksPorPagina;
+        const linksPagina = links.slice(inicio, fin);
+
+        if (linksPagina.length === 0) {
+            tbody.innerHTML = "<tr><td colspan='7' class='text-center text-muted'>No hay links clasificados</td></tr>";
+            crearPaginacion(0, 0, "links");
+            return;
+        }
+
+        linksPagina.forEach(link => {
+            const categoriasBadges = link.categorias_info && link.categorias_info.length
+                ? link.categorias_info.map(c => `<span class="badge bg-secondary me-1">${c.nombre}</span>`).join("")
+                : "-";
+            const urlTexto = link.url.length > 50 ? link.url.slice(0, 50) + "…" : link.url;
+            const fechaCarga = link.fecha_carga ? new Date(link.fecha_carga).toLocaleDateString() : "-";
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td><img src="${link.diario_logo_url || '/static/img/default_logo.png'}" style="height:40px; max-width:60px"></td>
+                <td>${link.diario_nombre || 'Sin diario'}</td>
+                <td><a href="${link.url}" target="_blank" onclick="marcarRevisadoRedactor(${link.id}, this)">${urlTexto}</a></td>
+                <td>${fechaCarga}</td>
+                <td>${categoriasBadges}</td>
+                <td><input type="checkbox" name="link_seleccionado" value="${link.id}" ${link.revisado_redactor ? "" : "disabled"}></td>
+                <td class="check-revisado">${link.revisado_redactor ? "✔" : ""}</td>`;
+            tbody.appendChild(tr);
+        });
+
+        const totalPaginas = Math.ceil(links.length / linksPorPagina);
+        crearPaginacion(totalPaginas, pagina, "links");
+    }
+
+    // Función para mostrar artículos de una página específica
+    function mostrarArticulosPagina(articulos, pagina, tipo) {
+        if (tipo !== 'acordeon') {
+            return;
+        }
+        const tbody = document.querySelector("#tabla-articulos-acordeon tbody");
+        if (!tbody) {
+            return;
+        }
+        tbody.innerHTML = '';
+
+        const inicio = (pagina - 1) * articulosPorPagina;
+        const fin = inicio + articulosPorPagina;
+        const articulosPagina = articulos.slice(inicio, fin);
+
+        if (articulosPagina.length === 0) {
+            tbody.innerHTML = "<tr><td colspan='7' class='text-center text-muted'>No se encontraron artículos</td></tr>";
+            return;
+        }
+
+        articulosPagina.forEach(art => {
+            const categoriaNombre = art.categoria
+                ? (typeof art.categoria === "object"
+                    ? art.categoria.nombre || "-"
+                    : art.categoria_nombre || art.categoria || "-")
+                : "-";
+            const autorNombre = art.generado_por
+                ? (typeof art.generado_por === "object"
+                    ? art.generado_por.username || "-"
+                    : art.generado_por || "-")
+                : "-";
+            const estadoNombre = art.estado
+                ? art.estado.charAt(0).toUpperCase() + art.estado.slice(1)
+                : "-";
+            
+            // CAMBIADO: Usar fecha_hecho en lugar de fecha
+            const fechaHecho = art.fecha_hecho ? new Date(art.fecha_hecho).toLocaleDateString('es-ES') : '-';
+            
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td>${art.id}</td>
+                <td>${art.titulo || 'Sin título'}</td>
+                <td>${fechaHecho}</td> <!-- CAMBIADO: fechaArticulo → fechaHecho -->
+                <td>${categoriaNombre}</td>
+                <td>${estadoNombre}</td>
+                <td>${autorNombre}</td>
+                <td>
+                    <button class="btn btn-sm btn-primary" onclick="editarArticulo(${art.id})">Editar</button>
+                    <button class="btn btn-sm btn-info" onclick="verArticulo(${art.id})">Ver</button>
+                    <button class="btn btn-sm btn-danger" onclick="confirmarEliminar(${art.id}, '${art.titulo}')">Eliminar</button>
+                    <a class="btn btn-sm btn-success" href="/articulos/${art.id}/exportar_pdf/" target="_blank">PDF</a>
+                </td>`;
+            tbody.appendChild(tr);
+        });
+
+        // Actualizar paginación
+        const totalPaginas = Math.ceil(articulos.length / articulosPorPagina);
+        crearPaginacion(totalPaginas, pagina, tipo);
+    }
+
+    async function cargarArticulosAcordeon() {
+        const tbody = document.querySelector("#tabla-articulos-acordeon tbody");
+        if (!tbody) {
+            console.error("No se encontró la tabla de artículos del acordeón");
+            return;
+        }
+        
+        console.log("Cargando artículos en acordeón...");
+        
+        try {
+            const res = await fetch("/api/articulos/");
+            console.log("Respuesta de la API (acordeón):", res);
+            
+            if (!res.ok) {
+                const errorText = await res.text();
+                console.error("Error detallado del servidor (acordeón):", errorText);
+                throw new Error(`Error HTTP: ${res.status} - ${errorText}`);
+            }
+            
+            const articulos = await res.json();
+            console.log("Artículos recibidos (acordeón):", articulos);
+            
+            articulosGlobal = articulos;
+            
+            if (articulos.length === 0) {
+                tbody.innerHTML = "<tr><td colspan='7' class='text-center text-muted'>No se encontraron artículos</td></tr>";
+                document.getElementById('paginacion-acordeon').classList.add('d-none');
+                return;
+            }
+            
+            // Mostrar primera página
+            paginaActualAcordeon = 1;
+            mostrarArticulosPagina(articulosGlobal, paginaActualAcordeon, 'acordeon');
+            
+            console.log("Artículos cargados exitosamente en acordeón");
+        } catch (e) {
+            console.error("Error cargando artículos del acordeón:", e);
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan='7' class='text-center text-danger'>
+                        <strong>Error al cargar artículos</strong><br>
+                        <small>${e.message}</small><br>
+                        <button class="btn btn-sm btn-warning mt-2" onclick="cargarArticulosAcordeon()">Reintentar</button>
+                    </td>
+                </tr>`;
+        }
+    }
+
+    let articuloEditandoId = null;
+
+    async function editarArticulo(id) {
+        try {
+            const res = await fetch(`/api/articulos/${id}/`);
+            const art = await res.json();
+            const categoriaId = art.categoria
+                ? (typeof art.categoria === "object" ? art.categoria.id : art.categoria)
+                : "";
+            if (modalEditarArticuloInstance) {
+                modalEditarArticuloInstance.show();
+            }
+
+            document.getElementById("edit-titulo").value = art.titulo || "";
+            document.getElementById("edit-fecha_hecho").value = art.fecha_hecho || ""; // CAMBIADO: fecha → fecha_hecho
+            document.getElementById("edit-descripcion").value = art.descripcion || "";
+            document.getElementById("edit-categoria").value = categoriaId || "";
+            document.getElementById("edit-estado").value = art.estado || "en redaccion";
+
+            // NUEVO: Cargar ubicaciones en edición
+            if (art.ubicaciones && Array.isArray(art.ubicaciones)) {
+                cargarUbicacionesEdicion(art.ubicaciones);
+            } else {
+                cargarUbicacionesEdicion([]);
+            }
+
+            // NUEVO: Cargar autores en edición
+            const editAutoresSelect = document.getElementById("edit-autores");
+            if (editAutoresSelect && art.autores && Array.isArray(art.autores)) {
+                Array.from(editAutoresSelect.options).forEach(option => {
+                    const autorId = parseInt(option.value);
+                    option.selected = art.autores.some(autor => 
+                        (typeof autor === "object" ? autor.id : autor) === autorId
+                    );
+                });
+            }
+
+            document.querySelectorAll('input[name="link_seleccionado"]').forEach(cb => {
+                const linkId = parseInt(cb.value);
+                const tieneLink = Array.isArray(art.links_incluidos)
+                    ? art.links_incluidos.some(link =>
+                        typeof link === "object" ? link.id === linkId : link === linkId
+                    )
+                    : false;
+                cb.checked = tieneLink;
+            });
+
+            articuloEditandoId = id;
+            if (listaSolicitudesArticulo) {
+                listaSolicitudesArticulo.innerHTML = Array.isArray(art.solicitudes_info) && art.solicitudes_info.length
+                    ? art.solicitudes_info
+                        .map(sol => {
+                            const fecha = sol.fecha_creacion
+                                ? new Date(sol.fecha_creacion).toLocaleString()
+                                : "";
+                            const descripcion = sol.descripcion
+                                ? escapeHtml(sol.descripcion).replace(/\n/g, "<br>")
+                                : "Sin descripción";
+                            return `<li><strong>#${sol.id}</strong> - ${descripcion}${fecha ? ` <span class="text-muted">(${fecha})</span>` : ""}</li>`;
+                        })
+                        .join("")
+                    : "<li>Sin solicitudes asociadas</li>";
+            }
+            mostrarToast("Editando artículo: " + art.titulo, "warning");
+        } catch (e) {
+            console.error("Error cargando artículo:", e);
+            mostrarToast("Error cargando artículo", "danger");
+        }
+    }
+
+    async function verArticulo(id) {
+        try {
+            const res = await fetch(`/api/articulos/${id}/`);
+            const art = await res.json();
+
+            document.getElementById("modalVerTitulo").textContent = art.titulo;
+            const categoriaNombre = art.categoria
+                ? (typeof art.categoria === "object"
+                    ? art.categoria.nombre || "-"
+                    : art.categoria_nombre || art.categoria || "-")
+                : "-";
+            const estadoNombre = art.estado
+                ? art.estado.charAt(0).toUpperCase() + art.estado.slice(1)
+                : "-";
+            
+            // CAMBIADO: Usar fecha_hecho en lugar de fecha
+            const fechaHecho = art.fecha_hecho ? new Date(art.fecha_hecho).toLocaleDateString('es-ES') : 'No especificada';
+            
+            document.getElementById("modalVerFecha").textContent = fechaHecho; // CAMBIADO: fechaArticulo → fechaHecho
+            document.getElementById("modalVerCategoria").textContent = categoriaNombre;
+            document.getElementById("modalVerEstado").textContent = estadoNombre;
+            document.getElementById("modalVerDescripcion").textContent = art.descripcion;
+
+            // Mostrar ubicaciones
+            const ubicacionesTexto = art.ubicaciones && Array.isArray(art.ubicaciones) && art.ubicaciones.length > 0
+                ? art.ubicaciones.map(ubicacion => 
+                    `${ubicacion.calle || ''} ${ubicacion.numero || ''} ${ubicacion.barrio || ''} ${ubicacion.localidad || ''}`
+                  ).filter(text => text.trim()).join(', ')
+                : 'No especificada';
+            document.getElementById("modalVerUbicacion").textContent = ubicacionesTexto || 'No especificada';
+
+            // Mostrar autores
+            const autoresTexto = art.autores && Array.isArray(art.autores) && art.autores.length > 0
+                ? art.autores.map(autor => 
+                    typeof autor === "object" ? autor.username : autor
+                  ).join(', ')
+                : 'No especificados';
+            document.getElementById("modalVerAutores").textContent = autoresTexto;
+
+            document.getElementById("modalVerLinks").innerHTML = Array.isArray(art.links_incluidos) && art.links_incluidos.length
+                ? art.links_incluidos.map(l => {
+                    const linkObj = typeof l === "object" ? l : { url: "", id: l };
+                    const url = linkObj.url || "";
+                    const texto = url.length > 50 ? url.slice(0, 50) + '…' : url || `Link #${linkObj.id}`;
+                    return `<li><a href="${url || '#'}" target="_blank">${texto}</a></li>`;
+                }).join("")
+                : "<li>Sin links asociados</li>";
+            document.getElementById("modalVerSolicitudes").innerHTML =
+                Array.isArray(art.solicitudes_info) && art.solicitudes_info.length
+                    ? art.solicitudes_info
+                          .map(sol => {
+                              const fecha = sol.fecha_creacion
+                                  ? new Date(sol.fecha_creacion).toLocaleString()
+                                  : "";
+                              const descripcion = sol.descripcion
+                                  ? escapeHtml(sol.descripcion).replace(/\n/g, "<br>")
+                                  : "Sin descripción";
+                              return `<li><strong>#${sol.id}</strong> - ${descripcion}${fecha ? ` <span class="text-muted">(${fecha})</span>` : ""}</li>`;
+                          })
+                          .join("")
+                    : "<li>Sin solicitudes asociadas</li>";
+            new bootstrap.Modal(document.getElementById('modalVerArticulo')).show();
+
+        } catch (e) {
+            console.error("Error al cargar artículo:", e);
+        }
+    }
+
+    let articuloAEliminarId = null;
+
+    function confirmarEliminar(id, titulo) {
+        articuloAEliminarId = id;
+        document.getElementById("modalArticuloEliminarTitulo").textContent = titulo;
+        new bootstrap.Modal(document.getElementById('modalConfirmarEliminar')).show();
+    }
+
+    async function eliminarArticuloConfirmado() {
+        if (!articuloAEliminarId) return;
+
+        try {
+            const resp = await fetch(`/api/articulos/${articuloAEliminarId}/`, {
+                method: "DELETE",
+                headers: { "X-CSRFToken": getCookie("csrftoken") }
+            });
+            if (!resp.ok) throw new Error("No se pudo eliminar en backend");
+
+            mostrarToast("Artículo eliminado", "success");
+            articuloAEliminarId = null;
+            cargarArticulosAcordeon();
+        } catch (e) {
+            console.error("Error eliminando artículo:", e);
+            mostrarToast("Error al eliminar artículo", "danger");
+        }
+
+        bootstrap.Modal.getInstance(document.getElementById('modalConfirmarEliminar')).hide();
+    }
+
+</script>
+</body>
+
+</html>
+{% endblock content %}

@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+
+{% block title %}Informe de banda - {{ informe.banda.nombre_principal }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div>
+        <h1 class="h4 mb-1">Informe de {{ informe.banda.nombre_principal|default:"Banda sin nombre" }}</h1>
+        <p class="text-muted mb-0">
+            Creado el {{ informe.creado_en|date:"d/m/Y H:i" }} · Última actualización {{ informe.actualizado_en|date:"d/m/Y H:i" }}
+        </p>
+    </div>
+    <div class="btn-group flex-wrap">
+        <a href="{% url 'editar_informe_banda' informe.pk %}" class="btn btn-outline-primary">Editar</a>
+        <a href="{% url 'exportar_informe_banda' informe.pk %}" class="btn btn-outline-secondary">Exportar</a>
+        <form action="{% url 'eliminar_informe_banda' informe.pk %}" method="post" onsubmit="return confirm('¿Eliminar este informe?')" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-danger">Eliminar</button>
+        </form>
+    </div>
+</div>
+
+{% include "partials/messages.html" %}
+
+<section class="mb-5">
+    <div class="card">
+        <div class="card-header">Introducción</div>
+        <div class="card-body">
+            <p class="mb-0">{{ informe.introduccion_descripcion|default:"Sin introducción registrada"|linebreaks }}</p>
+        </div>
+    </div>
+</section>
+
+<section class="mb-5">
+    <div class="card">
+        <div class="card-header">Integrantes</div>
+        <div class="card-body">
+            <h3 class="h6 text-uppercase text-muted">Líderes</h3>
+            {% if lideres %}
+                <div class="row g-4 mb-4">
+                    {% for miembro in lideres %}
+                        <div class="col-md-6">
+                            <div class="card h-100 shadow-sm">
+                                {% if miembro.foto %}
+                                    <img src="{{ miembro.foto.url }}" alt="{{ miembro }}" class="card-img-top" style="max-height: 240px; object-fit: cover;">
+                                {% endif %}
+                                <div class="card-body">
+                                    <h5 class="card-title mb-3">{{ miembro.apellido }}, {{ miembro.nombre }}</h5>
+                                    <table class="table table-sm mb-0">
+                                        <tbody>
+                                            <tr><th>Documento</th><td>{{ miembro.documento|default:"-" }}</td></tr>
+                                            <tr><th>Rol</th><td>{{ miembro.get_rol_display|default:"-" }}</td></tr>
+                                            <tr><th>Situación</th><td>{{ miembro.get_situacion_display|default:"-" }}</td></tr>
+                                            <tr><th>Actividad</th><td>{{ miembro.actividad|default:"-" }}</td></tr>
+                                            <tr><th>Banda</th><td>{{ miembro.banda|default:"-" }}</td></tr>
+                                            <tr>
+                                                <th>Alias</th>
+                                                <td>
+                                                    {% with alias_list=miembro.alias.all %}
+                                                        {% if alias_list %}
+                                                            {% for alias in alias_list %}
+                                                                {{ alias }}{% if not forloop.last %}, {% endif %}
+                                                            {% endfor %}
+                                                        {% else %}
+                                                            -
+                                                        {% endif %}
+                                                    {% endwith %}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th>Teléfonos</th>
+                                                <td>
+                                                    {% with telefonos=miembro.telefono.all %}
+                                                        {% if telefonos %}
+                                                            {% for tel in telefonos %}
+                                                                {{ tel }}{% if not forloop.last %}, {% endif %}
+                                                            {% endfor %}
+                                                        {% else %}
+                                                            -
+                                                        {% endif %}
+                                                    {% endwith %}
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-muted mb-4">No se registraron líderes para este informe.</p>
+            {% endif %}
+
+            <h3 class="h6 text-uppercase text-muted mt-3">Lugartenientes</h3>
+            {% if lugartenientes %}
+                <div class="row g-4">
+                    {% for miembro in lugartenientes %}
+                        <div class="col-md-6">
+                            <div class="card h-100 shadow-sm">
+                                {% if miembro.foto %}
+                                    <img src="{{ miembro.foto.url }}" alt="{{ miembro }}" class="card-img-top" style="max-height: 240px; object-fit: cover;">
+                                {% endif %}
+                                <div class="card-body">
+                                    <h5 class="card-title mb-3">{{ miembro.apellido }}, {{ miembro.nombre }}</h5>
+                                    <table class="table table-sm mb-0">
+                                        <tbody>
+                                            <tr><th>Documento</th><td>{{ miembro.documento|default:"-" }}</td></tr>
+                                            <tr><th>Rol</th><td>{{ miembro.get_rol_display|default:"-" }}</td></tr>
+                                            <tr><th>Situación</th><td>{{ miembro.get_situacion_display|default:"-" }}</td></tr>
+                                            <tr><th>Actividad</th><td>{{ miembro.actividad|default:"-" }}</td></tr>
+                                            <tr><th>Banda</th><td>{{ miembro.banda|default:"-" }}</td></tr>
+                                            <tr>
+                                                <th>Alias</th>
+                                                <td>
+                                                    {% with alias_list=miembro.alias.all %}
+                                                        {% if alias_list %}
+                                                            {% for alias in alias_list %}
+                                                                {{ alias }}{% if not forloop.last %}, {% endif %}
+                                                            {% endfor %}
+                                                        {% else %}
+                                                            -
+                                                        {% endif %}
+                                                    {% endwith %}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th>Teléfonos</th>
+                                                <td>
+                                                    {% with telefonos=miembro.telefono.all %}
+                                                        {% if telefonos %}
+                                                            {% for tel in telefonos %}
+                                                                {{ tel }}{% if not forloop.last %}, {% endif %}
+                                                            {% endfor %}
+                                                        {% else %}
+                                                            -
+                                                        {% endif %}
+                                                    {% endwith %}
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-muted">No se registraron lugartenientes para este informe.</p>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<section class="mb-5">
+    <div class="card">
+        <div class="card-header">Zonas de influencia</div>
+        <div class="card-body">
+            {% if informe.zonas_influencia_detalle %}
+                <ul class="mb-0">
+                    {% for zona in informe.zonas_influencia_detalle %}
+                        <li>
+                            {% if zona.barrio %}
+                                {{ zona.barrio }}{% if zona.localidad or zona.ciudad or zona.provincia %}, {% endif %}
+                            {% endif %}
+                            {% if zona.localidad %}
+                                {{ zona.localidad }}{% if zona.ciudad or zona.provincia %}, {% endif %}
+                            {% endif %}
+                            {% if zona.ciudad %}
+                                {{ zona.ciudad }}{% if zona.provincia %}, {% endif %}
+                            {% endif %}
+                            {% if zona.provincia %}
+                                {{ zona.provincia }}
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-muted mb-0">No se registraron zonas de influencia.</p>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<section class="mb-5">
+    <div class="card">
+        <div class="card-header">Conclusiones relevantes</div>
+        <div class="card-body">
+            {% if informe.conclusion_relevante %}
+                <div class="mb-0">
+                    {{ informe.conclusion_relevante|linebreaks }}
+                </div>
+            {% else %}
+                <p class="text-muted mb-0">Sin conclusiones registradas.</p>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<section class="mb-5">
+    <div class="card">
+        <div class="card-header">Bandas aliadas y rivales</div>
+        <div class="card-body row">
+            <div class="col-md-6">
+                <h6>Bandas aliadas</h6>
+                {% with aliadas=informe.bandas_aliadas.all %}
+                    {% if aliadas %}
+                        <ul class="mb-0">
+                            {% for banda in aliadas %}
+                                <li>{{ banda.nombre_principal|default:"Sin nombre" }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted">No se registraron bandas aliadas.</p>
+                    {% endif %}
+                {% endwith %}
+            </div>
+            <div class="col-md-6">
+                <h6>Bandas rivales</h6>
+                {% with rivales=informe.bandas_rivales.all %}
+                    {% if rivales %}
+                        <ul class="mb-0">
+                            {% for banda in rivales %}
+                                <li>{{ banda.nombre_principal|default:"Sin nombre" }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted">No se registraron bandas rivales.</p>
+                    {% endif %}
+                {% endwith %}
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="mb-5">
+    <div class="card">
+        <div class="card-header">Antecedentes personalizados</div>
+        <div class="card-body">
+            {% if informe.antecedentes %}
+                <div class="d-flex flex-column gap-3">
+                    {% for antecedente in informe.antecedentes %}
+                        <div>
+                            <strong>{{ antecedente.titulo|default:"Sin título" }}</strong>
+                            <p class="mb-0">{{ antecedente.descripcion|default:"Sin descripción"|linebreaks }}</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-muted mb-0">No se registraron antecedentes personalizados.</p>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<section class="mb-5">
+    <div class="card">
+        <div class="card-header">Posible evolución</div>
+        <div class="card-body">
+            {% if informe.posible_evolucion %}
+                <p class="mb-0">{{ informe.posible_evolucion|linebreaks }}</p>
+            {% else %}
+                <p class="text-muted mb-0">Sin observaciones sobre la evolución.</p>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<section class="mb-5">
+    <div class="card">
+        <div class="card-header">Desarrollo</div>
+        <div class="card-body">
+            {% if informe.desarrollo_titulo %}
+                <h5>{{ informe.desarrollo_titulo }}</h5>
+            {% endif %}
+            {% if informe.desarrollo_contenido %}
+                <p class="mb-0">{{ informe.desarrollo_contenido|linebreaks }}</p>
+            {% else %}
+                <p class="text-muted mb-0">Sin desarrollo registrado.</p>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<section class="mb-5">
+    <div class="card">
+        <div class="card-header">Conclusiones (Anexo 6)</div>
+        <div class="card-body">
+            {% if informe.conclusiones_desarrollo %}
+                <p class="mb-0">{{ informe.conclusiones_desarrollo|linebreaks }}</p>
+            {% else %}
+                <p class="text-muted mb-0">Sin conclusiones registradas.</p>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<a href="{% url 'crear_informe_banda' %}" class="btn btn-secondary">Volver al listado</a>
+{% endblock %}

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Hecho Delictivo</title>
+    <style>
+        body { font-family: "Helvetica", "Arial", sans-serif; font-size: 12px; color: #333; margin: 0; padding: 20px; }
+        h1 { font-size: 20px; margin-bottom: 10px; }
+        h2 { font-size: 16px; margin-top: 20px; margin-bottom: 8px; }
+        p { margin: 0 0 8px 0; }
+        .info { margin-bottom: 16px; }
+        .label { font-weight: bold; }
+        ul { margin: 0 0 8px 16px; padding: 0; }
+        li { margin-bottom: 4px; }
+        .section { margin-bottom: 18px; }
+        hr { border: none; border-top: 1px solid #ccc; margin: 16px 0; }
+    </style>
+</head>
+<body>
+    <h1>Hecho Delictivo</h1>
+    <div class="info">
+        <p><span class="label">Fecha:</span> {{ fecha_registro }}</p>
+        <p><span class="label">Categoría:</span> {{ hecho.get_categoria_display|default:"Sin categoría" }}</p>
+        <p><span class="label">Ubicación:</span> {{ hecho.ubicacion_texto }}</p>
+        <p><span class="label">Calificación:</span> {{ hecho.get_calificacion_display }}</p>
+        <p><span class="label">Artículo:</span>
+            {% if articulo %}
+                #{{ articulo.id }} · {{ articulo.titulo|default:"Sin título" }}
+            {% else %}
+                Sin artículo vinculado
+            {% endif %}
+        </p>
+        <p><span class="label">Creado por:</span> {{ creado_por }}</p>
+    </div>
+
+    <div class="section">
+        <h2>Descripción</h2>
+        <p>{{ hecho.descripcion|linebreaksbr }}</p>
+    </div>
+
+    <div class="section">
+        <h2>Autores vinculados</h2>
+        {% if hecho.autor_desconocido %}
+            <p>Autor no identificado.</p>
+        {% elif autores %}
+            <ul>
+                {% for autor in autores %}
+                    <li>{{ autor }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>Sin autores asociados.</p>
+        {% endif %}
+    </div>
+
+    <div class="section">
+        <h2>Bandas asociadas</h2>
+        {% with bandas=hecho.bandas.all %}
+            {% if bandas %}
+                <ul>
+                    {% for banda in bandas %}
+                        <li>{{ banda.nombre_principal|default:banda }}</li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>Sin bandas asociadas.</p>
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <div class="section">
+        <h2>Noticias relacionadas</h2>
+        {% if noticias %}
+            <ul>
+                {% for noticia in noticias %}
+                    <li>{{ noticia.url }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>Sin noticias asociadas.</p>
+        {% endif %}
+    </div>
+
+    <hr>
+    <p>Generado el: {{ generado_en }}</p>
+</body>
+</html>

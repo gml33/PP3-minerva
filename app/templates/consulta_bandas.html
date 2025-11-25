@@ -1,0 +1,260 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Consultar por Banda{% endblock %}
+
+{% block content %}
+
+<h1 class="mb-4 text-center">Consultar por Banda</h1>
+
+<form method="GET" action="{% url 'consulta_bandas' %}">
+    <div class="card mb-4">
+        <div class="card-header">Datos de la Banda</div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Nombre de la banda</label>
+                    <input type="text" name="nombre_banda" class="form-control" value="{{ request.GET.nombre_banda }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Alias</label>
+                    <input type="text" name="alias" class="form-control" value="{{ request.GET.alias }}">
+                </div>
+            </div>
+            <div class="row g-3 mt-1">
+                <div class="col-md-12">
+                    <label class="form-label">Zonas de influencia</label>
+                    <input type="text" name="zonas_influencia" class="form-control" value="{{ request.GET.zonas_influencia }}">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="accordion" id="filtrosAccordion">
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="headingLideres">
+                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLideres" aria-expanded="true" aria-controls="collapseLideres">
+                    Líderes
+                </button>
+            </h2>
+            <div id="collapseLideres" class="accordion-collapse collapse show" data-bs-parent="#filtrosAccordion">
+                <div class="accordion-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Nombre del líder</label>
+                            <input type="text" name="lider_nombre" class="form-control" value="{{ request.GET.lider_nombre }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Alias del líder</label>
+                            <input type="text" name="lider_alias" class="form-control" value="{{ request.GET.lider_alias }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">DNI del líder</label>
+                            <input type="text" name="lider_dni" class="form-control" value="{{ request.GET.lider_dni }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="headingMiembros">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMiembros" aria-expanded="false" aria-controls="collapseMiembros">
+                    Miembros
+                </button>
+            </h2>
+            <div id="collapseMiembros" class="accordion-collapse collapse" data-bs-parent="#filtrosAccordion">
+                <div class="accordion-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Nombre del miembro</label>
+                            <input type="text" name="miembro_nombre" class="form-control" value="{{ request.GET.miembro_nombre }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Alias del miembro</label>
+                            <input type="text" name="miembro_alias" class="form-control" value="{{ request.GET.miembro_alias }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">DNI del miembro</label>
+                            <input type="text" name="miembro_dni" class="form-control" value="{{ request.GET.miembro_dni }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="headingBandasAliadas">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseBandasAliadas" aria-expanded="false" aria-controls="collapseBandasAliadas">
+                    Bandas aliadas
+                </button>
+            </h2>
+            <div id="collapseBandasAliadas" class="accordion-collapse collapse" data-bs-parent="#filtrosAccordion">
+                <div class="accordion-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Nombre de banda aliada</label>
+                            <input type="text" name="banda_aliada" class="form-control" value="{{ request.GET.banda_aliada }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Líder de banda aliada</label>
+                            <input type="text" name="lider_banda_aliada" class="form-control" value="{{ request.GET.lider_banda_aliada }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="headingBandasRivales">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseBandasRivales" aria-expanded="false" aria-controls="collapseBandasRivales">
+                    Bandas rivales
+                </button>
+            </h2>
+            <div id="collapseBandasRivales" class="accordion-collapse collapse" data-bs-parent="#filtrosAccordion">
+                <div class="accordion-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Nombre de banda rival</label>
+                            <input type="text" name="banda_rival" class="form-control" value="{{ request.GET.banda_rival }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Líder de banda rival</label>
+                            <input type="text" name="lider_banda_rival" class="form-control" value="{{ request.GET.lider_banda_rival }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 mt-4">
+        <button type="submit" class="btn btn-primary">Buscar</button>
+        <button type="button" class="btn btn-secondary" onclick="limpiarFormulario()">Limpiar</button>
+    </div>
+</form>
+
+<hr class="my-5">
+{% if request.GET %}
+    <h2 class="mb-4">Resultados</h2>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Alias</th>
+                <th>Zonas de influencia</th>
+                <th>Líder</th>
+                <th>N° Miembros</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for banda in bandas %}
+            <tr>
+                <td>{{ banda.nombres|join:", " }}</td>
+                <td>{{ banda.alias|join:", " }}</td>
+                <td>
+                    {% if banda.zonas_influencia.0.barrio %}
+                        {% for zona in banda.zonas_influencia %}
+                            {{ zona.barrio }}, {{ zona.localidad }}, {{ zona.provincia }}{% if not forloop.last %}; {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        {{ banda.zonas_influencia|join:", " }}
+                    {% endif %}
+                </td>
+                <td>{{ banda.lider.nombre }} "{{ banda.lider.alias }}"</td>
+                <td>{{ banda.num_miembros }}</td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-info" onclick="verBanda({{ banda.id }})" data-bs-toggle="modal" data-bs-target="#modalBanda">Ver</button>
+                    <a href="{% url 'exportar_banda_pdf' banda.id %}" class="btn btn-sm btn-danger ms-1" target="_blank">PDF</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6">No hay bandas que coincidan con los filtros.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endif %}
+
+<!-- Modal Detalle de Banda -->
+<div class="modal fade" id="modalBanda" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalle de la Banda</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="detalleBanda"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function limpiarFormulario() {
+        window.location.href = window.location.pathname;
+    }
+
+    function verBanda(id) {
+        fetch(`/api/bandas/${id}/detalle/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "ok") {
+                const banda = data.banda;
+                
+                // Formatear zonas de influencia
+                let zonasHtml = '';
+                if (banda.zonas_influencia && banda.zonas_influencia.length > 0) {
+                    if (typeof banda.zonas_influencia[0] === 'object') {
+                        zonasHtml = banda.zonas_influencia.map(zona => 
+                            `${zona.barrio || ''}${zona.localidad ? ', ' + zona.localidad : ''}${zona.provincia ? ', ' + zona.provincia : ''}`
+                        ).join('; ');
+                    } else {
+                        zonasHtml = banda.zonas_influencia.join(", ");
+                    }
+                }
+
+                let html = `
+                    <p><strong>Nombre:</strong> ${banda.nombre}</p>
+                    <p><strong>Alias:</strong> ${banda.alias.join(", ")}</p>
+                    <p><strong>Zonas de influencia:</strong> ${zonasHtml}</p>
+                    <hr>
+                    <p><strong>Líder:</strong> ${banda.lider.nombre} (${banda.lider.alias}) - DNI: ${banda.lider.dni}</p>
+                    <p><strong>Descripción del líder:</strong> ${banda.lider.descripcion}</p>
+                    <hr>
+                    <p><strong>Miembros:</strong></p>
+                    <ul>${banda.miembros.map(m => 
+                        `<li>${m.nombre} (${m.alias}) - DNI: ${m.dni} - Rol: ${m.rol}</li>`
+                    ).join('')}</ul>
+                    <hr>
+                    <p><strong>Bandas aliadas:</strong></p>
+                    <ul>${banda.bandas_aliadas.map(b => 
+                        `<li>${b.nombre} - Líder: ${b.lider}</li>`
+                    ).join('')}</ul>
+                    <hr>
+                    <p><strong>Bandas rivales:</strong></p>
+                    <ul>${banda.bandas_rivales.map(b => 
+                        `<li>${b.nombre} - Líder: ${b.lider}</li>`
+                    ).join('')}</ul>
+                    <hr>
+                    <p><strong>Actividades delictivas:</strong></p>
+                    <ul>${banda.actividades_delictivas.map(a => 
+                        `<li>${a.tipo} - ${a.descripcion}</li>`
+                    ).join('')}</ul>
+                `;
+
+                document.getElementById("detalleBanda").innerHTML = html;
+            } else {
+                document.getElementById("detalleBanda").innerHTML = "<p class='text-danger'>No se pudo cargar la información de la banda.</p>";
+            }
+        })
+        .catch(err => {
+            console.error("Error al cargar la banda:", err);
+            document.getElementById("detalleBanda").innerHTML = "<p class='text-danger'>Error al cargar la información de la banda.</p>";
+        });
+    }
+</script>
+{% endblock content %}

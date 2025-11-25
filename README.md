@@ -1,0 +1,1 @@
+Minerva es un sistema de Acopio, Clasificacion y gestion de informacion de fuentes abiertas, desarrollado como proyecto de la carrera de analisis de sistemas, en el instituto superior santo Domingo, de la Ciudad de Cordoba, Provincia de Cordoba.

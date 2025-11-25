@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+
+{% block title %}Editar Solicitud de Información{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Editar Solicitud de Información</h1>
+
+{% include "partials/messages.html" %}
+
+<div class="card mb-4">
+    <div class="card-header">Editar solicitud #{{ solicitud.pk }}</div>
+    <div class="card-body">
+        <form method="post" novalidate>
+            {% csrf_token %}
+            <div class="mb-3">
+                {{ form.descripcion.label_tag }}
+                {{ form.descripcion }}
+                {% if form.descripcion.errors %}
+                    <div class="text-danger small mt-1">
+                        {% for error in form.descripcion.errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            <div class="mb-3">
+                {{ form.articulos.label_tag }}
+                <div class="border rounded p-3">
+                    {% if articulos_disponibles %}
+                    <div class="row g-2 align-items-end mb-3">
+                        <div class="col-md-3">
+                            <label for="filtro-titulo" class="form-label mb-1">Título</label>
+                            <input type="text" id="filtro-titulo" class="form-control" placeholder="Buscar por título">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="filtro-categoria" class="form-label mb-1">Categoría</label>
+                            <select id="filtro-categoria" class="form-select">
+                                <option value="">Todas</option>
+                                {% for categoria in categorias_articulos %}
+                                    <option value="{{ categoria }}">{{ categoria }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="filtro-estado" class="form-label mb-1">Estado</label>
+                            <select id="filtro-estado" class="form-select">
+                                <option value="">Todos</option>
+                                {% for value, label in estados_articulo %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="filtro-fecha-desde" class="form-label mb-1">Desde</label>
+                            <input type="date" id="filtro-fecha-desde" class="form-control">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="filtro-fecha-hasta" class="form-label mb-1">Hasta</label>
+                            <input type="date" id="filtro-fecha-hasta" class="form-control">
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end mb-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-limpiar-filtros">Limpiar filtros</button>
+                    </div>
+                    {% endif %}
+                    <select name="articulos" id="articulos-select" class="form-select" multiple size="6">
+                        {% with seleccionados=form.articulos.value %}
+                            {% for articulo in articulos_disponibles %}
+                                {% with articulo_id=articulo.id|stringformat:"s" %}
+                                <option value="{{ articulo.id }}"
+                                    data-titulo="{{ articulo.titulo|default_if_none:'' }}"
+                                    data-categoria="{{ articulo.categoria.nombre|default_if_none:'' }}"
+                                    data-estado="{{ articulo.estado|default_if_none:'' }}"
+                                    data-fecha="{{ articulo.fecha_creacion|date:'Y-m-d' }}"
+                                    data-estado-display="{{ articulo.get_estado_display }}"
+                                    {% if seleccionados and articulo_id in seleccionados %}selected{% endif %}
+                                >
+                                    #{{ articulo.id }} · {{ articulo.titulo|default:'Sin título' }} · {{ articulo.categoria.nombre|default:'Sin categoría' }} · {{ articulo.get_estado_display }} · {{ articulo.fecha_creacion|date:'d/m/Y' }}
+                                </option>
+                                {% endwith %}
+                            {% empty %}
+                                <option disabled>No hay artículos disponibles</option>
+                            {% endfor %}
+                        {% endwith %}
+                    </select>
+                    <div id="articulos-sin-resultados" class="text-muted small mt-2 d-none">
+                        No se encontraron artículos con los filtros aplicados.
+                    </div>
+                </div>
+                {% if form.articulos.errors %}
+                    <div class="text-danger small mt-1">
+                        {% for error in form.articulos.errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                {% elif form.articulos.field.queryset|length == 0 %}
+                    <div class="text-muted small mt-1">
+                        No tenés artículos disponibles todavía. Creá uno desde el panel de redacción.
+                    </div>
+                {% endif %}
+                <div class="form-text">
+                    Seleccioná uno o más artículos que se relacionen con esta solicitud (opcional).
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-warning">Actualizar Solicitud</button>
+                <a href="{% url 'solicitud_info_portal' %}" class="btn btn-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const articulosSelect = document.getElementById("articulos-select");
+    if (articulosSelect) {
+        const filtroTitulo = document.getElementById("filtro-titulo");
+        const filtroCategoria = document.getElementById("filtro-categoria");
+        const filtroEstado = document.getElementById("filtro-estado");
+        const filtroFechaDesde = document.getElementById("filtro-fecha-desde");
+        const filtroFechaHasta = document.getElementById("filtro-fecha-hasta");
+        const btnLimpiarFiltros = document.getElementById("btn-limpiar-filtros");
+        const mensajeSinResultados = document.getElementById("articulos-sin-resultados");
+        const opciones = Array.from(articulosSelect.options);
+
+        const aplicarFiltros = () => {
+            const tituloFiltro = (filtroTitulo?.value || "").trim().toLowerCase();
+            const categoriaFiltro = filtroCategoria?.value || "";
+            const estadoFiltro = filtroEstado?.value || "";
+            const fechaDesde = filtroFechaDesde?.value || "";
+            const fechaHasta = filtroFechaHasta?.value || "";
+
+            let visibles = 0;
+
+            opciones.forEach(option => {
+                const titulo = (option.dataset.titulo || "").toLowerCase();
+                const categoria = option.dataset.categoria || "";
+                const estado = option.dataset.estado || "";
+                const fecha = option.dataset.fecha || "";
+
+                const coincideTitulo = !tituloFiltro || titulo.includes(tituloFiltro);
+                const coincideCategoria = !categoriaFiltro || categoria === categoriaFiltro;
+                const coincideEstado = !estadoFiltro || estado === estadoFiltro;
+                const coincideDesde = !fechaDesde || fecha >= fechaDesde;
+                const coincideHasta = !fechaHasta || fecha <= fechaHasta;
+
+                const visiblePorFiltro = coincideTitulo && coincideCategoria && coincideEstado && coincideDesde && coincideHasta;
+                const esVisible = visiblePorFiltro || option.selected;
+
+                option.hidden = !esVisible;
+                if (esVisible && !option.disabled) {
+                    visibles += 1;
+                }
+            });
+
+            if (mensajeSinResultados) {
+                if (visibles === 0) {
+                    mensajeSinResultados.classList.remove("d-none");
+                } else {
+                    mensajeSinResultados.classList.add("d-none");
+                }
+            }
+        };
+
+        filtroTitulo?.addEventListener("input", aplicarFiltros);
+        filtroCategoria?.addEventListener("change", aplicarFiltros);
+        filtroEstado?.addEventListener("change", aplicarFiltros);
+        filtroFechaDesde?.addEventListener("change", aplicarFiltros);
+        filtroFechaHasta?.addEventListener("change", aplicarFiltros);
+
+        btnLimpiarFiltros?.addEventListener("click", () => {
+            if (filtroTitulo) filtroTitulo.value = "";
+            if (filtroCategoria) filtroCategoria.value = "";
+            if (filtroEstado) filtroEstado.value = "";
+            if (filtroFechaDesde) filtroFechaDesde.value = "";
+            if (filtroFechaHasta) filtroFechaHasta.value = "";
+            aplicarFiltros();
+        });
+
+        aplicarFiltros();
+    }
+});
+</script>
+{% endblock %}
