@@ -354,13 +354,19 @@
 
             paginatedLinks.forEach(link => {
                 const diarioLogo = link.diario_logo_url || '/static/img/default_logo.png';
+                const confianzaValor = link.confianza_clasificacion != null
+                    ? Math.round(link.confianza_clasificacion * 100)
+                    : null;
                 const categoriasBadges = Array.isArray(link.categorias_info)
-                    ? link.categorias_info.map(cat => `<span class="badge bg-secondary me-1">${cat.nombre}</span>`).join("")
+                    ? link.categorias_info.map(cat => {
+                        const detalle = confianzaValor != null
+                            ? `<span class="badge bg-secondary me-1 d-inline-flex align-items-center gap-1">${cat.nombre}<span class="badge bg-dark">${confianzaValor}%</span></span>`
+                            : `<span class="badge bg-secondary me-1">${cat.nombre}</span>`;
+                        return detalle;
+                      }).join("")
                     : "-";
                 const resumen = link.resumen_ia ? link.resumen_ia : "Sin resumen generado.";
-                const confianza = link.confianza_clasificacion != null
-                    ? `${Math.round(link.confianza_clasificacion * 100)}%`
-                    : "-";
+                const confianza = confianzaValor != null ? `${confianzaValor}%` : "-";
 
                 const row = document.createElement("tr");
                 row.innerHTML = `
