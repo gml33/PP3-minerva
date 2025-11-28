@@ -183,7 +183,6 @@
                 <col>
                 <col style="width:120px">
                 <col style="width:120px">
-                <col style="width:220px">
             </colgroup>
             <thead class="table-dark">
                 <tr>
@@ -194,12 +193,11 @@
                     <th>URL</th>
                     <th>Fecha</th>
                     <th>Estado</th>
-                    <th>Categorías</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
-                    <td colspan="6" class="text-center text-muted">Cargando…</td>
+                    <td colspan="5" class="text-center text-muted">Cargando…</td>
                 </tr>
             </tbody>
         </table>
@@ -295,7 +293,7 @@
     const esObservador = {{ es_observador|yesno:"true,false" }};
     const columnasPendientes = puedeClasificar ? 7 : 6;
     const columnasClasificados = puedeClasificar ? 6 : 5;
-    const columnasObservador = 6;
+    const columnasObservador = 5;
     const columnasIA = 6;
     let currentPagePendientes = 1;
     let currentPageClasificados = 1;
@@ -642,9 +640,6 @@
                         break;
                 }
 
-                const categoriasBadges = Array.isArray(link.categorias_info)
-                    ? link.categorias_info.map(cat => `<span class="badge bg-secondary me-1">${cat.nombre}</span>`).join("")
-                    : "-";
                 const diarioLogo = link.diario_logo_url || '/static/img/default_logo.png';
 
                 const row = document.createElement("tr");
@@ -665,7 +660,6 @@
                     </td>
                     <td class="align-middle">${new Date(link.fecha_carga).toLocaleDateString()}</td>
                     <td class="align-middle">${badge}</td>
-                    <td class="align-middle">${categoriasBadges}</td>
                 `;
                 tabla.appendChild(row);
             });
