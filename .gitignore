@@ -1,4 +1,5 @@
 /env
+.env
 *.tar.gz
 *.log
 __pycache__/

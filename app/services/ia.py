@@ -6,6 +6,9 @@ from typing import List
 
 import requests
 from bs4 import BeautifulSoup
+from django.conf import settings
+
+from app.models import Categoria
 
 try:
     from openai import OpenAI
@@ -31,7 +34,7 @@ class LinkAIProcessor:
     """Orquesta la descarga del artículo y la consulta a la IA."""
 
     def __init__(self):
-        api_key = os.getenv("OPENAI_API_KEY")
+        api_key = settings.OPENAI_API_KEY or os.getenv("OPENAI_API_KEY")
         if not api_key:
             raise IAProcessingError(
                 "No se configuró la variable de entorno OPENAI_API_KEY."
@@ -41,6 +44,15 @@ class LinkAIProcessor:
                 "La librería openai no está disponible en el entorno."
             )
         self.client = OpenAI(api_key=api_key)
+        self.categorias_prompt = self._obtener_categorias_disponibles()
+
+    def _obtener_categorias_disponibles(self) -> str:
+        categorias = list(
+            Categoria.objects.order_by("nombre").values_list("nombre", flat=True)
+        )
+        if not categorias:
+            categorias = ["General"]
+        return ", ".join(categorias)
 
     def extraer_texto(self, url: str) -> str:
         try:
@@ -61,16 +73,13 @@ class LinkAIProcessor:
         return texto[:5000]
 
     def analizar(self, url: str, texto: str) -> AnalisisIA:
+        prompt_base = settings.AI_CLASSIFICATION_PROMPT.format(
+            categorias=self.categorias_prompt
+        )
         prompt = (
-            "Analizá el artículo provisto y devolvé únicamente un JSON con este formato: "
-            '{"categorias": ["categoria 1", "categoria 2"], '
-            '"resumen": "Resumen en español del artículo (máximo 80 palabras).", '
-            '"confianza": 0.0}. '
-            "Las categorías deben corresponder a secciones periodísticas (Política, Economía, Seguridad, Sociedad, "
-            "Internacional, Cultura, Deportes, etc.). "
-            "Confianza es un número entre 0 y 1. "
+            f"{prompt_base}"
             f"URL: {url}\n\n"
-            f"Contenido:\n\"\"\"\n{texto}\n\"\"\""
+            f"Contenido completo:\n\"\"\"\n{texto}\n\"\"\""
         )
         try:
             response = self.client.chat.completions.create(

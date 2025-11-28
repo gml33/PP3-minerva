@@ -2222,6 +2222,7 @@ def api_links_list(request):
         categoria_id = request.GET.get('categoria_id')
         solo_propios = request.GET.get('solo_propios')
         solo_no_revisados = request.GET.get('solo_no_revisados')
+        solo_ia = request.GET.get('clasificado_por_ia')
         fuente = request.GET.get('fuente')
         red_social_id = request.GET.get('red_social_id')
         tv_digital_id = request.GET.get('tv_digital_id')
@@ -2258,6 +2259,8 @@ def api_links_list(request):
                 links = links.filter(cargado_por__userprofile__rol=Roles.PRENSA)
             if solo_no_revisados:
                 links = links.filter(revisado_clasificador=False)
+            if solo_ia:
+                links = links.filter(clasificado_por_ia=True)
 
             for link in links:
                 data.append({
@@ -2300,6 +2303,8 @@ def api_links_list(request):
                 links = links.filter(cargado_por__userprofile__rol=Roles.PRENSA)
             if solo_no_revisados:
                 links = links.filter(revisado_clasificador=False)
+            if solo_ia:
+                links = links.filter(clasificado_por_ia=True)
 
             for link in links:
                 data.append({
@@ -2345,6 +2350,8 @@ def api_links_list(request):
                 links = links.filter(cargado_por__userprofile__rol=Roles.PRENSA)
             if solo_no_revisados:
                 links = links.filter(revisado_clasificador=False)
+            if solo_ia:
+                links = links.filter(clasificado_por_ia=True)
 
             for link in links:
                 data.append({
@@ -2391,6 +2398,8 @@ def api_links_list(request):
                 links = links.filter(cargado_por__userprofile__rol=Roles.PRENSA)
             if solo_no_revisados:
                 links = links.filter(revisado_clasificador=False)
+            if solo_ia:
+                links = links.filter(clasificado_por_ia=True)
 
             for link in links:
                 data.append({
@@ -2520,14 +2529,35 @@ def procesar_links_ia(request):
             errores[str(link_id)] = str(exc)
             continue
 
-        if analisis.categorias:
-            categorias_objs = []
-            for nombre in analisis.categorias[:5]:
-                categoria = Categoria.objects.filter(nombre__iexact=nombre).first()
-                if not categoria:
-                    categoria = Categoria.objects.create(nombre=nombre[:100])
+        categorias_objs = []
+        for nombre in (analisis.categorias or [])[:5]:
+            categoria = Categoria.objects.filter(nombre__iexact=nombre).first()
+            if categoria:
                 categorias_objs.append(categoria)
-            link.categorias.set(categorias_objs)
+
+        if not categorias_objs:
+            link.estado = EstadoLink.DESCARTADO
+            link.clasificado_por_ia = False
+            link.revisado_clasificador = True
+            link.confianza_clasificacion = None
+            link.resumen_ia = analisis.resumen[:2000]
+            link.categorias.clear()
+            link.save(
+                update_fields=[
+                    "estado",
+                    "clasificado_por_ia",
+                    "revisado_clasificador",
+                    "confianza_clasificacion",
+                    "resumen_ia",
+                ]
+            )
+            procesados.append(link_id)
+            errores[str(link_id)] = (
+                "Descartado: la IA no devolvió categorías que existan en el sistema."
+            )
+            continue
+
+        link.categorias.set(categorias_objs)
 
         link.clasificado_por_ia = True
         link.confianza_clasificacion = analisis.confianza

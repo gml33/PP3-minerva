@@ -1,13 +1,31 @@
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 # Ruta base del proyecto
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Cargar variables de entorno desde .env
+load_dotenv(BASE_DIR / ".env")
+
 # Seguridad
-SECRET_KEY = "tu-clave-secreta-aqui"  # Cambia por tu clave real y mantenla en secreto
-DEBUG = True
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "tu-clave-secreta-aqui")
+DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() in ("1", "true", "yes")
 DEBUG_PROPAGATE_EXCEPTIONS = True
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+AI_CLASSIFICATION_PROMPT = os.getenv(
+    "AI_CLASSIFICATION_PROMPT",
+    (
+        "Analizá el artículo provisto y devolvé únicamente un JSON válido con este formato: "
+        '{"categorias": ["categoria 1", "categoria 2"], '
+        '"resumen": "Resumen conciso en español (máximo 100 palabras).", '
+        '"confianza": 0.0}. '
+        "Las categorías disponibles son: {categorias}. Si no encaja exactamente, elegí la más cercana "
+        "y no inventes otras nuevas. La confianza debe ser un número entre 0 y 1. Ahora analizá el siguiente contenido:\n"
+    ),
+)
 
 ALLOWED_HOSTS = ["*"]
 
