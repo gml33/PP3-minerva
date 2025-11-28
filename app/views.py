@@ -104,6 +104,8 @@ from .serializers import (
     LinkTvDigitalSerializer,
     LinkRadioDigitalSerializer,
 )
+from .services.ia import LinkAIProcessor, IAProcessingError
+
 from .forms import (
     InformeIndividualForm,
     CustomAuthenticationForm,
@@ -2475,6 +2477,77 @@ def api_link_detail(request, link_id):
         return JsonResponse({'error': 'Link no encontrado'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@login_required
+def procesar_links_ia(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "Método no permitido"}, status=405)
+
+    rol_usuario = request.user.userprofile.rol
+    if rol_usuario not in [Roles.OBSERVADOR, Roles.CLASIFICACION, Roles.ADMIN]:
+        return JsonResponse({"error": "No autorizado"}, status=403)
+
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Formato JSON inválido"}, status=400)
+
+    link_ids = payload.get("links") or []
+    if not isinstance(link_ids, list) or not link_ids:
+        return JsonResponse({"error": "Debés enviar una lista de IDs."}, status=400)
+
+    try:
+        processor = LinkAIProcessor()
+    except IAProcessingError as exc:
+        return JsonResponse({"error": str(exc)}, status=500)
+
+    procesados = []
+    errores = {}
+
+    for link_id in link_ids:
+        try:
+            link = LinkRelevante.objects.get(pk=link_id)
+        except LinkRelevante.DoesNotExist:
+            errores[str(link_id)] = "Link no encontrado."
+            continue
+
+        try:
+            texto = processor.extraer_texto(link.url)
+            analisis = processor.analizar(link.url, texto)
+        except IAProcessingError as exc:
+            errores[str(link_id)] = str(exc)
+            continue
+
+        if analisis.categorias:
+            categorias_objs = []
+            for nombre in analisis.categorias[:5]:
+                categoria = Categoria.objects.filter(nombre__iexact=nombre).first()
+                if not categoria:
+                    categoria = Categoria.objects.create(nombre=nombre[:100])
+                categorias_objs.append(categoria)
+            link.categorias.set(categorias_objs)
+
+        link.clasificado_por_ia = True
+        link.confianza_clasificacion = analisis.confianza
+        link.resumen_ia = analisis.resumen[:2000]
+        link.revisado_clasificador = True
+        link.save(
+            update_fields=[
+                "clasificado_por_ia",
+                "confianza_clasificacion",
+                "resumen_ia",
+                "revisado_clasificador",
+            ]
+        )
+        procesados.append(link_id)
+
+    status_code = 200 if procesados else 400
+    return JsonResponse(
+        {"procesados": procesados, "errores": errores},
+        status=status_code,
+    )
 
 # -------------------- FUNCTION-BASED API --------------------
 

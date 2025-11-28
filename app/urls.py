@@ -93,6 +93,7 @@ from .views import (
     api_diarios,
     api_categorias,
     api_link_detail,
+    procesar_links_ia,
 )
 
 router = DefaultRouter()
@@ -264,6 +265,7 @@ urlpatterns = [
     path("api/diarios/", api_diarios, name="api_diarios"),
     path("api/categorias/", api_categorias, name="api_categorias"),
     path("api/links/<int:link_id>/", api_link_detail, name="api_link_detail"),
+    path("api/procesar_links_ia/", procesar_links_ia, name="procesar_links_ia"),
     # =================================================================================
     
     path("api/actividad/clic_link/", registrar_clic_link, name="registrar_clic_link"),

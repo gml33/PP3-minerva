@@ -538,23 +538,64 @@
         }
     }
 
-    function enviarLinksAI() {
+    async function enviarLinksAI() {
         if (!seleccionObservador) return;
         if (seleccionObservador.size === 0) {
             mostrarToast("Seleccioná al menos un link", "warning");
             return;
         }
-        // Placeholder para futura integración con IA
-        console.log("Links seleccionados para IA:", Array.from(seleccionObservador));
-        mostrarToast("Links enviados para análisis (pendiente integración IA)", "success");
-        seleccionObservador.clear();
-        const checkboxes = document.querySelectorAll('.obs-checkbox');
-        checkboxes.forEach(cb => (cb.checked = false));
-        const selectAll = document.getElementById('obs_select_all');
-        if (selectAll) {
-            selectAll.checked = false;
+
+        const ids = Array.from(seleccionObservador);
+        const btn = document.getElementById('btnEnviarAI');
+        const originalText = btn ? btn.textContent : "";
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = "Procesando…";
         }
-        actualizarBotonIA();
+
+        try {
+            const res = await fetch("/api/procesar_links_ia/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCookie("csrftoken")
+                },
+                body: JSON.stringify({ links: ids })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.error || "No se pudo procesar la solicitud.");
+            }
+
+            const procesados = data.procesados || [];
+            const errores = data.errores || {};
+
+            if (procesados.length) {
+                mostrarToast(`IA procesó ${procesados.length} link(s).`, "success");
+            }
+            if (Object.keys(errores).length) {
+                console.warn("Errores IA:", errores);
+                mostrarToast("Algunos links no pudieron procesarse con IA.", "warning");
+            }
+
+            seleccionObservador.clear();
+            const checkboxes = document.querySelectorAll('.obs-checkbox');
+            checkboxes.forEach(cb => (cb.checked = false));
+            const selectAll = document.getElementById('obs_select_all');
+            if (selectAll) {
+                selectAll.checked = false;
+            }
+            actualizarBotonIA();
+            cargarLinksObservador(currentPageObservador);
+        } catch (error) {
+            console.error("Error enviando a IA:", error);
+            mostrarToast(error.message || "Error al enviar a IA", "danger");
+        } finally {
+            if (btn) {
+                btn.textContent = originalText || "Enviar selección a IA";
+                btn.disabled = seleccionObservador.size === 0;
+            }
+        }
     }
 
     async function marcarRevisado(id) {

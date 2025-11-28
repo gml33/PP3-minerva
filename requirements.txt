@@ -23,6 +23,7 @@ kaleido==0.2.1
 mypy_extensions==1.1.0
 narwhals==1.42.1
 numpy==2.3.0
+openai==1.59.7
 openpyxl==3.1.5
 packaging==25.0
 pandas==2.3.0
@@ -37,6 +38,7 @@ pyphen==0.17.2
 python-dateutil==2.9.0.post0
 pytz==2025.2
 reportlab==4.4.1
+requests==2.32.3
 ruff==0.12.1
 six==1.17.0
 sqlparse==0.5.3
@@ -48,3 +50,4 @@ weasyprint==65.1
 webencodings==0.5.1
 whitenoise==6.9.0
 zopfli==0.2.3.post1
+beautifulsoup4==4.12.3
