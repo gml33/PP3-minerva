@@ -2278,7 +2278,9 @@ def api_links_list(request):
                     'tv_digital': None,
                     'tv_digital_nombre': None,
                     'tv_digital_logo_url': None,
-                    'categorias_info': [{'id': cat.id, 'nombre': cat.nombre} for cat in link.categorias.all()]
+                    'categorias_info': [{'id': cat.id, 'nombre': cat.nombre} for cat in link.categorias.all()],
+                    'resumen_ia': getattr(link, 'resumen_ia', ""),
+                    'confianza_clasificacion': getattr(link, 'confianza_clasificacion', None),
                 })
         elif fuente == 'tv_digital':
             links = LinkTvDigital.objects.select_related('tv_digital').prefetch_related('categorias').all()
@@ -2325,7 +2327,9 @@ def api_links_list(request):
                     'radio_digital': None,
                     'radio_digital_nombre': None,
                     'radio_digital_logo_url': None,
-                    'categorias_info': [{'id': cat.id, 'nombre': cat.nombre} for cat in link.categorias.all()]
+                    'categorias_info': [{'id': cat.id, 'nombre': cat.nombre} for cat in link.categorias.all()],
+                    'resumen_ia': getattr(link, 'resumen_ia', ""),
+                    'confianza_clasificacion': getattr(link, 'confianza_clasificacion', None),
                 })
         elif fuente == 'radio_digital':
             links = LinkRadioDigital.objects.select_related('radio_digital').prefetch_related('categorias').all()
@@ -2372,7 +2376,9 @@ def api_links_list(request):
                     'radio_digital': link.radio_digital.id if link.radio_digital else None,
                     'radio_digital_nombre': link.radio_digital.nombre if link.radio_digital else 'Sin asignar',
                     'radio_digital_logo_url': link.radio_digital.logo.url if link.radio_digital and getattr(link.radio_digital, 'logo', None) else None,
-                    'categorias_info': [{'id': cat.id, 'nombre': cat.nombre} for cat in link.categorias.all()]
+                    'categorias_info': [{'id': cat.id, 'nombre': cat.nombre} for cat in link.categorias.all()],
+                    'resumen_ia': getattr(link, 'resumen_ia', ""),
+                    'confianza_clasificacion': getattr(link, 'confianza_clasificacion', None),
                 })
         else:
             # Filtrar links de diarios digitales
@@ -2420,7 +2426,9 @@ def api_links_list(request):
                     'radio_digital': None,
                     'radio_digital_nombre': None,
                     'radio_digital_logo_url': None,
-                    'categorias_info': [{'id': cat.id, 'nombre': cat.nombre} for cat in link.categorias.all()]
+                    'categorias_info': [{'id': cat.id, 'nombre': cat.nombre} for cat in link.categorias.all()],
+                    'resumen_ia': getattr(link, 'resumen_ia', ""),
+                    'confianza_clasificacion': getattr(link, 'confianza_clasificacion', None),
                 })
 
         return JsonResponse(data, safe=False)

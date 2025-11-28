@@ -73,8 +73,8 @@ class LinkAIProcessor:
         return texto[:5000]
 
     def analizar(self, url: str, texto: str) -> AnalisisIA:
-        prompt_base = settings.AI_CLASSIFICATION_PROMPT.format(
-            categorias=self.categorias_prompt
+        prompt_base = settings.AI_CLASSIFICATION_PROMPT.replace(
+            "{categorias}", self.categorias_prompt
         )
         prompt = (
             f"{prompt_base}"
@@ -99,8 +99,10 @@ class LinkAIProcessor:
             logger.error("Fallo consultando a OpenAI: %s", exc)
             raise IAProcessingError("No se pudo obtener la respuesta de la IA.") from exc
 
+        # Algunas respuestas incluyen bloques tipo ```json ... ```
+        limpieza = contenido.replace("```json", "").replace("```", "").strip()
         try:
-            data = json.loads(contenido)
+            data = json.loads(limpieza)
         except json.JSONDecodeError as exc:
             logger.error("La IA devolvió un JSON inválido: %s", contenido)
             raise IAProcessingError("La respuesta de la IA no pudo interpretarse.") from exc
