@@ -304,6 +304,31 @@
     const seleccionObservador = esObservador ? new Set() : null;
     const itemsPerPage = 10;
 
+    function escapeHtml(text) {
+        if (typeof text !== "string") {
+            return "";
+        }
+        const map = {
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#039;"
+        };
+        return text.replace(/[&<>"']/g, (m) => map[m]);
+    }
+
+    function activarTooltips() {
+        const tooltipElements = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+        tooltipElements.forEach(el => {
+            const instance = bootstrap.Tooltip.getInstance(el);
+            if (instance) {
+                instance.dispose();
+            }
+            new bootstrap.Tooltip(el);
+        });
+    }
+
     function mostrarToast(mensaje, tipo = 'primary') {
         const toastEl = document.getElementById('liveToast');
         const toastBody = document.getElementById('toastBody');
@@ -365,7 +390,13 @@
                         return detalle;
                       }).join("")
                     : "-";
-                const resumen = link.resumen_ia ? link.resumen_ia : "Sin resumen generado.";
+                const resumenCompleto = (link.resumen_ia || "Sin resumen generado.").trim();
+                const resumenMaxLength = esObservador ? 18 : 120;
+                const resumenTruncado = resumenCompleto.length > resumenMaxLength
+                    ? `${resumenCompleto.slice(0, resumenMaxLength)}…`
+                    : resumenCompleto;
+                const resumenEscapado = escapeHtml(resumenCompleto);
+                const resumenTruncadoEscapado = escapeHtml(resumenTruncado);
                 const confianza = confianzaValor != null ? `${confianzaValor}%` : "-";
 
                 const row = document.createElement("tr");
@@ -383,13 +414,18 @@
                     </td>
                     <td class="align-middle">${new Date(link.fecha_carga).toLocaleDateString()}</td>
                     <td class="align-middle">${categoriasBadges}</td>
-                    <td class="align-middle">${resumen}</td>
+                    <td class="align-middle">
+                        <span class="d-inline-block text-truncate" style="max-width: 320px;" data-bs-toggle="tooltip" data-bs-placement="top" title="${resumenEscapado}">
+                            ${resumenTruncadoEscapado}
+                        </span>
+                    </td>
                     <td class="align-middle">${confianza}</td>
                 `;
                 tabla.appendChild(row);
             });
 
             generarPaginacion(links.length, page, 'pagination-ia', 'cargarLinksIA');
+            activarTooltips();
         } catch (error) {
             console.error("Error cargando links IA:", error);
             tabla.innerHTML = `<tr><td colspan="${columnasIA}" class="text-center text-danger">Error al cargar los datos</td></tr>`;
