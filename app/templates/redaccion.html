@@ -432,6 +432,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+    const rolUsuario = "{{ rol_usuario|default:'' }}";
     // Variables globales para la paginación
     let linksGlobal = [];
     let paginaActualLinks = 1;
@@ -758,8 +759,43 @@
             if (!res.ok) {
                 throw new Error(`Error HTTP: ${res.status}`);
             }
-            const links = await res.json();
-            linksGlobal = links.filter(link => link.estado === "aprobado");
+            let links = await res.json();
+
+            if (rolUsuario === "redactor_ia") {
+                const iaParams = [];
+                if (desde) iaParams.push(`fecha_inicio=${desde}`);
+                if (hasta) iaParams.push(`fecha_fin=${hasta}`);
+                if (diario) iaParams.push(`diario_id=${diario}`);
+                if (cat) iaParams.push(`categoria_id=${cat}`);
+                iaParams.push(`clasificado_por_ia=1`);
+                let iaUrl = "/api/links_list/";
+                if (iaParams.length > 0) iaUrl += `?${iaParams.join("&")}`;
+
+                try {
+                    const iaRes = await fetch(iaUrl);
+                    if (iaRes.ok) {
+                        const iaLinks = await iaRes.json();
+                        const linksMap = new Map(links.map(link => [link.id, link]));
+                        iaLinks.forEach(link => linksMap.set(link.id, link));
+                        links = Array.from(linksMap.values());
+                    }
+                } catch (iaError) {
+                    console.error("Error cargando links IA:", iaError);
+                }
+            }
+
+            linksGlobal = links
+                .filter(link => {
+                    if (rolUsuario === "redactor_ia") {
+                        return link.estado === "aprobado" || link.clasificado_por_ia === true;
+                    }
+                    return link.estado === "aprobado";
+                })
+                .sort((a, b) => {
+                    const fechaA = a.fecha_carga ? new Date(a.fecha_carga) : 0;
+                    const fechaB = b.fecha_carga ? new Date(b.fecha_carga) : 0;
+                    return fechaB - fechaA;
+                });
 
             if (linksGlobal.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">No hay links clasificados</td></tr>`;
@@ -1021,7 +1057,7 @@
             const tr = document.createElement("tr");
             tr.innerHTML = `
                 <td><img src="${link.diario_logo_url || '/static/img/default_logo.png'}" style="height:40px; max-width:60px"></td>
-                <td>${link.diario_nombre || 'Sin diario'}</td>
+                <td>${link.diario_nombre || 'Sin diario'} ${link.clasificado_por_ia ? '<span class="badge bg-info ms-2">IA</span>' : ''}</td>
                 <td><a href="${link.url}" target="_blank" onclick="marcarRevisadoRedactor(${link.id}, this)">${urlTexto}</a></td>
                 <td>${fechaCarga}</td>
                 <td>${categoriasBadges}</td>
