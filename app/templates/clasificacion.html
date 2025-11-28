@@ -27,12 +27,16 @@
 
 <h1 class="mb-4">Panel de Clasificación</h1>
 
+{% if puede_clasificar %}
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span>Links Pendientes</span>
         <span class="badge bg-primary" id="total-pendientes-count">0</span>
     </div>
     <div class="card-body">
+        <div class="d-flex justify-content-end mb-3">
+            <button class="btn btn-primary" onclick="enviarLinksAI()" id="btnEnviarAI" disabled>Enviar selección a IA</button>
+        </div>
         <div class="row mb-3">
             <div class="col">
                 <label>Desde:</label>
@@ -55,6 +59,9 @@
         <table class="table table-striped" id="tabla-links">
             <thead>
                 <tr>
+                    <th class="text-center" style="width: 48px;">
+                        <input type="checkbox" id="obs_select_all" class="form-check-input" onchange="toggleSeleccionTodos(this)" title="Seleccionar todos">
+                    </th>
                     <th>Diario</th>
                     <th>URL</th>
                     <th>Fecha</th>
@@ -75,18 +82,6 @@
                 <!-- La paginación se generará dinámicamente -->
             </ul>
         </nav>
-    </div>
-</div>
-
-<!-- Toast -->
-<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
-    <div id="liveToast" class="toast align-items-center text-bg-primary border-0" role="alert" aria-live="assertive"
-        aria-atomic="true">
-        <div class="d-flex">
-            <div class="toast-body" id="toastBody">Mensaje aquí</div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"
-                aria-label="Cerrar"></button>
-        </div>
     </div>
 </div>
 
@@ -157,16 +152,96 @@
         </nav>
     </div>
 </div>
+{% else %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Links cargados por Prensa</span>
+        <span class="badge bg-primary" id="total-observador-count">0</span>
+    </div>
+    <div class="card-body">
+        <div class="d-flex justify-content-end mb-3">
+            <button class="btn btn-primary" onclick="enviarLinksAI()" id="btnEnviarAI" disabled>Enviar selección a IA</button>
+        </div>
+        <div class="row mb-3">
+            <div class="col">
+                <label>Desde:</label>
+                <input type="date" id="obs_fecha_desde" class="form-control">
+            </div>
+            <div class="col">
+                <label>Hasta:</label>
+                <input type="date" id="obs_fecha_hasta" class="form-control">
+            </div>
+            <div class="col">
+                <label>Diario:</label>
+                <select id="obs_diario" class="form-select">
+                    <option value="">Todos</option>
+                </select>
+            </div>
+            <div class="col d-flex align-items-end">
+                <button class="btn btn-secondary w-100" onclick="cargarLinksObservador(1)">Filtrar</button>
+            </div>
+        </div>
+
+        <table class="table table-striped align-middle" id="tabla-observador">
+            <colgroup>
+                <col style="width:56px">
+                <col style="width:150px">
+                <col>
+                <col style="width:120px">
+                <col style="width:120px">
+                <col style="width:220px">
+            </colgroup>
+            <thead class="table-dark">
+                <tr>
+                    <th class="text-center">
+                        <input type="checkbox" id="obs_select_all" class="form-check-input" onchange="toggleSeleccionTodos(this)" title="Seleccionar todos">
+                    </th>
+                    <th>Diario</th>
+                    <th>URL</th>
+                    <th>Fecha</th>
+                    <th>Estado</th>
+                    <th>Categorías</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="6" class="text-center text-muted">Cargando…</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <nav aria-label="Paginación observador">
+            <ul class="pagination justify-content-center" id="pagination-observador"></ul>
+        </nav>
+    </div>
+</div>
+{% endif %}
+
+<!-- Toast -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div id="liveToast" class="toast align-items-center text-bg-primary border-0" role="alert" aria-live="assertive"
+        aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body" id="toastBody">Mensaje aquí</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"
+                aria-label="Cerrar"></button>
+        </div>
+    </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
     const puedeClasificar = {{ puede_clasificar|yesno:"true,false" }};
+    const esObservador = {{ es_observador|yesno:"true,false" }};
     const columnasPendientes = puedeClasificar ? 7 : 6;
     const columnasClasificados = puedeClasificar ? 6 : 5;
+    const columnasObservador = 6;
     let currentPagePendientes = 1;
     let currentPageClasificados = 1;
+    let currentPageObservador = 1;
+    const seleccionObservador = esObservador ? new Set() : null;
     const itemsPerPage = 10;
 
     function mostrarToast(mensaje, tipo = 'primary') {
@@ -228,8 +303,13 @@
         paginationContainer.innerHTML = paginationHTML;
     }
 
-    async function cargarDiarios() {
-        const selects = [document.getElementById("diario"), document.getElementById("clasif_diario")];
+    async function cargarDiarios(selectIds = ["diario", "clasif_diario"]) {
+        const selects = selectIds
+            .map(id => document.getElementById(id))
+            .filter(Boolean);
+        if (!selects.length) {
+            return;
+        }
         try {
             const res = await fetch("/api/diarios/");
             const diarios = await res.json();
@@ -330,6 +410,151 @@
             tabla.innerHTML = `<tr><td colspan="${columnasPendientes}" class="text-center text-danger">Error al cargar los datos</td></tr>`;
             mostrarToast("Error al cargar los links", "danger");
         }
+    }
+
+    async function cargarLinksObservador(page = 1) {
+        currentPageObservador = page;
+        const tabla = document.querySelector("#tabla-observador tbody");
+        if (!tabla) return;
+        tabla.innerHTML = `<tr><td colspan="${columnasObservador}" class="text-center"><div class="spinner-border spinner-border-sm"></div> Cargando...</td></tr>`;
+
+        const desde = document.getElementById("obs_fecha_desde").value;
+        const hasta = document.getElementById("obs_fecha_hasta").value;
+        const diarioId = document.getElementById("obs_diario").value;
+
+        let url = "/api/links_list/";
+        const params = ["solo_prensa=1", "estado=pendiente", "solo_no_revisados=1"];
+        if (desde) params.push(`fecha_inicio=${desde}`);
+        if (hasta) params.push(`fecha_fin=${hasta}`);
+        if (diarioId) params.push(`diario_id=${diarioId}`);
+
+        if (params.length > 0) url += `?${params.join('&')}`;
+
+        try {
+            const res = await fetch(url);
+            const links = await res.json();
+
+            document.getElementById('total-observador-count').textContent = links.length;
+
+            if (links.length === 0) {
+                tabla.innerHTML = `<tr><td colspan="${columnasObservador}" class="text-center">No hay links registrados</td></tr>`;
+                document.getElementById('pagination-observador').innerHTML = '';
+                return;
+            }
+
+            const startIndex = (page - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const paginatedLinks = links.slice(startIndex, endIndex);
+            tabla.innerHTML = "";
+
+            paginatedLinks.forEach(link => {
+                seleccionObservador.delete(link.id);
+                let badge = '';
+                switch (link.estado) {
+                    case 'pendiente':
+                        badge = `<span class="badge bg-warning text-dark">Pendiente</span>`;
+                        break;
+                    case 'aprobado':
+                        badge = `<span class="badge bg-success">Aprobado</span>`;
+                        break;
+                    case 'descartado':
+                        badge = `<span class="badge bg-danger">Descartado</span>`;
+                        break;
+                }
+
+                const categoriasBadges = Array.isArray(link.categorias_info)
+                    ? link.categorias_info.map(cat => `<span class="badge bg-secondary me-1">${cat.nombre}</span>`).join("")
+                    : "-";
+                const diarioLogo = link.diario_logo_url || '/static/img/default_logo.png';
+
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td class="text-center align-middle">
+                        <input type="checkbox" class="form-check-input obs-checkbox" data-id="${link.id}" onchange="toggleSeleccionIndividual(${link.id}, this.checked)">
+                    </td>
+                    <td class="align-middle">
+                        <div class="d-flex align-items-center gap-2">
+                            <img src="${diarioLogo}" alt="logo" style="height:32px; width:auto;">
+                            <span>${link.diario_nombre || "Sin diario"}</span>
+                        </div>
+                    </td>
+                    <td class="align-middle">
+                        <a href="${link.url}" target="_blank" rel="noopener">
+                            ${link.url.length > 70 ? link.url.slice(0, 70) + '…' : link.url}
+                        </a>
+                    </td>
+                    <td class="align-middle">${new Date(link.fecha_carga).toLocaleDateString()}</td>
+                    <td class="align-middle">${badge}</td>
+                    <td class="align-middle">${categoriasBadges}</td>
+                `;
+                tabla.appendChild(row);
+            });
+
+            const selectAll = document.getElementById('obs_select_all');
+            if (selectAll) {
+                selectAll.checked = false;
+            }
+            actualizarBotonIA();
+            generarPaginacion(links.length, page, 'pagination-observador', 'cargarLinksObservador');
+        } catch (error) {
+            console.error("Error cargando links observador:", error);
+            tabla.innerHTML = `<tr><td colspan="${columnasObservador}" class="text-center text-danger">Error al cargar los datos</td></tr>`;
+            mostrarToast("Error al cargar los links", "danger");
+        }
+    }
+
+    function toggleSeleccionIndividual(id, marcado) {
+        if (!seleccionObservador) return;
+        if (marcado) {
+            seleccionObservador.add(id);
+        } else {
+            seleccionObservador.delete(id);
+            const selectAll = document.getElementById('obs_select_all');
+            if (selectAll) {
+                selectAll.checked = false;
+            }
+        }
+        actualizarBotonIA();
+    }
+
+    function toggleSeleccionTodos(checkbox) {
+        if (!seleccionObservador) return;
+        const checkboxes = document.querySelectorAll('.obs-checkbox');
+        seleccionObservador.clear();
+        checkboxes.forEach(cb => {
+            cb.checked = checkbox.checked;
+            if (checkbox.checked) {
+                seleccionObservador.add(parseInt(cb.dataset.id));
+            }
+        });
+        actualizarBotonIA();
+    }
+
+    function actualizarBotonIA() {
+        if (!seleccionObservador) return;
+        const btn = document.getElementById('btnEnviarAI');
+        if (btn) {
+            btn.disabled = seleccionObservador.size === 0;
+        }
+    }
+
+    function enviarLinksAI() {
+        if (!seleccionObservador) return;
+        if (seleccionObservador.size === 0) {
+            mostrarToast("Seleccioná al menos un link", "warning");
+            return;
+        }
+        // Placeholder para futura integración con IA
+        console.log("Links seleccionados para IA:", Array.from(seleccionObservador));
+        mostrarToast("Links enviados para análisis (pendiente integración IA)", "success");
+        seleccionObservador.clear();
+        const checkboxes = document.querySelectorAll('.obs-checkbox');
+        checkboxes.forEach(cb => (cb.checked = false));
+        const selectAll = document.getElementById('obs_select_all');
+        if (selectAll) {
+            selectAll.checked = false;
+        }
+        actualizarBotonIA();
     }
 
     async function marcarRevisado(id) {
@@ -569,10 +794,15 @@
     }
 
     document.addEventListener("DOMContentLoaded", () => {
-        cargarDiarios();
-        cargarCategoriasClasif();
-        cargarLinks(1);
-        cargarLinksClasificados(1);
+        if (puedeClasificar) {
+            cargarDiarios();
+            cargarCategoriasClasif();
+            cargarLinks(1);
+            cargarLinksClasificados(1);
+        } else if (esObservador) {
+            cargarDiarios(["obs_diario"]);
+            cargarLinksObservador(1);
+        }
     });
 </script>
 

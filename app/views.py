@@ -1324,10 +1324,15 @@ def clasificacion_view(request):
     if rol in [Roles.CLASIFICACION, Roles.ADMIN, Roles.OBSERVADOR]:
         categorias = Categoria.objects.all()
         puede_clasificar = rol in [Roles.CLASIFICACION, Roles.ADMIN]
+        es_observador = rol == Roles.OBSERVADOR
         return render(
             request,
             "clasificacion.html",
-            {"categorias": categorias, "puede_clasificar": puede_clasificar},
+            {
+                "categorias": categorias,
+                "puede_clasificar": puede_clasificar,
+                "es_observador": es_observador,
+            },
         )
     return render(request, "403.html", status=403)
 
@@ -1590,16 +1595,17 @@ class LinkRelevanteViewSet(viewsets.ModelViewSet):
             rol = user.userprofile.rol
             if rol == Roles.PRENSA:
                 queryset = queryset.filter(cargado_por=user)
-            # Los roles CLIENTE e INFORMES no deberían usar esta API a menos que sea necesario
-            # para ver links aprobados. 
             elif rol in [Roles.CLIENTE, Roles.INFORMES]:
-                queryset = queryset.filter(estado='aprobado') 
+                queryset = queryset.filter(estado="aprobado")
+            elif rol == Roles.OBSERVADOR:
+                queryset = queryset.filter(
+                    cargado_por__userprofile__rol=Roles.PRENSA
+                )
             elif rol in [
                 Roles.CLASIFICACION,
                 Roles.REDACCION,
                 Roles.GERENCIA,
                 Roles.ADMIN,
-                Roles.OBSERVADOR,
             ]:
                 pass  # pueden ver todos los links
 
@@ -2213,10 +2219,17 @@ def api_links_list(request):
         estado = request.GET.get('estado')
         categoria_id = request.GET.get('categoria_id')
         solo_propios = request.GET.get('solo_propios')
+        solo_no_revisados = request.GET.get('solo_no_revisados')
         fuente = request.GET.get('fuente')
         red_social_id = request.GET.get('red_social_id')
         tv_digital_id = request.GET.get('tv_digital_id')
         radio_digital_id = request.GET.get('radio_digital_id')
+        solo_prensa = request.GET.get('solo_prensa')
+        rol_usuario = getattr(getattr(request.user, "userprofile", None), "rol", None)
+        filtrar_prensa = (
+            solo_prensa in ("1", "true", "True")
+            or rol_usuario == Roles.OBSERVADOR
+        )
 
         data = []
 
@@ -2239,6 +2252,10 @@ def api_links_list(request):
                 links = links.filter(red_social__id=red_social_id)
             if solo_propios:
                 links = links.filter(cargado_por=request.user)
+            if filtrar_prensa:
+                links = links.filter(cargado_por__userprofile__rol=Roles.PRENSA)
+            if solo_no_revisados:
+                links = links.filter(revisado_clasificador=False)
 
             for link in links:
                 data.append({
@@ -2277,6 +2294,10 @@ def api_links_list(request):
                 links = links.filter(tv_digital__id=tv_digital_id)
             if solo_propios:
                 links = links.filter(cargado_por=request.user)
+            if filtrar_prensa:
+                links = links.filter(cargado_por__userprofile__rol=Roles.PRENSA)
+            if solo_no_revisados:
+                links = links.filter(revisado_clasificador=False)
 
             for link in links:
                 data.append({
@@ -2318,6 +2339,10 @@ def api_links_list(request):
                 links = links.filter(radio_digital__id=radio_digital_id)
             if solo_propios:
                 links = links.filter(cargado_por=request.user)
+            if filtrar_prensa:
+                links = links.filter(cargado_por__userprofile__rol=Roles.PRENSA)
+            if solo_no_revisados:
+                links = links.filter(revisado_clasificador=False)
 
             for link in links:
                 data.append({
@@ -2360,6 +2385,10 @@ def api_links_list(request):
                 links = links.filter(categorias__id=categoria_id)
             if solo_propios:
                 links = links.filter(cargado_por=request.user)
+            if filtrar_prensa:
+                links = links.filter(cargado_por__userprofile__rol=Roles.PRENSA)
+            if solo_no_revisados:
+                links = links.filter(revisado_clasificador=False)
 
             for link in links:
                 data.append({

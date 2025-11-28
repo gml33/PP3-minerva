@@ -110,6 +110,9 @@ class LinkRelevanteSerializer(serializers.ModelSerializer):
             "revisado_clasificador",
             "revisado_editor",
             "revisado_redactor",
+            "clasificado_por_ia",
+            "confianza_clasificacion",
+            "resumen_ia",
         ]
         read_only_fields = [
             "fecha_carga",

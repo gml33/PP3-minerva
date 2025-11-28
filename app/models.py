@@ -188,6 +188,11 @@ class LinkRelevante(models.Model):
     revisado_clasificador = models.BooleanField(default=False)
     revisado_editor = models.BooleanField(default=False)
     revisado_redactor = models.BooleanField(default=False)
+    clasificado_por_ia = models.BooleanField(default=False)
+    confianza_clasificacion = models.DecimalField(
+        max_digits=5, decimal_places=2, null=True, blank=True
+    )
+    resumen_ia = models.TextField(blank=True)
 
     class Meta:
         verbose_name_plural = "Links Relevantes"
