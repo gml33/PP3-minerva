@@ -22,7 +22,14 @@ AI_CLASSIFICATION_PROMPT = os.getenv(
         '{"categorias": ["categoria 1", "categoria 2"], '
         '"resumen": "Resumen conciso en español (máximo 100 palabras).", '
         '"confianza": 0.0}. '
-        "Las categorías disponibles son: {categorias}. Si no encaja exactamente, elegí la más cercana "
+        "Las categorías disponibles son: {categorias}. En particular, la categoría 'Individualización' corresponde a "
+        "hechos delictivos en los que se identifica a una persona concreta como autora e incluye datos del hecho "
+        "(por ejemplo fecha, lugar y nombres de los involucrados). Si el artículo describe un hecho con estos datos, "
+        "debe incluir 'Individualización' dentro de las categorías. La categoría 'Bandas criminales' se usa para notas "
+        "donde se mencione explícitamente a una banda criminal o la pertenencia de un individuo a una de ellas. "
+        "La categoría 'Homicidios' se asigna cuando el hecho tratado sea específicamente un homicidio y no exista "
+        "información de autores o bandas; si se aportan esos datos priorizá 'Individualización' o 'Bandas criminales'. "
+        "Si no encaja exactamente, elegí la categoría más cercana "
         "y no inventes otras nuevas. La confianza debe ser un número entre 0 y 1. Ahora analizá el siguiente contenido:\n"
     ),
 )
