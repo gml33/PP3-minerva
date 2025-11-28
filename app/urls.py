@@ -2,11 +2,6 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from django.shortcuts import redirect
 from rest_framework.authtoken.views import obtain_auth_token
-<<<<<<< HEAD
-from django.urls import path
-from . import views
-=======
->>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
 
 from .views import (
     UserViewSet,
@@ -46,6 +41,7 @@ from .views import (
     informes_crear_view,
     eliminar_informe_view,
     api_detalle_informe,
+    api_detalle_banda,
     consulta_informes_view,
     eliminar_diario,
     editar_diario,
@@ -55,10 +51,12 @@ from .views import (
     crear_categoria,
     configuraciones,
     exportar_informe_pdf,
+    exportar_banda_pdf,
     lista_links,
     api_links,
     hechos_delictivos_view,
     bandas_criminales_view,
+    consulta_bandas_view,
     exportar_links_relevantes,
     solicitud_info_portal_view,
     solicitud_info_portal_detalle_view,
@@ -313,7 +311,8 @@ urlpatterns = [
     ),
     path("informes/<int:id>/eliminar/", eliminar_informe_view, name="eliminar_informe"),
     path("informes/editar/<int:id>/", editar_individuo_view, name="editar_individuo"),
-    path("informes/consulta/", consulta_informes_view, name="consulta_informes"),
+    path("consulta/informes/", consulta_informes_view, name="consulta_informes"),
+    path("consulta/bandas/", consulta_bandas_view, name="consulta_bandas"),
     path("configuraciones/", configuraciones, name="configuraciones"),
     # Categorías
     path("configuraciones/categoria/crear/", crear_categoria, name="crear_categoria"),
@@ -387,18 +386,10 @@ urlpatterns = [
         exportar_articulo_pdf,
         name="exportar_articulo_pdf",
     ),
-<<<<<<< HEAD
-      # Consultas para cliente1
-    path('consulta/informes/', views.consulta_informes_view, name='consulta_informes'),
-    path('consulta/bandas/', views.consulta_bandas_view, name='consulta_bandas'),
-    
-    # APIs para detalle
-    path('api/informes/<int:id>/detalle/', views.api_detalle_informe, name='api_detalle_informe'),
-    path('api/bandas/<int:id>/detalle/', views.api_detalle_banda, name='api_detalle_banda'),
-    
-    # Exportaciones PDF
-    path('exportar/informe/<int:informe_id>/pdf/', views.exportar_informe_pdf, name='exportar_informe_pdf'),
-    path('exportar/banda/<int:banda_id>/pdf/', views.exportar_banda_pdf, name='exportar_banda_pdf')
-=======
->>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
+    path("api/bandas/<int:id>/detalle/", api_detalle_banda, name="api_detalle_banda"),
+    path(
+        "exportar/banda/<int:banda_id>/pdf/",
+        exportar_banda_pdf,
+        name="exportar_banda_pdf",
+    ),
 ]

@@ -61,7 +61,9 @@
                     <th>Estado</th>
                     <th>Revisado</th>
                     <th>Categorías</th>
+                    {% if puede_clasificar %}
                     <th>Acción</th>
+                    {% endif %}
                 </tr>
             </thead>
             <tbody></tbody>
@@ -139,7 +141,9 @@
                     <th>Fecha</th>
                     <th>Estado</th>
                     <th>Categorías</th>
+                    {% if puede_clasificar %}
                     <th>Acción</th>
+                    {% endif %}
                 </tr>
             </thead>
             <tbody></tbody>
@@ -158,6 +162,9 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
+    const puedeClasificar = {{ puede_clasificar|yesno:"true,false" }};
+    const columnasPendientes = puedeClasificar ? 7 : 6;
+    const columnasClasificados = puedeClasificar ? 6 : 5;
     let currentPagePendientes = 1;
     let currentPageClasificados = 1;
     const itemsPerPage = 10;
@@ -243,7 +250,7 @@
     async function cargarLinks(page = 1) {
         currentPagePendientes = page;
         const tabla = document.querySelector("#tabla-links tbody");
-        tabla.innerHTML = '<tr><td colspan="7" class="text-center"><div class="spinner-border spinner-border-sm"></div> Cargando...</td></tr>';
+        tabla.innerHTML = `<tr><td colspan="${columnasPendientes}" class="text-center"><div class="spinner-border spinner-border-sm"></div> Cargando...</td></tr>`;
 
         const desde = document.getElementById("fecha_desde").value;
         const hasta = document.getElementById("fecha_hasta").value;
@@ -268,7 +275,7 @@
             document.getElementById('total-pendientes-count').textContent = links.length;
 
             if (links.length === 0) {
-                tabla.innerHTML = `<tr><td colspan="7" class="text-center">No hay links pendientes</td></tr>`;
+                tabla.innerHTML = `<tr><td colspan="${columnasPendientes}" class="text-center">No hay links pendientes</td></tr>`;
                 document.getElementById('pagination-pendientes').innerHTML = '';
                 return;
             }
@@ -296,17 +303,21 @@
                     : "-";
 
                 const deshabilitarClasificar = !link.revisado_clasificador ? 'disabled' : '';
+                const revisarOnClick = puedeClasificar ? ` onclick="marcarRevisado(${link.id})"` : '';
+                const accionColumna = puedeClasificar
+                    ? `<td><button class="btn btn-sm btn-primary" onclick="abrirModalClasificar(${link.id})" ${deshabilitarClasificar}>Clasificar</button></td>`
+                    : '';
 
                 const row = document.createElement("tr");
                 row.innerHTML = `
                     <td><img src="${diarioLogo}" alt="logo" style="height:40px; max-width:60px;"></td>
-                    <td><a href="${link.url}" target="_blank" onclick="marcarRevisado(${link.id})">
+                    <td><a href="${link.url}" target="_blank"${revisarOnClick}>
                         ${link.url.length > 50 ? link.url.slice(0, 50) + '…' : link.url}</a></td>
                     <td>${new Date(link.fecha_carga).toLocaleDateString()}</td>
                     <td>${badge}</td>
                     <td>${revisado}</td>
                     <td>${categoriasBadges}</td>
-                    <td><button class="btn btn-sm btn-primary" onclick="abrirModalClasificar(${link.id})" ${deshabilitarClasificar}>Clasificar</button></td>
+                    ${accionColumna}
                 `;
                 tabla.appendChild(row);
             });
@@ -316,12 +327,16 @@
 
         } catch (error) {
             console.error("Error cargando links:", error);
-            tabla.innerHTML = `<tr><td colspan="7" class="text-center text-danger">Error al cargar los datos</td></tr>`;
+            tabla.innerHTML = `<tr><td colspan="${columnasPendientes}" class="text-center text-danger">Error al cargar los datos</td></tr>`;
             mostrarToast("Error al cargar los links", "danger");
         }
     }
 
     async function marcarRevisado(id) {
+        if (!puedeClasificar) {
+            mostrarToast("No tenés permisos para actualizar links", "warning");
+            return;
+        }
         try {
             const res = await fetch(`/api/links/${id}/`, {
                 method: "PATCH",
@@ -342,6 +357,10 @@
     }
 
     async function abrirModalClasificar(id) {
+        if (!puedeClasificar) {
+            mostrarToast("No tenés permisos para clasificar", "warning");
+            return;
+        }
         try {
             // Traemos primero las categorías actuales del link
             const resLink = await fetch(`/api/links/${id}/`);
@@ -405,6 +424,10 @@
     }
 
     async function actualizarLink(id, categorias, estado) {
+        if (!puedeClasificar) {
+            mostrarToast("No tenés permisos para clasificar", "warning");
+            return;
+        }
         try {
             const res = await fetch(`/api/links/${id}/`, {
                 method: "PATCH",
@@ -445,7 +468,7 @@
     async function cargarLinksClasificados(page = 1) {
         currentPageClasificados = page;
         const tabla = document.querySelector("#tabla-clasificados tbody");
-        tabla.innerHTML = '<tr><td colspan="6" class="text-center"><div class="spinner-border spinner-border-sm"></div> Cargando...</td></tr>';
+        tabla.innerHTML = `<tr><td colspan="${columnasClasificados}" class="text-center"><div class="spinner-border spinner-border-sm"></div> Cargando...</td></tr>`;
 
         const desde = document.getElementById("clasif_fecha_desde").value;
         const hasta = document.getElementById("clasif_fecha_hasta").value;
@@ -477,7 +500,7 @@
             document.getElementById('total-clasificados-count').textContent = clasificados.length;
 
             if (clasificados.length === 0) {
-                tabla.innerHTML = `<tr><td colspan="6" class="text-center">No hay links clasificados</td></tr>`;
+                tabla.innerHTML = `<tr><td colspan="${columnasClasificados}" class="text-center">No hay links clasificados</td></tr>`;
                 document.getElementById('pagination-clasificados').innerHTML = '';
                 return;
             }
@@ -502,6 +525,9 @@
                     : "-";
 
                 const diarioLogo = link.diario_logo_url || '/static/img/default_logo.png';
+                const accionColumna = puedeClasificar
+                    ? `<td><button class="btn btn-sm btn-warning" onclick="abrirModalClasificar(${link.id})">Reclasificar</button></td>`
+                    : '';
 
                 const row = document.createElement("tr");
                 row.innerHTML = `
@@ -510,7 +536,7 @@
                     <td>${new Date(link.fecha_carga).toLocaleDateString()}</td>
                     <td>${badge}</td>
                     <td>${categoriasBadges}</td>
-                    <td><button class="btn btn-sm btn-warning" onclick="abrirModalClasificar(${link.id})">Reclasificar</button></td>
+                    ${accionColumna}
                 `;
                 tabla.appendChild(row);
             });
@@ -520,7 +546,7 @@
 
         } catch (error) {
             console.error("Error cargando links clasificados:", error);
-            tabla.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Error al cargar los datos</td></tr>`;
+            tabla.innerHTML = `<tr><td colspan="${columnasClasificados}" class="text-center text-danger">Error al cargar los datos</td></tr>`;
             mostrarToast("Error al cargar links clasificados", "danger");
         }
     }

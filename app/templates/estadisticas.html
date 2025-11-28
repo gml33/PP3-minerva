@@ -377,11 +377,7 @@
         </div>
     </div>
     <div class="col-md-4 col-sm-6">
-<<<<<<< HEAD
         <div class="stat-card bg-purple text-white" style="background:#7c3aed;">
-=======
-        <div class="stat-card bg-purple text-white">
->>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
             <span>Hechos delictivos</span>
             <strong>{{ resumen.total_hechos|default:0 }}</strong>
         </div>
@@ -506,8 +502,6 @@
     </div>
 {% endif %}
 
-<<<<<<< HEAD
-=======
 <hr class="my-5">
 
 <h2 class="mb-3 text-center text-uppercase">Estadísticas del equipo de informes</h2>
@@ -652,7 +646,6 @@
     </div>
 {% endif %}
 
->>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
 <style>
     .stat-card {
         border-radius: .75rem;
@@ -709,20 +702,14 @@
         color: #0f172a;
         border-bottom: 1px solid #e2e8f0;
     }
-<<<<<<< HEAD
-=======
     .bg-purple { background: #7c3aed !important; }
->>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
 </style>
 
 {{ estadisticas|json_script:"stats-data" }}
 {{ datos_globales|json_script:"global-data" }}
 {{ clasificacion|json_script:"clasificacion-data" }}
 {{ redaccion|json_script:"redaccion-data" }}
-<<<<<<< HEAD
-=======
 {{ informes|json_script:"informes-data" }}
->>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script>
@@ -730,10 +717,7 @@
     const globalData = JSON.parse(document.getElementById("global-data").textContent || "{}");
     const clasificacionData = JSON.parse(document.getElementById("clasificacion-data").textContent || "{}");
     const redaccionData = JSON.parse(document.getElementById("redaccion-data").textContent || "{}");
-<<<<<<< HEAD
-=======
     const informesData = JSON.parse(document.getElementById("informes-data").textContent || "{}");
->>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
 
     const chartColors = [
         "#2563eb",
@@ -1031,8 +1015,6 @@
         );
     };
 
-<<<<<<< HEAD
-=======
     const renderInformesBar = (dataset, canvasId, emptyId, title) => {
         if (!dataset || !dataset.length) {
             showFallback(emptyId);
@@ -1077,8 +1059,7 @@
         }
         renderDonut("chartInformesCategorias", "chartInformesCategoriasEmpty", categorias);
     };
-
->>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
+    
     document.addEventListener("DOMContentLoaded", () => {
         renderBarTotales();
         renderBarAprobados();
@@ -1106,8 +1087,6 @@
             "Links por artículo"
         );
         renderRedaccionResumen();
-<<<<<<< HEAD
-=======
         renderInformesBar(
             informesData.global ? informesData.global.informes : [],
             "chartInformesUsuarios",
@@ -1121,7 +1100,6 @@
             "Promedio de artículos"
         );
         renderInformesCategorias();
->>>>>>> 2b2d3944a467283ec855f2e3823725e4701e7693
     });
 </script>
 {% endblock %}

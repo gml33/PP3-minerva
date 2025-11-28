@@ -14,6 +14,7 @@ class Roles(models.TextChoices):
     INFORMES = "informes", "Encargado de Informes"
     GERENCIA = "gerente", "Encargado de gerencia"
     GERENTE_PRODUCCION = "gerente_produccion", "Gerente de Producción"
+    OBSERVADOR = "observador", "Observador"
     CLIENTE = "Cliente", "Cliente"
 
 
