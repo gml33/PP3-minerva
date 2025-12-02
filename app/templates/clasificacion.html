@@ -150,7 +150,7 @@
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span>Links cargados por Prensa</span>
-        <span class="badge bg-primary" id="total-observador-count">0</span>
+        <span class="badge bg-primary" id="total-clasificadorIA-count">0</span>
     </div>
     <div class="card-body">
         <div class="d-flex justify-content-end mb-3">
@@ -172,11 +172,11 @@
                 </select>
             </div>
             <div class="col d-flex align-items-end">
-                <button class="btn btn-secondary w-100" onclick="cargarLinksObservador(1)">Filtrar</button>
+                <button class="btn btn-secondary w-100" onclick="cargarLinksClasificadorIA(1)">Filtrar</button>
             </div>
         </div>
 
-        <table class="table table-striped align-middle" id="tabla-observador">
+        <table class="table table-striped align-middle" id="tabla-clasificadorIA">
             <colgroup>
                 <col style="width:56px">
                 <col style="width:150px">
@@ -187,7 +187,7 @@
             <thead class="table-dark">
                 <tr>
                     <th class="text-center">
-                        <input type="checkbox" id="obs_select_all" class="form-check-input" onchange="toggleSeleccionTodos(this)" title="Seleccionar todos">
+                        <input type="checkbox" id="obs_select_all" class="form-check-input" onchange="toggleSeleccionTodosClasificadorIA(this)" title="Seleccionar todos">
                     </th>
                     <th>Diario</th>
                     <th>URL</th>
@@ -202,8 +202,8 @@
             </tbody>
         </table>
 
-        <nav aria-label="Paginación observador">
-            <ul class="pagination justify-content-center" id="pagination-observador"></ul>
+        <nav aria-label="Paginación Clasificador IA">
+            <ul class="pagination justify-content-center" id="pagination-clasificadorIA"></ul>
         </nav>
     </div>
 </div>
@@ -290,16 +290,16 @@
 
 <script>
     const puedeClasificar = {{ puede_clasificar|yesno:"true,false" }};
-    const esObservador = {{ es_observador|yesno:"true,false" }};
+    const esClasificadorIA = {{ es_clasificador_ia|yesno:"true,false" }};
     const columnasPendientes = puedeClasificar ? 7 : 6;
     const columnasClasificados = puedeClasificar ? 6 : 5;
-    const columnasObservador = 5;
+    const columnasClasificadorIA = 5;
     const columnasIA = 6;
     let currentPagePendientes = 1;
     let currentPageClasificados = 1;
-    let currentPageObservador = 1;
+    let currentPageClasificadorIA = 1;
     let currentPageIA = 1;
-    const seleccionObservador = esObservador ? new Set() : null;
+    const seleccionClasificadorIA = esClasificadorIA ? new Set() : null;
     const itemsPerPage = 10;
 
     function escapeHtml(text) {
@@ -389,7 +389,7 @@
                       }).join("")
                     : "-";
                 const resumenCompleto = (link.resumen_ia || "Sin resumen generado.").trim();
-                const resumenMaxLength = esObservador ? 18 : 120;
+                const resumenMaxLength = esClasificadorIA ? 18 : 120;
                 const resumenTruncado = resumenCompleto.length > resumenMaxLength
                     ? `${resumenCompleto.slice(0, resumenMaxLength)}…`
                     : resumenCompleto;
@@ -590,11 +590,11 @@
         }
     }
 
-    async function cargarLinksObservador(page = 1) {
-        currentPageObservador = page;
-        const tabla = document.querySelector("#tabla-observador tbody");
+    async function cargarLinksClasificadorIA(page = 1) {
+        currentPageClasificadorIA = page;
+        const tabla = document.querySelector("#tabla-clasificadorIA tbody");
         if (!tabla) return;
-        tabla.innerHTML = `<tr><td colspan="${columnasObservador}" class="text-center"><div class="spinner-border spinner-border-sm"></div> Cargando...</td></tr>`;
+        tabla.innerHTML = `<tr><td colspan="${columnasClasificadorIA}" class="text-center"><div class="spinner-border spinner-border-sm"></div> Cargando...</td></tr>`;
 
         const desde = document.getElementById("obs_fecha_desde").value;
         const hasta = document.getElementById("obs_fecha_hasta").value;
@@ -612,11 +612,11 @@
             const res = await fetch(url);
             const links = await res.json();
 
-            document.getElementById('total-observador-count').textContent = links.length;
+            document.getElementById('total-clasificadorIA-count').textContent = links.length;
 
             if (links.length === 0) {
-                tabla.innerHTML = `<tr><td colspan="${columnasObservador}" class="text-center">No hay links registrados</td></tr>`;
-                document.getElementById('pagination-observador').innerHTML = '';
+                tabla.innerHTML = `<tr><td colspan="${columnasClasificadorIA}" class="text-center">No hay links registrados</td></tr>`;
+                document.getElementById('pagination-clasificadorIA').innerHTML = '';
                 return;
             }
 
@@ -626,7 +626,7 @@
             tabla.innerHTML = "";
 
             paginatedLinks.forEach(link => {
-                seleccionObservador.delete(link.id);
+                seleccionClasificadorIA.delete(link.id);
                 let badge = '';
                 switch (link.estado) {
                     case 'pendiente':
@@ -645,7 +645,7 @@
                 const row = document.createElement("tr");
                 row.innerHTML = `
                     <td class="text-center align-middle">
-                        <input type="checkbox" class="form-check-input obs-checkbox" data-id="${link.id}" onchange="toggleSeleccionIndividual(${link.id}, this.checked)">
+                        <input type="checkbox" class="form-check-input obs-checkbox" data-id="${link.id}" onchange="toggleSeleccionIndividualClasificadorIA(${link.id}, this.checked)">
                     </td>
                     <td class="align-middle">
                         <div class="d-flex align-items-center gap-2">
@@ -669,20 +669,20 @@
                 selectAll.checked = false;
             }
             actualizarBotonIA();
-            generarPaginacion(links.length, page, 'pagination-observador', 'cargarLinksObservador');
+            generarPaginacion(links.length, page, 'pagination-clasificadorIA', 'cargarLinksClasificadorIA');
         } catch (error) {
-            console.error("Error cargando links observador:", error);
-            tabla.innerHTML = `<tr><td colspan="${columnasObservador}" class="text-center text-danger">Error al cargar los datos</td></tr>`;
+            console.error("Error cargando links clasificador IA:", error);
+            tabla.innerHTML = `<tr><td colspan="${columnasClasificadorIA}" class="text-center text-danger">Error al cargar los datos</td></tr>`;
             mostrarToast("Error al cargar los links", "danger");
         }
     }
 
-    function toggleSeleccionIndividual(id, marcado) {
-        if (!seleccionObservador) return;
+    function toggleSeleccionIndividualClasificadorIA(id, marcado) {
+        if (!seleccionClasificadorIA) return;
         if (marcado) {
-            seleccionObservador.add(id);
+            seleccionClasificadorIA.add(id);
         } else {
-            seleccionObservador.delete(id);
+            seleccionClasificadorIA.delete(id);
             const selectAll = document.getElementById('obs_select_all');
             if (selectAll) {
                 selectAll.checked = false;
@@ -691,35 +691,35 @@
         actualizarBotonIA();
     }
 
-    function toggleSeleccionTodos(checkbox) {
-        if (!seleccionObservador) return;
+    function toggleSeleccionTodosClasificadorIA(checkbox) {
+        if (!seleccionClasificadorIA) return;
         const checkboxes = document.querySelectorAll('.obs-checkbox');
-        seleccionObservador.clear();
+        seleccionClasificadorIA.clear();
         checkboxes.forEach(cb => {
             cb.checked = checkbox.checked;
             if (checkbox.checked) {
-                seleccionObservador.add(parseInt(cb.dataset.id));
+                seleccionClasificadorIA.add(parseInt(cb.dataset.id));
             }
         });
         actualizarBotonIA();
     }
 
     function actualizarBotonIA() {
-        if (!seleccionObservador) return;
+        if (!seleccionClasificadorIA) return;
         const btn = document.getElementById('btnEnviarAI');
         if (btn) {
-            btn.disabled = seleccionObservador.size === 0;
+            btn.disabled = seleccionClasificadorIA.size === 0;
         }
     }
 
     async function enviarLinksAI() {
-        if (!seleccionObservador) return;
-        if (seleccionObservador.size === 0) {
+        if (!seleccionClasificadorIA) return;
+        if (seleccionClasificadorIA.size === 0) {
             mostrarToast("Seleccioná al menos un link", "warning");
             return;
         }
 
-        const ids = Array.from(seleccionObservador);
+        const ids = Array.from(seleccionClasificadorIA);
         const btn = document.getElementById('btnEnviarAI');
         const originalText = btn ? btn.textContent : "";
         if (btn) {
@@ -752,7 +752,7 @@
                 mostrarToast("Algunos links no pudieron procesarse con IA.", "warning");
             }
 
-            seleccionObservador.clear();
+            seleccionClasificadorIA.clear();
             const checkboxes = document.querySelectorAll('.obs-checkbox');
             checkboxes.forEach(cb => (cb.checked = false));
             const selectAll = document.getElementById('obs_select_all');
@@ -760,7 +760,7 @@
                 selectAll.checked = false;
             }
             actualizarBotonIA();
-            cargarLinksObservador(currentPageObservador);
+            cargarLinksClasificadorIA(currentPageClasificadorIA);
             cargarLinksIA(currentPageIA);
         } catch (error) {
             console.error("Error enviando a IA:", error);
@@ -768,7 +768,7 @@
         } finally {
             if (btn) {
                 btn.textContent = originalText || "Enviar selección a IA";
-                btn.disabled = seleccionObservador.size === 0;
+                btn.disabled = seleccionClasificadorIA.size === 0;
             }
         }
     }
@@ -1023,10 +1023,10 @@
             cargarLinks(1);
             cargarLinksClasificados(1);
             cargarLinksIA(1);
-        } else if (esObservador) {
+        } else if (esClasificadorIA) {
             cargarDiarios(["obs_diario", "ia_diario"]);
             cargarCategorias(["ia_categoria"]);
-            cargarLinksObservador(1);
+            cargarLinksClasificadorIA(1);
             cargarLinksIA(1);
         }
     });

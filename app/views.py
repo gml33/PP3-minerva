@@ -167,7 +167,7 @@ def login_view(request):
                 return redirect("prensa")
             elif rol == Roles.CLASIFICACION:
                 return redirect("clasificacion")
-            elif rol == Roles.OBSERVADOR:
+            elif rol == Roles.CLASIFICADOR_IA:
                 return redirect("clasificacion")
             elif rol in [Roles.REDACCION, Roles.REDACTOR_IA]:
                 return redirect("redaccion")
@@ -1324,17 +1324,17 @@ def solicitud_info_detalle_view(request, pk):
 @login_required
 def clasificacion_view(request):
     rol = request.user.userprofile.rol
-    if rol in [Roles.CLASIFICACION, Roles.ADMIN, Roles.OBSERVADOR]:
+    if rol in [Roles.CLASIFICACION, Roles.ADMIN, Roles.CLASIFICADOR_IA]:
         categorias = Categoria.objects.all()
         puede_clasificar = rol in [Roles.CLASIFICACION, Roles.ADMIN]
-        es_observador = rol == Roles.OBSERVADOR
+        es_clasificador_ia = rol == Roles.CLASIFICADOR_IA
         return render(
             request,
             "clasificacion.html",
             {
                 "categorias": categorias,
                 "puede_clasificar": puede_clasificar,
-                "es_observador": es_observador,
+                "es_clasificador_ia": es_clasificador_ia,
             },
         )
     return render(request, "403.html", status=403)
@@ -1584,10 +1584,10 @@ class LinkRelevanteViewSet(viewsets.ModelViewSet):
         userprofile = getattr(request.user, "userprofile", None)
         if (
             userprofile
-            and userprofile.rol == Roles.OBSERVADOR
+            and userprofile.rol == Roles.CLASIFICADOR_IA
             and request.method not in SAFE_METHODS
         ):
-            raise PermissionDenied("Los observadores no pueden modificar links.")
+            raise PermissionDenied("Los clasificadores IA no pueden modificar links.")
 
     def get_queryset(self):
         user = self.request.user
@@ -1600,7 +1600,7 @@ class LinkRelevanteViewSet(viewsets.ModelViewSet):
                 queryset = queryset.filter(cargado_por=user)
             elif rol in [Roles.CLIENTE, Roles.INFORMES]:
                 queryset = queryset.filter(estado="aprobado")
-            elif rol == Roles.OBSERVADOR:
+            elif rol == Roles.CLASIFICADOR_IA:
                 queryset = queryset.filter(
                     cargado_por__userprofile__rol=Roles.PRENSA
                 )
@@ -2233,7 +2233,7 @@ def api_links_list(request):
         rol_usuario = getattr(getattr(request.user, "userprofile", None), "rol", None)
         filtrar_prensa = (
             solo_prensa in ("1", "true", "True")
-            or rol_usuario == Roles.OBSERVADOR
+            or rol_usuario == Roles.CLASIFICADOR_IA
         )
 
         data = []
@@ -2464,7 +2464,7 @@ def api_link_detail(request, link_id):
         link = LinkRelevante.objects.get(id=link_id)
         
         if request.method == 'PATCH':
-            if request.user.userprofile.rol == Roles.OBSERVADOR:
+            if request.user.userprofile.rol == Roles.CLASIFICADOR_IA:
                 return JsonResponse({'error': 'No autorizado'}, status=403)
             import json
             data = json.loads(request.body)
@@ -2508,7 +2508,7 @@ def procesar_links_ia(request):
         return JsonResponse({"error": "Método no permitido"}, status=405)
 
     rol_usuario = request.user.userprofile.rol
-    if rol_usuario not in [Roles.OBSERVADOR, Roles.CLASIFICACION, Roles.ADMIN]:
+    if rol_usuario not in [Roles.CLASIFICADOR_IA, Roles.CLASIFICACION, Roles.ADMIN]:
         return JsonResponse({"error": "No autorizado"}, status=403)
 
     try:
