@@ -44,8 +44,17 @@
                 <input type="date" id="fecha_hasta" class="form-control">
             </div>
             <div class="col">
-                <label>Diario:</label>
-                <select id="diario" class="form-select">
+                <label>Origen:</label>
+                <select id="origen_fuente" class="form-select" onchange="actualizarFiltroOrigen()">
+                    <option value="diario">Diarios digitales</option>
+                    <option value="red_social">Redes sociales</option>
+                    <option value="tv_digital">TV digital</option>
+                    <option value="radio_digital">Radio digital</option>
+                </select>
+            </div>
+            <div class="col">
+                <label id="origen_detalle_label">Diario:</label>
+                <select id="origen_detalle" class="form-select">
                     <option value="">Todos</option>
                 </select>
             </div>
@@ -301,6 +310,94 @@
     let currentPageIA = 1;
     const seleccionClasificadorIA = esClasificadorIA ? new Set() : null;
     const itemsPerPage = 10;
+    const ORIGEN_CONFIG = {
+        diario: {
+            label: "Diario",
+            endpoint: "/api/diarios/",
+            placeholder: "Todos"
+        },
+        red_social: {
+            label: "Red social",
+            endpoint: "/api/redes/",
+            placeholder: "Todas"
+        },
+        tv_digital: {
+            label: "TV digital",
+            endpoint: "/api/tv/",
+            placeholder: "Todas"
+        },
+        radio_digital: {
+            label: "Radio digital",
+            endpoint: "/api/radios/",
+            placeholder: "Todas"
+        }
+    };
+    const FUENTE_PARAM_MAP = {
+        red_social: "red_social_id",
+        tv_digital: "tv_digital_id",
+        radio_digital: "radio_digital_id",
+    };
+
+    function obtenerOrigenActual() {
+        const select = document.getElementById("origen_fuente");
+        return select ? (select.value || "diario") : "diario";
+    }
+
+    async function actualizarFiltroOrigen() {
+        const select = document.getElementById("origen_detalle");
+        const label = document.getElementById("origen_detalle_label");
+        const origen = obtenerOrigenActual();
+        const config = ORIGEN_CONFIG[origen];
+        if (!select || !label || !config) {
+            return;
+        }
+        label.textContent = config.label;
+        select.innerHTML = `<option value="">${config.placeholder}</option>`;
+        select.disabled = true;
+        try {
+            const res = await fetch(config.endpoint);
+            const items = await res.json();
+            items.forEach(item => {
+                const option = document.createElement("option");
+                option.value = item.id;
+                option.textContent = item.nombre || `#${item.id}`;
+                select.appendChild(option);
+            });
+        } catch (error) {
+            console.error(`Error cargando opciones para ${config.label}:`, error);
+            mostrarToast(`Error al cargar ${config.label.toLowerCase()}`, "danger");
+        } finally {
+            select.disabled = false;
+        }
+    }
+
+    function obtenerInfoFuenteDesdeLink(link) {
+        if (link.diario_nombre || link.diario_logo_url) {
+            return {
+                nombre: link.diario_nombre || "Sin diario",
+                logo: link.diario_logo_url
+            };
+        }
+        if (link.red_social_nombre || link.red_social_logo_url) {
+            return {
+                nombre: link.red_social_nombre || "Sin red social",
+                logo: link.red_social_logo_url
+            };
+        }
+        if (link.tv_digital_nombre || link.tv_digital_logo_url) {
+            return {
+                nombre: link.tv_digital_nombre || "Sin canal",
+                logo: link.tv_digital_logo_url
+            };
+        }
+        if (link.radio_digital_nombre || link.radio_digital_logo_url) {
+            return {
+                nombre: link.radio_digital_nombre || "Sin radio",
+                logo: link.radio_digital_logo_url
+            };
+        }
+        return { nombre: "Sin origen", logo: null };
+    }
 
     function escapeHtml(text) {
         if (typeof text !== "string") {
@@ -380,6 +477,10 @@
                 const confianzaValor = link.confianza_clasificacion != null
                     ? Math.round(link.confianza_clasificacion * 100)
                     : null;
+                const urlTexto = link.url || "";
+                const urlTextoEscapado = escapeHtml(urlTexto);
+                const urlTruncado = urlTexto.length > 18 ? `${urlTexto.slice(0, 18)}…` : urlTexto;
+                const urlTruncadoEscapado = escapeHtml(urlTruncado);
                 const categoriasBadges = Array.isArray(link.categorias_info)
                     ? link.categorias_info.map(cat => {
                         const detalle = confianzaValor != null
@@ -406,8 +507,8 @@
                         </div>
                     </td>
                     <td class="align-middle">
-                        <a href="${link.url}" target="_blank" rel="noopener">
-                            ${link.url.length > 80 ? link.url.slice(0, 80) + '…' : link.url}
+                        <a href="${urlTextoEscapado}" target="_blank" rel="noopener" title="${urlTextoEscapado}">
+                            ${urlTruncadoEscapado}
                         </a>
                     </td>
                     <td class="align-middle">${new Date(link.fecha_carga).toLocaleDateString()}</td>
@@ -512,13 +613,25 @@
 
         const desde = document.getElementById("fecha_desde").value;
         const hasta = document.getElementById("fecha_hasta").value;
-        const diarioId = document.getElementById("diario").value;
+        const origen = obtenerOrigenActual();
+        const origenDetalleSelect = document.getElementById("origen_detalle");
+        const origenDetalleId = origenDetalleSelect ? origenDetalleSelect.value : "";
 
         let url = "/api/links_list/";
         const params = [];
         if (desde) params.push(`fecha_inicio=${desde}`);
         if (hasta) params.push(`fecha_fin=${hasta}`);
-        if (diarioId) params.push(`diario_id=${diarioId}`);
+        if (origen && origen !== "diario") {
+            params.push(`fuente=${origen}`);
+            if (origenDetalleId) {
+                const paramName = FUENTE_PARAM_MAP[origen];
+                if (paramName) {
+                    params.push(`${paramName}=${origenDetalleId}`);
+                }
+            }
+        } else if (origenDetalleId) {
+            params.push(`diario_id=${origenDetalleId}`);
+        }
 
         // 👇 siempre trae solo pendientes
         params.push(`estado=pendiente`);
@@ -554,7 +667,8 @@
                     case 'descartado': badge = `<span class="badge bg-danger">Descartado</span>`; break;
                 }
                 const revisado = link.revisado_clasificador ? `<span class="check-icon">✔</span>` : '';
-                const diarioLogo = link.diario_logo_url || '/static/img/default_logo.png';
+                const infoFuente = obtenerInfoFuenteDesdeLink(link);
+                const origenLogo = infoFuente.logo || '/static/img/default_logo.png';
 
                 const categoriasBadges = Array.isArray(link.categorias_info)
                     ? link.categorias_info.map(cat => `<span class="badge bg-secondary me-1">${cat.nombre}</span>`).join("")
@@ -568,7 +682,12 @@
 
                 const row = document.createElement("tr");
                 row.innerHTML = `
-                    <td><img src="${diarioLogo}" alt="logo" style="height:40px; max-width:60px;"></td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <img src="${origenLogo}" alt="logo" style="height:40px; max-width:60px;">
+                            <span>${escapeHtml(infoFuente.nombre)}</span>
+                        </div>
+                    </td>
                     <td><a href="${link.url}" target="_blank"${revisarOnClick}>
                         ${link.url.length > 50 ? link.url.slice(0, 50) + '…' : link.url}</a></td>
                     <td>${new Date(link.fecha_carga).toLocaleDateString()}</td>
@@ -1016,10 +1135,11 @@
         }
     }
 
-    document.addEventListener("DOMContentLoaded", () => {
+    document.addEventListener("DOMContentLoaded", async () => {
         if (puedeClasificar) {
             cargarDiarios(["diario", "clasif_diario", "ia_diario"]);
             cargarCategorias(["clasif_categoria", "ia_categoria"]);
+            await actualizarFiltroOrigen();
             cargarLinks(1);
             cargarLinksClasificados(1);
             cargarLinksIA(1);
