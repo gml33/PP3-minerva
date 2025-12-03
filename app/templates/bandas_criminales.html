@@ -49,6 +49,36 @@
                     </div>
                     {% endif %}
                 </div>
+                {% elif field.name == "bandas_aliadas" %}
+                <div class="mb-3">
+                    {{ field.label_tag }}
+                    <input type="text" class="form-control form-control-sm mb-2" placeholder="Filtrar por nombre"
+                        oninput="filtrarBandasSelect('id_bandas_aliadas', this.value)">
+                    {{ field }}
+                    {% if field.help_text %}
+                    <div class="form-text">{{ field.help_text }}</div>
+                    {% endif %}
+                    {% if field.errors %}
+                    <div class="text-danger small">
+                        {% for error in field.errors %}{{ error }}{% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% elif field.name == "bandas_rivales" %}
+                <div class="mb-3">
+                    {{ field.label_tag }}
+                    <input type="text" class="form-control form-control-sm mb-2" placeholder="Filtrar por nombre"
+                        oninput="filtrarBandasSelect('id_bandas_rivales', this.value)">
+                    {{ field }}
+                    {% if field.help_text %}
+                    <div class="form-text">{{ field.help_text }}</div>
+                    {% endif %}
+                    {% if field.errors %}
+                    <div class="text-danger small">
+                        {% for error in field.errors %}{{ error }}{% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
                 {% else %}
                 <div class="mb-3">
                     {{ field.label_tag }}
@@ -550,6 +580,21 @@ function inicializarZonasInfluencia() {
     }
 
     sincronizarHidden();
+}
+
+function filtrarBandasSelect(selectId, filtro) {
+    const select = document.getElementById(selectId);
+    if (!select) {
+        return;
+    }
+    const texto = (filtro || "").toLowerCase();
+    Array.from(select.options).forEach((option) => {
+        if (!texto) {
+            option.hidden = false;
+        } else {
+            option.hidden = option.textContent.toLowerCase().indexOf(texto) === -1;
+        }
+    });
 }
 </script>
 {% endblock %}

@@ -55,6 +55,19 @@ class InformeIndividualForm(forms.ModelForm):
         self.fields["rol"].required = False
         self.fields["situacion"].required = False
 
+    def clean_documento(self):
+        documento = (self.cleaned_data.get("documento") or "").strip()
+        if not documento:
+            return documento
+        qs = InformeIndividual.objects.filter(documento=documento)
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise forms.ValidationError(
+                "Ya existe un informe cargado con ese número de documento."
+            )
+        return documento
+
 
 class CategoriaForm(forms.ModelForm):
     class Meta:

@@ -40,6 +40,7 @@ from .views import (
     editar_individuo_view,
     informes_crear_view,
     eliminar_informe_view,
+    crear_banda_rapida_view,
     api_detalle_informe,
     api_detalle_banda,
     consulta_informes_view,
@@ -248,6 +249,11 @@ urlpatterns = [
         "bandas/criminales/<int:pk>/eliminar/",
         banda_criminal_eliminar_view,
         name="banda_criminal_eliminar",
+    ),
+    path(
+        "bandas/crear-rapida/",
+        crear_banda_rapida_view,
+        name="crear_banda_rapida",
     ),
     path(
         "links/exportar/",

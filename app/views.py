@@ -1018,6 +1018,34 @@ def banda_criminal_eliminar_view(request, pk):
 
 
 @login_required
+def crear_banda_rapida_view(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "Método no permitido"}, status=405)
+    if request.user.userprofile.rol not in [Roles.ADMIN, Roles.INFORMES, Roles.GERENCIA]:
+        return JsonResponse({"error": "No autorizado"}, status=403)
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except json.JSONDecodeError:
+        payload = request.POST
+    nombre = (payload.get("nombre") or "").strip()
+    if not nombre:
+        return JsonResponse({"error": "El nombre de la banda es obligatorio."}, status=400)
+    banda = BandaCriminal.objects.create(nombres=[nombre], zonas_influencia=[])
+    log_actividad(
+        request,
+        TipoActividad.OTRO,
+        f"Banda criminal creada desde formulario rápido (ID {banda.pk}).",
+    )
+    return JsonResponse(
+        {
+            "id": banda.pk,
+            "nombre": banda.nombre_principal or banda.nombres_como_texto or nombre,
+        },
+        status=201,
+    )
+
+
+@login_required
 def articulo_editar_view(request, id):
     articulo = get_object_or_404(
         Articulo.objects.select_related("generado_por", "categoria").prefetch_related(
@@ -2772,10 +2800,19 @@ def informes_crear_view(request):
 
     # ------------------ POST NUEVO INFORME -------------------
     if request.method == "POST":
+        banda_asociada = None
+        banda_id = request.POST.get("banda")
+        if banda_id:
+            try:
+                banda_asociada = BandaCriminal.objects.get(pk=int(banda_id))
+            except (BandaCriminal.DoesNotExist, ValueError):
+                banda_asociada = None
         # Se necesita `request.FILES` para manejar la subida de la foto
         form = InformeIndividualForm(request.POST, request.FILES)
         if form.is_valid():
             informe = form.save(commit=False)
+            if banda_asociada:
+                informe.banda = banda_asociada.nombre_principal or banda_asociada.nombres_como_texto or ""
             informe.generado_por = request.user
             
             # Se maneja la foto aquí (el form no lo hace automáticamente con commit=False)
@@ -2783,6 +2820,8 @@ def informes_crear_view(request):
                 informe.foto = request.FILES["foto"]
                 
             informe.save()
+            if banda_asociada:
+                banda_asociada.miembros.add(informe)
             # Asegurarse de que el objeto esté guardado antes de manipular ManyToMany (m2m)
 
             # 👇 Creación de M2M y modelos relacionados (debe ir DESPUÉS de informe.save())
