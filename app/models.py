@@ -11,6 +11,7 @@ class Roles(models.TextChoices):
     PRENSA = "prensa", "Encargado de Prensa"
     CLASIFICACION = "clasificacion", "Encargado de Clasificación"
     REDACCION = "redaccion", "Encargado de Redacción"
+    EDITOR = "editor", "Editor"
     REDACTOR_IA = "redactor_ia", "Redactor IA"
     INFORMES = "informes", "Encargado de Informes"
     GERENCIA = "gerente", "Encargado de gerencia"

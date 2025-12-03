@@ -84,15 +84,6 @@
                 <button type="button" class="btn btn-sm btn-secondary" onclick="agregarUbicacion()">Agregar otra ubicación</button>
             </div>
 
-            <!-- NUEVO CAMPO: AUTORES -->
-            <div class="mb-3">
-                <label class="form-label">Autores</label>
-                <select id="autores" class="form-select" multiple>
-                    <!-- Los usuarios se cargarán dinámicamente -->
-                </select>
-                <small class="form-text text-muted">Mantén presionado Ctrl (Windows) o Command (Mac) para seleccionar múltiples autores.</small>
-            </div>
-
             <div class="mb-3">
                 <label class="form-label">Estado</label>
                 <select id="estado" class="form-select" required>
@@ -143,15 +134,6 @@
                             <!-- Las ubicaciones se cargarán dinámicamente -->
                         </div>
                         <button type="button" class="btn btn-sm btn-secondary" onclick="agregarUbicacionEdicion()">Agregar otra ubicación</button>
-                    </div>
-
-                    <!-- NUEVO CAMPO: AUTORES EN EDICIÓN -->
-                    <div class="mb-3">
-                        <label class="form-label" for="edit-autores">Autores</label>
-                        <select id="edit-autores" class="form-select" multiple>
-                            <!-- Los usuarios se cargarán dinámicamente -->
-                        </select>
-                        <small class="form-text text-muted">Mantén presionado Ctrl (Windows) o Command (Mac) para seleccionar múltiples autores.</small>
                     </div>
 
                     <div class="mb-3">
@@ -387,7 +369,6 @@
                 <p><strong>Estado:</strong> <span id="modalVerEstado"></span></p>
                 <p><strong>Categoría:</strong> <span id="modalVerCategoria"></span></p>
                 <p><strong>Ubicación:</strong> <span id="modalVerUbicacion"></span></p>
-                <p><strong>Autores:</strong> <span id="modalVerAutores"></span></p>
                 <hr>
                 <h6>Links asociados</h6>
                 <ul id="modalVerLinks"></ul>
@@ -453,7 +434,6 @@
         cargarCategorias();
         cargarDiarios();
         cargarLinksAprobados();
-        cargarUsuarios(); // Nueva función para cargar usuarios/autores
         
         // Establecer fecha actual por defecto
         const fechaInput = document.getElementById('fecha_hecho'); // CAMBIADO: 'fecha' → 'fecha_hecho'
@@ -469,27 +449,6 @@
         
         configurarAcordeonRedaccion();
     });
-
-    // NUEVA FUNCIÓN: Cargar usuarios para el campo de autores
-    async function cargarUsuarios() {
-        try {
-            const res = await fetch("/api/usuarios/");
-            const usuarios = await res.json();
-            const selects = [
-                document.getElementById("autores"),
-                document.getElementById("edit-autores")
-            ].filter(Boolean);
-            
-            selects.forEach(select => {
-                usuarios.forEach(usuario => {
-                    const option = new Option(usuario.username, usuario.id);
-                    select.add(option);
-                });
-            });
-        } catch (e) {
-            console.error("Error cargando usuarios:", e);
-        }
-    }
 
     // FUNCIONES PARA MANEJAR UBICACIONES MÚLTIPLES
     function agregarUbicacion() {
@@ -861,10 +820,8 @@
         const links = [...document.querySelectorAll('input[name="link_seleccionado"]:checked')]
             .map(cb => parseInt(cb.value));
         
-        // NUEVOS CAMPOS: Obtener ubicaciones y autores
+        // NUEVOS CAMPOS: Obtener ubicaciones
         const ubicaciones = obtenerUbicaciones();
-        const autoresSelect = document.getElementById("autores");
-        const autores = Array.from(autoresSelect.selectedOptions).map(option => parseInt(option.value));
 
         const payload = JSON.stringify({
             titulo,
@@ -873,8 +830,7 @@
             categoria,
             estado,
             links_incluidos: links,
-            ubicaciones: ubicaciones, // Nuevo campo
-            autores: autores // Nuevo campo
+            ubicaciones: ubicaciones // Nuevo campo
         });
 
         try {
@@ -928,10 +884,8 @@
             const links = [...document.querySelectorAll('input[name="link_seleccionado"]:checked')]
                 .map(cb => parseInt(cb.value));
             
-            // NUEVOS CAMPOS: Obtener ubicaciones y autores en edición
+            // NUEVOS CAMPOS: Obtener ubicaciones en edición
             const ubicaciones = obtenerUbicacionesEdicion();
-            const autoresSelect = document.getElementById("edit-autores");
-            const autores = Array.from(autoresSelect.selectedOptions).map(option => parseInt(option.value));
 
             const payload = JSON.stringify({ 
                 titulo, 
@@ -940,8 +894,7 @@
                 categoria, 
                 estado, 
                 links_incluidos: links,
-                ubicaciones: ubicaciones, // Nuevo campo
-                autores: autores // Nuevo campo
+                ubicaciones: ubicaciones // Nuevo campo
             });
 
             try {
@@ -1204,17 +1157,6 @@
                 cargarUbicacionesEdicion([]);
             }
 
-            // NUEVO: Cargar autores en edición
-            const editAutoresSelect = document.getElementById("edit-autores");
-            if (editAutoresSelect && art.autores && Array.isArray(art.autores)) {
-                Array.from(editAutoresSelect.options).forEach(option => {
-                    const autorId = parseInt(option.value);
-                    option.selected = art.autores.some(autor => 
-                        (typeof autor === "object" ? autor.id : autor) === autorId
-                    );
-                });
-            }
-
             document.querySelectorAll('input[name="link_seleccionado"]').forEach(cb => {
                 const linkId = parseInt(cb.value);
                 const tieneLink = Array.isArray(art.links_incluidos)
@@ -1278,14 +1220,6 @@
                   ).filter(text => text.trim()).join(', ')
                 : 'No especificada';
             document.getElementById("modalVerUbicacion").textContent = ubicacionesTexto || 'No especificada';
-
-            // Mostrar autores
-            const autoresTexto = art.autores && Array.isArray(art.autores) && art.autores.length > 0
-                ? art.autores.map(autor => 
-                    typeof autor === "object" ? autor.username : autor
-                  ).join(', ')
-                : 'No especificados';
-            document.getElementById("modalVerAutores").textContent = autoresTexto;
 
             document.getElementById("modalVerLinks").innerHTML = Array.isArray(art.links_incluidos) && art.links_incluidos.length
                 ? art.links_incluidos.map(l => {

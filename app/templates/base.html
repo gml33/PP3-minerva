@@ -88,7 +88,7 @@
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'clasificacion' %}">Clasificación</a>
                         </li>
-                        {% elif user.userprofile.rol == 'redaccion' %}
+{% elif user.userprofile.rol in ['redaccion', 'editor'] %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'redaccion' %}">Redacción</a>
                         </li>
