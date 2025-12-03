@@ -1,0 +1,9 @@
+[33m8213353[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaru[m[33m, [m[1;31morigin/maru[m[33m, [m[1;32mmain[m[33m)[m HEAD@{0}: reset: moving to HEAD
+[33m8213353[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaru[m[33m, [m[1;31morigin/maru[m[33m, [m[1;32mmain[m[33m)[m HEAD@{1}: checkout: moving from main to maru
+[33m8213353[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaru[m[33m, [m[1;31morigin/maru[m[33m, [m[1;32mmain[m[33m)[m HEAD@{2}: reset: moving to HEAD
+[33m8213353[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaru[m[33m, [m[1;31morigin/maru[m[33m, [m[1;32mmain[m[33m)[m HEAD@{3}: Branch: renamed refs/heads/MARU to refs/heads/main
+[33m8213353[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaru[m[33m, [m[1;31morigin/maru[m[33m, [m[1;32mmain[m[33m)[m HEAD@{5}: commit: Subida inicial de archivos de proyecto y correcciones de links
+[33m26187e0[m HEAD@{6}: commit: feat: Implementación de filtros de origen, logos y corrección de clasificacion.html
+[33m6e19678[m HEAD@{7}: checkout: moving from main to MARU
+[33m6e19678[m HEAD@{8}: checkout: moving from main to main
+[33m6e19678[m HEAD@{9}: clone: from https://github.com/gml33/PP3-minerva.git
