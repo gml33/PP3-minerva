@@ -45,7 +45,7 @@
             </div>
             <div class="col">
                 <label>Origen:</label>
-                <select id="origen_fuente" class="form-select" onchange="actualizarFiltroOrigen()">
+                <select id="origen_fuente" class="form-select" onchange="actualizarFiltroOrigen('pendientes')">
                     <option value="diario">Diarios digitales</option>
                     <option value="red_social">Redes sociales</option>
                     <option value="tv_digital">TV digital</option>
@@ -65,7 +65,7 @@
         <table class="table table-striped" id="tabla-links">
             <thead>
                 <tr>
-                    <th>Diario</th>
+                    <th>Origen</th>
                     <th>URL</th>
                     <th>Fecha</th>
                     <th>Estado</th>
@@ -108,8 +108,17 @@
                 <input type="date" id="clasif_fecha_hasta" class="form-control">
             </div>
             <div class="col">
-                <label>Diario:</label>
-                <select id="clasif_diario" class="form-select">
+                <label>Origen:</label>
+                <select id="clasif_origen_fuente" class="form-select" onchange="actualizarFiltroOrigen('clasificados')">
+                    <option value="diario">Diarios digitales</option>
+                    <option value="red_social">Redes sociales</option>
+                    <option value="tv_digital">TV digital</option>
+                    <option value="radio_digital">Radio digital</option>
+                </select>
+            </div>
+            <div class="col">
+                <label id="clasif_origen_detalle_label">Diario:</label>
+                <select id="clasif_origen_detalle" class="form-select">
                     <option value="">Todos</option>
                 </select>
             </div>
@@ -134,7 +143,7 @@
         <table class="table table-striped" id="tabla-clasificados">
             <thead>
                 <tr>
-                    <th>Diario</th>
+                    <th>Origen</th>
                     <th>URL</th>
                     <th>Fecha</th>
                     <th>Estado</th>
@@ -332,21 +341,41 @@
             placeholder: "Todas"
         }
     };
+    const ORIGEN_CONTEXTO_CONFIG = {
+        pendientes: {
+            fuente: "origen_fuente",
+            detalle: "origen_detalle",
+            label: "origen_detalle_label",
+        },
+        clasificados: {
+            fuente: "clasif_origen_fuente",
+            detalle: "clasif_origen_detalle",
+            label: "clasif_origen_detalle_label",
+        }
+    };
     const FUENTE_PARAM_MAP = {
         red_social: "red_social_id",
         tv_digital: "tv_digital_id",
         radio_digital: "radio_digital_id",
     };
 
-    function obtenerOrigenActual() {
-        const select = document.getElementById("origen_fuente");
+    function obtenerOrigenActual(contexto = "pendientes") {
+        const cfg = ORIGEN_CONTEXTO_CONFIG[contexto];
+        if (!cfg) {
+            return "diario";
+        }
+        const select = document.getElementById(cfg.fuente);
         return select ? (select.value || "diario") : "diario";
     }
 
-    async function actualizarFiltroOrigen() {
-        const select = document.getElementById("origen_detalle");
-        const label = document.getElementById("origen_detalle_label");
-        const origen = obtenerOrigenActual();
+    async function actualizarFiltroOrigen(contexto = "pendientes") {
+        const contextoCfg = ORIGEN_CONTEXTO_CONFIG[contexto];
+        if (!contextoCfg) {
+            return;
+        }
+        const select = document.getElementById(contextoCfg.detalle);
+        const label = document.getElementById(contextoCfg.label);
+        const origen = obtenerOrigenActual(contexto);
         const config = ORIGEN_CONFIG[origen];
         if (!select || !label || !config) {
             return;
@@ -368,6 +397,38 @@
             mostrarToast(`Error al cargar ${config.label.toLowerCase()}`, "danger");
         } finally {
             select.disabled = false;
+        }
+    }
+
+    function deducirTipoFuente(link) {
+        if (!link || typeof link !== "object") {
+            return "diario";
+        }
+        if (link.tipo_fuente) {
+            return link.tipo_fuente;
+        }
+        if (link.red_social || link.red_social_nombre) {
+            return "red_social";
+        }
+        if (link.tv_digital || link.tv_digital_nombre) {
+            return "tv_digital";
+        }
+        if (link.radio_digital || link.radio_digital_nombre) {
+            return "radio_digital";
+        }
+        return "diario";
+    }
+
+    function obtenerEndpointPorTipo(tipo = "diario") {
+        switch (tipo) {
+            case "red_social":
+                return "/api/links_red_social/";
+            case "tv_digital":
+                return "/api/links_tv_digital/";
+            case "radio_digital":
+                return "/api/links_radio_digital/";
+            default:
+                return "/api/links/";
         }
     }
 
@@ -582,7 +643,7 @@
         paginationContainer.innerHTML = paginationHTML;
     }
 
-    async function cargarDiarios(selectIds = ["diario", "clasif_diario"]) {
+    async function cargarDiarios(selectIds = []) {
         const selects = selectIds
             .map(id => document.getElementById(id))
             .filter(Boolean);
@@ -613,8 +674,9 @@
 
         const desde = document.getElementById("fecha_desde").value;
         const hasta = document.getElementById("fecha_hasta").value;
-        const origen = obtenerOrigenActual();
-        const origenDetalleSelect = document.getElementById("origen_detalle");
+        const origen = obtenerOrigenActual("pendientes");
+        const pendientesCfg = ORIGEN_CONTEXTO_CONFIG.pendientes;
+        const origenDetalleSelect = pendientesCfg ? document.getElementById(pendientesCfg.detalle) : null;
         const origenDetalleId = origenDetalleSelect ? origenDetalleSelect.value : "";
 
         let url = "/api/links_list/";
@@ -669,15 +731,17 @@
                 const revisado = link.revisado_clasificador ? `<span class="check-icon">✔</span>` : '';
                 const infoFuente = obtenerInfoFuenteDesdeLink(link);
                 const origenLogo = infoFuente.logo || '/static/img/default_logo.png';
+                const tipoFuente = deducirTipoFuente(link);
+                const tipoFuenteAttr = tipoFuente;
 
                 const categoriasBadges = Array.isArray(link.categorias_info)
                     ? link.categorias_info.map(cat => `<span class="badge bg-secondary me-1">${cat.nombre}</span>`).join("")
                     : "-";
 
                 const deshabilitarClasificar = !link.revisado_clasificador ? 'disabled' : '';
-                const revisarOnClick = puedeClasificar ? ` onclick="marcarRevisado(${link.id})"` : '';
+                const revisarOnClick = puedeClasificar ? ` onclick="marcarRevisado(${link.id}, '${tipoFuenteAttr}')"` : '';
                 const accionColumna = puedeClasificar
-                    ? `<td><button class="btn btn-sm btn-primary" onclick="abrirModalClasificar(${link.id})" ${deshabilitarClasificar}>Clasificar</button></td>`
+                    ? `<td><button class="btn btn-sm btn-primary" onclick="abrirModalClasificar(${link.id}, '${tipoFuenteAttr}')" ${deshabilitarClasificar}>Clasificar</button></td>`
                     : '';
 
                 const row = document.createElement("tr");
@@ -892,13 +956,14 @@
         }
     }
 
-    async function marcarRevisado(id) {
+    async function marcarRevisado(id, tipoFuente = "diario") {
         if (!puedeClasificar) {
             mostrarToast("No tenés permisos para actualizar links", "warning");
             return;
         }
         try {
-            const res = await fetch(`/api/links/${id}/`, {
+            const endpoint = obtenerEndpointPorTipo(tipoFuente);
+            const res = await fetch(`${endpoint}${id}/`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
@@ -916,14 +981,15 @@
         }
     }
 
-    async function abrirModalClasificar(id) {
+    async function abrirModalClasificar(id, tipoFuente = "diario") {
         if (!puedeClasificar) {
             mostrarToast("No tenés permisos para clasificar", "warning");
             return;
         }
         try {
             // Traemos primero las categorías actuales del link
-            const resLink = await fetch(`/api/links/${id}/`);
+            const endpoint = obtenerEndpointPorTipo(tipoFuente);
+            const resLink = await fetch(`${endpoint}${id}/`);
             if (!resLink.ok) throw new Error("No se pudo obtener el link");
             const linkData = await resLink.json();
             const categoriasActuales = (linkData.categorias_info || []).map(cat => cat.id);
@@ -966,14 +1032,14 @@
                             cancelButtonText: 'Cancelar'
                         });
                         if (confirmar.isConfirmed) {
-                            await actualizarLink(id, [], 'descartado');
+                            await actualizarLink(id, [], 'descartado', tipoFuente);
                             Swal.close();
                         }
                     });
                 }
             }).then(async (result) => {
                 if (result.isConfirmed) {
-                    await actualizarLink(id, result.value, 'aprobado');
+                    await actualizarLink(id, result.value, 'aprobado', tipoFuente);
                 }
             });
 
@@ -983,13 +1049,14 @@
         }
     }
 
-    async function actualizarLink(id, categorias, estado) {
+    async function actualizarLink(id, categorias, estado, tipoFuente = "diario") {
         if (!puedeClasificar) {
             mostrarToast("No tenés permisos para clasificar", "warning");
             return;
         }
         try {
-            const res = await fetch(`/api/links/${id}/`, {
+            const endpoint = obtenerEndpointPorTipo(tipoFuente);
+            const res = await fetch(`${endpoint}${id}/`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
@@ -1032,7 +1099,10 @@
 
         const desde = document.getElementById("clasif_fecha_desde").value;
         const hasta = document.getElementById("clasif_fecha_hasta").value;
-        const diarioId = document.getElementById("clasif_diario").value;
+        const origen = obtenerOrigenActual("clasificados");
+        const clasifCfg = ORIGEN_CONTEXTO_CONFIG.clasificados;
+        const origenDetalleSelect = clasifCfg ? document.getElementById(clasifCfg.detalle) : null;
+        const origenDetalleId = origenDetalleSelect ? origenDetalleSelect.value : "";
         const estado = document.getElementById("clasif_estado").value;
         const categoriaId = document.getElementById("clasif_categoria").value;
 
@@ -1040,7 +1110,17 @@
         const params = [];
         if (desde) params.push(`fecha_inicio=${desde}`);
         if (hasta) params.push(`fecha_fin=${hasta}`);
-        if (diarioId) params.push(`diario_id=${diarioId}`);
+        if (origen && origen !== "diario") {
+            params.push(`fuente=${origen}`);
+            if (origenDetalleId) {
+                const paramName = FUENTE_PARAM_MAP[origen];
+                if (paramName) {
+                    params.push(`${paramName}=${origenDetalleId}`);
+                }
+            }
+        } else if (origenDetalleId) {
+            params.push(`diario_id=${origenDetalleId}`);
+        }
         if (categoriaId) params.push(`categoria_id=${categoriaId}`);
 
         if (estado && estado.trim() !== "") {
@@ -1084,14 +1164,21 @@
                     ? link.categorias_info.map(cat => `<span class="badge bg-secondary me-1">${cat.nombre}</span>`).join("")
                     : "-";
 
-                const diarioLogo = link.diario_logo_url || '/static/img/default_logo.png';
+                const infoFuente = obtenerInfoFuenteDesdeLink(link);
+                const origenLogo = infoFuente.logo || '/static/img/default_logo.png';
+                const tipoFuente = deducirTipoFuente(link);
                 const accionColumna = puedeClasificar
-                    ? `<td><button class="btn btn-sm btn-warning" onclick="abrirModalClasificar(${link.id})">Reclasificar</button></td>`
+                    ? `<td><button class="btn btn-sm btn-warning" onclick="abrirModalClasificar(${link.id}, '${tipoFuente}')">Reclasificar</button></td>`
                     : '';
 
                 const row = document.createElement("tr");
                 row.innerHTML = `
-                    <td><img src="${diarioLogo}" alt="logo" style="height:40px; max-width:60px;"></td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <img src="${origenLogo}" alt="logo" style="height:40px; max-width:60px;">
+                            <span>${escapeHtml(infoFuente.nombre)}</span>
+                        </div>
+                    </td>
                     <td><a href="${link.url}" target="_blank">${link.url.length > 50 ? link.url.slice(0,50)+'…' : link.url}</a></td>
                     <td>${new Date(link.fecha_carga).toLocaleDateString()}</td>
                     <td>${badge}</td>
@@ -1137,9 +1224,10 @@
 
     document.addEventListener("DOMContentLoaded", async () => {
         if (puedeClasificar) {
-            cargarDiarios(["diario", "clasif_diario", "ia_diario"]);
+            cargarDiarios(["ia_diario"]);
             cargarCategorias(["clasif_categoria", "ia_categoria"]);
-            await actualizarFiltroOrigen();
+            await actualizarFiltroOrigen("pendientes");
+            await actualizarFiltroOrigen("clasificados");
             cargarLinks(1);
             cargarLinksClasificados(1);
             cargarLinksIA(1);

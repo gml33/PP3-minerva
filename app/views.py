@@ -2267,6 +2267,7 @@ def api_links_list(request):
             for link in links:
                 data.append({
                     'id': link.id,
+                    'tipo_fuente': 'red_social',
                     'url': link.url,
                     'estado': getattr(link, 'estado', EstadoLink.PENDIENTE),
                     'fecha_carga': link.fecha_carga.isoformat() if link.fecha_carga else None,
@@ -2314,6 +2315,7 @@ def api_links_list(request):
             for link in links:
                 data.append({
                     'id': link.id,
+                    'tipo_fuente': 'tv_digital',
                     'url': link.url,
                     'estado': getattr(link, 'estado', EstadoLink.PENDIENTE),
                     'fecha_carga': link.fecha_carga.isoformat() if link.fecha_carga else None,
@@ -2363,6 +2365,7 @@ def api_links_list(request):
             for link in links:
                 data.append({
                     'id': link.id,
+                    'tipo_fuente': 'radio_digital',
                     'url': link.url,
                     'estado': getattr(link, 'estado', EstadoLink.PENDIENTE),
                     'fecha_carga': link.fecha_carga.isoformat() if link.fecha_carga else None,
@@ -2414,6 +2417,7 @@ def api_links_list(request):
             for link in links:
                 data.append({
                     'id': link.id,
+                    'tipo_fuente': 'diario',
                     'url': link.url,
                     'estado': getattr(link, 'estado', EstadoLink.PENDIENTE),
                     'fecha_carga': link.fecha_carga.isoformat() if link.fecha_carga else None,
