@@ -107,18 +107,34 @@
                         <div class="card-header border-0">
                             <h3 class="mb-0">Links Clasificados</h3>
                             <div class="row g-3 pt-3">
-                                <div class="col-md-3">
+                                <div class="col-md-2">
                                     <label for="clasif_fecha_desde" class="form-label">Desde</label>
                                     <input type="date" class="form-control" id="clasif_fecha_desde" onchange="cargarLinksClasificados(1)">
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-2">
                                     <label for="clasif_fecha_hasta" class="form-label">Hasta</label>
                                     <input type="date" class="form-control" id="clasif_fecha_hasta" onchange="cargarLinksClasificados(1)">
                                 </div>
                                 <div class="col-md-2">
+                                    <label for="clasif_origen" class="form-label">Origen</label>
+                                    <select class="form-select" id="clasif_origen" onchange="actualizarFiltroOrigenClasificados(); cargarLinksClasificados(1);">
+                                        <option value="">Todos</option>
+                                        <option value="diario">Diarios digitales</option>
+                                        <option value="redes_sociales">Redes sociales</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2" id="clasif_diario_container">
                                     <label for="clasif_diario" class="form-label">Diario</label>
                                     <select class="form-select" id="clasif_diario" onchange="cargarLinksClasificados(1)">
                                         <option value="">Todos</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2" id="clasif_red_social_container" style="display:none;">
+                                    <label for="clasif_red_social" class="form-label">Red Social</label>
+                                    <select class="form-select" id="clasif_red_social" onchange="cargarLinksClasificados(1)">
+                                        <option value="">Todas</option>
+                                        <option value="facebook">Facebook</option>
+                                        <option value="instagram">Instagram</option>
                                     </select>
                                 </div>
                                 <div class="col-md-2">
@@ -141,7 +157,7 @@
                             <table class="table align-items-center table-flush" id="tabla-clasificados">
                                 <thead class="thead-light">
                                     <tr>
-                                        <th scope="col">Diario</th>
+                                        <th scope="col">Fuente</th>
                                         <th scope="col">URL</th>
                                         <th scope="col">Fecha Carga</th>
                                         <th scope="col">Estado</th>
@@ -230,21 +246,37 @@
                         <div class="card-header border-0">
                             <h3 class="mb-0">Links Clasificados por IA (Revisión)</h3>
                             <div class="row g-3 pt-3">
-                                <div class="col-md-3">
+                                <div class="col-md-2">
                                     <label for="ia_fecha_desde" class="form-label">Desde</label>
                                     <input type="date" class="form-control" id="ia_fecha_desde" onchange="cargarLinksIA(1)">
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-2">
                                     <label for="ia_fecha_hasta" class="form-label">Hasta</label>
                                     <input type="date" class="form-control" id="ia_fecha_hasta" onchange="cargarLinksIA(1)">
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-2">
+                                    <label for="ia_origen" class="form-label">Origen</label>
+                                    <select class="form-select" id="ia_origen" onchange="actualizarFiltroOrigenIA(); cargarLinksIA(1);">
+                                        <option value="">Todos</option>
+                                        <option value="diario">Diarios digitales</option>
+                                        <option value="redes_sociales">Redes sociales</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2" id="ia_diario_container">
                                     <label for="ia_diario" class="form-label">Diario</label>
                                     <select class="form-select" id="ia_diario" onchange="cargarLinksIA(1)">
                                         <option value="">Todos</option>
                                     </select>
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-2" id="ia_red_social_container" style="display:none;">
+                                    <label for="ia_red_social" class="form-label">Red Social</label>
+                                    <select class="form-select" id="ia_red_social" onchange="cargarLinksIA(1)">
+                                        <option value="">Todas</option>
+                                        <option value="facebook">Facebook</option>
+                                        <option value="instagram">Instagram</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
                                     <label for="ia_categoria" class="form-label">Categoría (IA)</label>
                                     <select class="form-select" id="ia_categoria" onchange="cargarLinksIA(1)">
                                         <option value="">Todas</option>
@@ -256,7 +288,7 @@
                             <table class="table align-items-center table-flush" id="tabla-ia">
                                 <thead class="thead-light">
                                     <tr>
-                                        <th scope="col">Diario</th>
+                                        <th scope="col">Fuente</th>
                                         <th scope="col">URL</th>
                                         <th scope="col">Fecha Carga</th>
                                         <th scope="col">Categorías (IA)</th>
@@ -282,7 +314,7 @@
 </div>
 
 <script>
-    // Variables globales (deben estar disponibles si no se definieron antes)
+    // Variables globales
     const itemsPerPage = 25;
     let currentPageIA = 1;
     let currentPagePendientes = 1;
@@ -290,9 +322,7 @@
     let currentPageClasificadorIA = 1;
     let seleccionClasificadorIA = new Set(); 
 
-    // Asumimos que estas variables vienen del contexto de Django
-    // Si no lo hacen, deben ser definidas de alguna otra manera, pero para este código
-    // las definimos asumiendo que el template las inyecta.
+    // Variables del contexto de Django
     const puedeClasificar = {{ puede_clasificar|yesno:"true,false" }};
     const esClasificadorIA = {{ es_clasificador_ia|yesno:"true,false" }};
     const columnasPendientes = 7;
@@ -300,40 +330,107 @@
     const columnasClasificadorIA = 5;
     const columnasIA = 6;
 
-    // Mapa para saber qué parámetro usar al filtrar por fuente
-    const FUENTE_PARAM_MAP = {
-        'diario': 'diario_id',
-        // Agregar otras fuentes si es necesario
-    };
+    // CONSTANTES CORREGIDAS
+    const LOGO_FACEBOOK = "/media/logos/facebook.jpg";
+    const LOGO_INSTAGRAM = "/media/logos/instagram.JPEG";
+    const LOGO_DEFAULT = "{% static 'img/default_logo.png' %}";
 
-    // Función auxiliar para obtener la info de la fuente (MODIFICADA PARA LOGOS DE REDES SOCIALES)
+    // Función para obtener información de la fuente con logos de redes sociales
     function obtenerInfoFuenteDesdeLink(link) {
-        if (link.diario_nombre) {
-            return { nombre: link.diario_nombre, logo: link.diario_logo_url };
-        }
-        
         const url = link.url || '';
-        let nombreDisplay = link.fuente || 'Sin diario';
-        let logoUrl = '/static/img/default_logo.png'; // Logo por defecto
+        const urlLower = url.toLowerCase();
         
-        // Lógica para detectar Facebook e Instagram y usar el logo correcto
-        if (url.includes('facebook.com')) {
-             nombreDisplay = 'Facebook';
-             // ASEGURATE QUE ESTA RUTA EXISTE Y CONTIENE EL LOGO CORRECTO
-             logoUrl = '/static/img/logo_facebook.png'; 
-        } else if (url.includes('instagram.com')) {
-             nombreDisplay = 'Instagram';
-             // ASEGURATE QUE ESTA RUTA EXISTE Y CONTIENE EL LOGO CORRECTO
-             logoUrl = '/static/img/logo_instagram.png'; 
-        } else if (link.fuente && link.fuente !== 'diario') {
-             // Si tiene fuente pero no es diario ni una red social con logo personalizado
-             nombreDisplay = link.fuente.charAt(0).toUpperCase() + link.fuente.slice(1);
+        // 1. Verificar si es Facebook
+        if (urlLower.includes('facebook.com') || urlLower.includes('fb.com') || urlLower.includes('fb.me')) {
+            return { 
+                nombre: 'Facebook', 
+                logo: LOGO_FACEBOOK,
+                esRedSocial: true
+            };
         }
-
-        return { nombre: nombreDisplay, logo: logoUrl };
+        
+        // 2. Verificar si es Instagram
+        if (urlLower.includes('instagram.com') || urlLower.includes('instagr.am')) {
+            return { 
+                nombre: 'Instagram', 
+                logo: LOGO_INSTAGRAM,
+                esRedSocial: true
+            };
+        }
+        
+        // 3. Si tiene diario_nombre (prensa tradicional)
+        if (link.diario_nombre) {
+            return { 
+                nombre: link.diario_nombre, 
+                logo: link.diario_logo_url || LOGO_DEFAULT,
+                esRedSocial: false
+            };
+        }
+        
+        // 4. Si tiene campo 'fuente' en los datos
+        if (link.fuente && link.fuente !== 'Sin diario') {
+            return { 
+                nombre: link.fuente, 
+                logo: LOGO_DEFAULT,
+                esRedSocial: false
+            };
+        }
+        
+        // 5. Por defecto
+        return { 
+            nombre: 'Sin diario', 
+            logo: LOGO_DEFAULT,
+            esRedSocial: false
+        };
     }
 
-    // Función auxiliar para obtener el origen actual del filtro
+    // Función para crear elemento de imagen con manejo de errores
+    function crearElementoLogo(url, nombre) {
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = `Logo ${nombre}`;
+        img.style = 'height:40px; max-width:60px; object-fit: contain;';
+        img.classList.add('logo-fuente');
+        
+        // Manejar errores de carga de imagen
+        img.onerror = function() {
+            console.warn(`No se pudo cargar el logo: ${url} para ${nombre}`);
+            this.src = LOGO_DEFAULT;
+            this.onerror = null; // Prevenir bucles infinitos
+        };
+        
+        return img.outerHTML;
+    }
+
+    // Función para verificar si una URL es de red social
+    function esRedSocialUrl(url) {
+        if (!url) return false;
+        const urlLower = url.toLowerCase();
+        return urlLower.includes('facebook.com') || 
+               urlLower.includes('fb.com') || 
+               urlLower.includes('fb.me') ||
+               urlLower.includes('instagram.com') || 
+               urlLower.includes('instagr.am');
+    }
+
+    // Función para verificar si una URL es de Facebook
+    function esFacebookUrl(url) {
+        if (!url) return false;
+        const urlLower = url.toLowerCase();
+        return urlLower.includes('facebook.com') || 
+               urlLower.includes('fb.com') || 
+               urlLower.includes('fb.me');
+    }
+
+    // Función para verificar si una URL es de Instagram
+    function esInstagramUrl(url) {
+        if (!url) return false;
+        const urlLower = url.toLowerCase();
+        return urlLower.includes('instagram.com') || 
+               urlLower.includes('instagr.am');
+    }
+
+    // Función para obtener el origen actual del filtro
     function obtenerOrigenActual() {
         const selectOrigen = document.getElementById("origen");
         return selectOrigen ? selectOrigen.value : '';
@@ -341,7 +438,8 @@
 
     // Función para escapar HTML (seguridad)
     function escapeHtml(unsafe) {
-        return unsafe
+        if (!unsafe) return '';
+        return String(unsafe)
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;")
@@ -349,14 +447,17 @@
             .replace(/'/g, "&#039;");
     }
 
-    // Función para mostrar Toast (asumiendo que hay una función global `mostrarToast`)
-    // Si no existe, deberías definirla.
+    // Función para mostrar Toast
     function mostrarToast(mensaje, tipo) {
-        // Implementación de toast dummy si es necesario para que el código no falle
-        console.log(`Toast (${tipo}): ${mensaje}`);
+        // Asumiendo que tienes una implementación de toast
+        if (typeof window.mostrarToast === 'function') {
+            window.mostrarToast(mensaje, tipo);
+        } else {
+            console.log(`Toast (${tipo}): ${mensaje}`);
+        }
     }
 
-    // Función para actualizar el filtro de detalle según el origen (MODIFICADA)
+    // Función para actualizar el filtro de detalle según el origen (pendientes)
     async function actualizarFiltroOrigen() {
         const origen = obtenerOrigenActual();
         const container = document.getElementById("origen_detalle_container");
@@ -372,59 +473,150 @@
             label.textContent = 'Diario';
             container.style.display = 'block';
             await cargarDiarios(["origen_detalle"]);
-        } else if (origen === 'redes_sociales') { // LÓGICA PARA REDES SOCIALES
+        } else if (origen === 'redes_sociales') {
             label.textContent = 'Red Social';
             container.style.display = 'block';
             
-            // Opciones limitadas a Facebook e Instagram
+            // Solo Facebook e Instagram
             const redes = [
                 { value: 'facebook', nombre: 'Facebook' },
-                { value: 'instagram', nombre: 'Instagram' },
-                // Twitter y TikTok eliminados
+                { value: 'instagram', nombre: 'Instagram' }
             ];
+            
             redes.forEach(red => {
                 const option = document.createElement("option");
                 option.value = red.value;
                 option.textContent = red.nombre;
                 select.appendChild(option);
             });
-
         } else {
             container.style.display = 'none';
         }
     }
 
+    // Función para actualizar el filtro de detalle según el origen (clasificados)
+    function actualizarFiltroOrigenClasificados() {
+        const origenSelect = document.getElementById("clasif_origen");
+        if (!origenSelect) return;
+        
+        const origen = origenSelect.value;
+        const diarioContainer = document.getElementById("clasif_diario_container");
+        const redSocialContainer = document.getElementById("clasif_red_social_container");
+        
+        if (diarioContainer) {
+            diarioContainer.style.display = (origen === 'diario' || origen === '') ? 'block' : 'none';
+        }
+        
+        if (redSocialContainer) {
+            redSocialContainer.style.display = origen === 'redes_sociales' ? 'block' : 'none';
+        }
+        
+        // Resetear los select cuando cambia el origen
+        if (origen !== 'redes_sociales') {
+            const redSocialSelect = document.getElementById("clasif_red_social");
+            if (redSocialSelect) redSocialSelect.value = "";
+        }
+        if (origen !== 'diario') {
+            const diarioSelect = document.getElementById("clasif_diario");
+            if (diarioSelect) diarioSelect.value = "";
+        }
+    }
 
-    async function cargarLinksIA(page = 1) {
-        currentPageIA = page;
-        const tabla = document.querySelector("#tabla-ia tbody");
+    // Función para actualizar el filtro de detalle según el origen (IA)
+    function actualizarFiltroOrigenIA() {
+        const origenSelect = document.getElementById("ia_origen");
+        if (!origenSelect) return;
+        
+        const origen = origenSelect.value;
+        const diarioContainer = document.getElementById("ia_diario_container");
+        const redSocialContainer = document.getElementById("ia_red_social_container");
+        
+        if (diarioContainer) {
+            diarioContainer.style.display = (origen === 'diario' || origen === '') ? 'block' : 'none';
+        }
+        
+        if (redSocialContainer) {
+            redSocialContainer.style.display = origen === 'redes_sociales' ? 'block' : 'none';
+        }
+        
+        // Resetear los select cuando cambia el origen
+        if (origen !== 'redes_sociales') {
+            const redSocialSelect = document.getElementById("ia_red_social");
+            if (redSocialSelect) redSocialSelect.value = "";
+        }
+        if (origen !== 'diario') {
+            const diarioSelect = document.getElementById("ia_diario");
+            if (diarioSelect) diarioSelect.value = "";
+        }
+    }
+
+    // Función para cargar links pendientes
+    async function cargarLinks(page = 1) {
+        currentPagePendientes = page;
+        const tabla = document.querySelector("#tabla-links tbody");
         if (!tabla) return;
-        tabla.innerHTML = `<tr><td colspan="${columnasIA}" class="text-center"><div class="spinner-border spinner-border-sm"></div> Cargando...</td></tr>`;
+        tabla.innerHTML = `<tr><td colspan="${columnasPendientes}" class="text-center"><div class="spinner-border spinner-border-sm"></div> Cargando...</td></tr>`;
 
-        const desde = document.getElementById("ia_fecha_desde").value;
-        const hasta = document.getElementById("ia_fecha_hasta").value;
-        const diarioId = document.getElementById("ia_diario").value;
-        const categoriaId = document.getElementById("ia_categoria").value;
+        const desde = document.getElementById("fecha_desde").value;
+        const hasta = document.getElementById("fecha_hasta").value;
+        const origen = obtenerOrigenActual();
+        const origenDetalleSelect = document.getElementById("origen_detalle");
+        const origenDetalleId = origenDetalleSelect ? origenDetalleSelect.value : "";
 
         let url = "/api/links_list/";
-        const params = ["solo_prensa=1", "solo_revisados_ia=1"];
+        const params = [];
+        
         if (desde) params.push(`fecha_inicio=${desde}`);
         if (hasta) params.push(`fecha_fin=${hasta}`);
-        if (diarioId) params.push(`diario_id=${diarioId}`);
-        if (categoriaId) params.push(`ia_categoria_id=${categoriaId}`); 
+        
+        // Lógica de filtrado
+        if (origen === "diario") {
+            if (origenDetalleId) {
+                params.push(`diario_id=${origenDetalleId}`);
+            } else {
+                params.push(`solo_prensa=1`);
+            }
+        } else if (origen === "redes_sociales") {
+            // Usar filtro por URL
+            if (origenDetalleId === "facebook") {
+                params.push(`url__icontains=facebook.com`);
+            } else if (origenDetalleId === "instagram") {
+                params.push(`url__icontains=instagram.com`);
+            }
+            // Para "Todos" en redes sociales, no agregamos filtro específico
+        }
+        
+        // Siempre trae solo pendientes
+        params.push(`estado=pendiente`);
 
-        if (params.length > 0) url += `?${params.join('&')}`;
+        // Construir URL
+        if (params.length > 0) {
+            url += `?${params.join('&')}`;
+        }
 
         try {
             const res = await fetch(url);
-            const links = await res.json();
+            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
             
+            let links = await res.json();
+
+            // FILTRADO ADICIONAL EN FRONTEND PARA REDES SOCIALES
+            if (origen === "redes_sociales") {
+                links = links.filter(link => esRedSocialUrl(link.url));
+                
+                if (origenDetalleId === "facebook") {
+                    links = links.filter(link => esFacebookUrl(link.url));
+                } else if (origenDetalleId === "instagram") {
+                    links = links.filter(link => esInstagramUrl(link.url));
+                }
+            }
+
             // Actualizar contador total
-            document.getElementById('total-ia-count').textContent = links.length;
+            document.getElementById('total-pendientes-count').textContent = links.length;
 
             if (links.length === 0) {
-                tabla.innerHTML = `<tr><td colspan="${columnasIA}" class="text-center">No hay links clasificados por IA</td></tr>`;
-                document.getElementById('pagination-ia').innerHTML = '';
+                tabla.innerHTML = `<tr><td colspan="${columnasPendientes}" class="text-center">No hay links pendientes</td></tr>`;
+                document.getElementById('pagination-pendientes').innerHTML = '';
                 return;
             }
 
@@ -437,54 +629,373 @@
             tabla.innerHTML = "";
 
             paginatedLinks.forEach(link => {
-                const diarioLogo = link.diario_logo_url || '/static/img/default_logo.png';
-                const urlTextoEscapado = escapeHtml(link.url);
-                const urlTruncadoEscapado = link.url.length > 50 ? escapeHtml(link.url.slice(0, 50)) + '…' : urlTextoEscapado;
-                const resumenEscapado = escapeHtml(link.ia_resumen || '');
-                const resumenTruncadoEscapado = link.ia_resumen && link.ia_resumen.length > 80 
-                    ? escapeHtml(link.ia_resumen.slice(0, 80)) + '…' 
-                    : resumenEscapado;
+                let badge = '';
+                switch (link.estado) {
+                    case 'pendiente': 
+                        badge = `<span class="badge bg-warning text-dark">Pendiente</span>`; 
+                        break;
+                    case 'aprobado': 
+                        badge = `<span class="badge bg-success">Aprobado</span>`; 
+                        break;
+                    case 'descartado': 
+                        badge = `<span class="badge bg-danger">Descartado</span>`; 
+                        break;
+                }
                 
-                const confianza = link.ia_confianza !== undefined && link.ia_confianza !== null 
-                    ? `${(link.ia_confianza * 100).toFixed(1)}%` 
-                    : '-';
-
-                const categoriasBadges = Array.isArray(link.ia_categorias_info)
-                    ? link.ia_categorias_info.map(cat => `<span class="badge bg-info me-1">${cat.nombre}</span>`).join("")
+                // Para redes sociales, siempre permitir clasificar
+                const esRedSocial = esRedSocialUrl(link.url);
+                const revisado = (link.revisado_clasificador || esRedSocial) ? 
+                    `<span class="check-icon" title="${esRedSocial ? 'Red social - disponible para clasificar' : 'Revisado por Clasificador'}">✔</span>` : '';
+                
+                const infoFuente = obtenerInfoFuenteDesdeLink(link);
+                
+                const categoriasBadges = Array.isArray(link.categorias_info)
+                    ? link.categorias_info.map(cat => `<span class="badge bg-secondary me-1">${cat.nombre}</span>`).join("")
                     : "-";
+
+                // Para redes sociales, NO deshabilitar el botón
+                const deshabilitarClasificar = (!esRedSocial && !link.revisado_clasificador) ? 'disabled' : '';
                 
+                // Mostrar mensaje de revisión solo para prensa tradicional no revisada
+                const revisarOnClick = (!esRedSocial && !link.revisado_clasificador && puedeClasificar) 
+                    ? ` onclick="marcarRevisado(${link.id})"` 
+                    : '';
+                
+                const accionColumna = puedeClasificar
+                    ? `<td><button class="btn btn-sm btn-primary" onclick="abrirModalClasificar(${link.id})" ${deshabilitarClasificar}>Clasificar</button></td>`
+                    : '';
+
+                // Crear elemento de logo con manejo de errores
+                const logoHtml = crearElementoLogo(infoFuente.logo, infoFuente.nombre);
+
                 const row = document.createElement("tr");
                 row.innerHTML = `
                     <td class="align-middle">
                         <div class="d-flex align-items-center gap-2">
-                            <img src="${diarioLogo}" alt="logo" style="height:40px; max-width:60px;">
-                            <span>${link.diario_nombre || "Sin diario"}</span>
+                            ${logoHtml}
+                            <span>${escapeHtml(infoFuente.nombre)}</span>
                         </div>
                     </td>
                     <td class="align-middle">
-                        <a href="${urlTextoEscapado}" target="_blank" rel="noopener" title="${urlTextoEscapado}">
-                            ${urlTruncadoEscapado}
+                        <a href="${escapeHtml(link.url)}" target="_blank" rel="noopener" ${revisarOnClick}>
+                            ${link.url.length > 50 ? escapeHtml(link.url.slice(0, 50)) + '…' : escapeHtml(link.url)}
                         </a>
                     </td>
                     <td class="align-middle">${new Date(link.fecha_carga).toLocaleDateString()}</td>
+                    <td class="align-middle">${badge}</td>
+                    <td class="align-middle">${revisado}</td>
                     <td class="align-middle">${categoriasBadges}</td>
-                    <td class="align-middle">
-                        <span class="d-inline-block text-truncate" style="max-width: 320px;" data-bs-toggle="tooltip" data-bs-placement="top" title="${resumenEscapado}">
-                            ${resumenTruncadoEscapado}
-                        </span>
-                    </td>
-                    <td class="align-middle">${confianza}</td>
+                    ${accionColumna}
                 `;
                 tabla.appendChild(row);
             });
 
-            generarPaginacion(links.length, page, 'pagination-ia', 'cargarLinksIA');
-            // Nota: activarTooltips() debe ser definida y disponible globalmente
-            // para activar los tooltips de Bootstrap
-            // activarTooltips(); 
+            // Generar paginación
+            generarPaginacion(links.length, page, 'pagination-pendientes', 'cargarLinks');
+
+        } catch (error) {
+            console.error("Error cargando links:", error);
+            tabla.innerHTML = `<tr><td colspan="${columnasPendientes}" class="text-center text-danger">Error al cargar los datos</td></tr>`;
+            mostrarToast("Error al cargar los links", "danger");
+        }
+    }
+
+    // Función para cargar links clasificados
+    async function cargarLinksClasificados(page = 1) {
+        currentPageClasificados = page;
+        const tabla = document.querySelector("#tabla-clasificados tbody");
+        if (!tabla) return;
+        tabla.innerHTML = `<tr><td colspan="${columnasClasificados}" class="text-center"><div class="spinner-border spinner-border-sm"></div> Cargando...</td></tr>`;
+
+        const desde = document.getElementById("clasif_fecha_desde").value;
+        const hasta = document.getElementById("clasif_fecha_hasta").value;
+        const origenSelect = document.getElementById("clasif_origen");
+        const origen = origenSelect ? origenSelect.value : "";
+        const diarioId = document.getElementById("clasif_diario").value;
+        const redSocial = document.getElementById("clasif_red_social").value;
+        const estado = document.getElementById("clasif_estado").value;
+        const categoriaId = document.getElementById("clasif_categoria").value;
+
+        let url = "/api/links_list/";
+        const params = [];
+        
+        if (desde) params.push(`fecha_inicio=${desde}`);
+        if (hasta) params.push(`fecha_fin=${hasta}`);
+        
+        // Lógica de filtrado por origen
+        if (origen === "diario") {
+            if (diarioId) {
+                params.push(`diario_id=${diarioId}`);
+            } else {
+                params.push(`solo_prensa=1`);
+            }
+        } else if (origen === "redes_sociales") {
+            // Filtro para redes sociales
+            if (redSocial === "facebook") {
+                params.push(`url__icontains=facebook.com`);
+            } else if (redSocial === "instagram") {
+                params.push(`url__icontains=instagram.com`);
+            }
+            // Para "Todas" en redes sociales, filtramos en frontend
+        }
+        // Si origen está vacío, no aplicamos filtro de origen
+        
+        if (categoriaId) params.push(`categoria_id=${categoriaId}`);
+
+        if (estado && estado.trim() !== "") {
+            params.push(`estado=${estado.trim()}`);
+        } else {
+            params.push(`estado_in=aprobado,descartado`);
+        }
+
+        if (params.length > 0) url += `?${params.join('&')}`;
+
+        try {
+            const res = await fetch(url);
+            const links = await res.json();
+            
+            let clasificados = links;
+
+            // FILTRADO ADICIONAL EN FRONTEND PARA REDES SOCIALES
+            if (origen === "redes_sociales") {
+                clasificados = clasificados.filter(link => esRedSocialUrl(link.url));
+                
+                if (redSocial === "facebook") {
+                    clasificados = clasificados.filter(link => esFacebookUrl(link.url));
+                } else if (redSocial === "instagram") {
+                    clasificados = clasificados.filter(link => esInstagramUrl(link.url));
+                }
+            }
+
+            document.getElementById('total-clasificados-count').textContent = clasificados.length;
+
+            if (clasificados.length === 0) {
+                tabla.innerHTML = `<tr><td colspan="${columnasClasificados}" class="text-center">No hay links clasificados</td></tr>`;
+                document.getElementById('pagination-clasificados').innerHTML = '';
+                return;
+            }
+
+            const startIndex = (page - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const paginatedLinks = clasificados.slice(startIndex, endIndex);
+
+            tabla.innerHTML = "";
+
+            paginatedLinks.forEach(link => {
+                let badge = '';
+                switch (link.estado) {
+                    case 'aprobado': 
+                        badge = `<span class="badge bg-success">Aprobado</span>`; 
+                        break;
+                    case 'descartado': 
+                        badge = `<span class="badge bg-danger">Descartado</span>`; 
+                        break;
+                }
+
+                const categoriasBadges = Array.isArray(link.categorias_info)
+                    ? link.categorias_info.map(cat => `<span class="badge bg-secondary me-1">${cat.nombre}</span>`).join("")
+                    : "-";
+
+                const infoFuente = obtenerInfoFuenteDesdeLink(link);
+                const accionColumna = puedeClasificar
+                    ? `<td><button class="btn btn-sm btn-warning" onclick="abrirModalClasificar(${link.id})">Reclasificar</button></td>`
+                    : '';
+
+                // Crear elemento de logo con manejo de errores
+                const logoHtml = crearElementoLogo(infoFuente.logo, infoFuente.nombre);
+
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td class="align-middle">
+                        <div class="d-flex align-items-center gap-2">
+                            ${logoHtml}
+                            <span>${escapeHtml(infoFuente.nombre)}</span>
+                        </div>
+                    </td>
+                    <td class="align-middle">
+                        <a href="${escapeHtml(link.url)}" target="_blank" rel="noopener">
+                            ${link.url.length > 50 ? escapeHtml(link.url.slice(0, 50)) + '…' : escapeHtml(link.url)}
+                        </a>
+                    </td>
+                    <td class="align-middle">${new Date(link.fecha_carga).toLocaleDateString()}</td>
+                    <td class="align-middle">${badge}</td>
+                    <td class="align-middle">${categoriasBadges}</td>
+                    ${accionColumna}
+                `;
+                tabla.appendChild(row);
+            });
+
+            generarPaginacion(clasificados.length, page, 'pagination-clasificados', 'cargarLinksClasificados');
+
+        } catch (error) {
+            console.error("Error cargando links clasificados:", error);
+            tabla.innerHTML = `<tr><td colspan="${columnasClasificados}" class="text-center text-danger">Error al cargar los datos</td></tr>`;
+            mostrarToast("Error al cargar links clasificados", "danger");
+        }
+    }
+
+    // FUNCIÓN CORREGIDA PARA CARGAR LINKS CLASIFICADOS POR IA
+    async function cargarLinksIA(page = 1) {
+        currentPageIA = page;
+        const tabla = document.querySelector("#tabla-ia tbody");
+        if (!tabla) {
+            console.error("No se encontró la tabla #tabla-ia tbody");
+            return;
+        }
+        
+        tabla.innerHTML = `<tr><td colspan="${columnasIA}" class="text-center"><div class="spinner-border spinner-border-sm"></div> Cargando...</td></tr>`;
+
+        const desde = document.getElementById("ia_fecha_desde")?.value || "";
+        const hasta = document.getElementById("ia_fecha_hasta")?.value || "";
+        const origenSelect = document.getElementById("ia_origen");
+        const origen = origenSelect ? origenSelect.value : "";
+        const diarioId = document.getElementById("ia_diario")?.value || "";
+        const redSocial = document.getElementById("ia_red_social")?.value || "";
+        const categoriaId = document.getElementById("ia_categoria")?.value || "";
+
+        console.log("Filtros IA:", { desde, hasta, origen, diarioId, redSocial, categoriaId });
+
+        let url = "/api/links_list/";
+        const params = [];
+        
+        // Usar el parámetro correcto para traer links procesados por IA
+        params.push("clasificado_por_ia=1");
+        
+        if (desde) params.push(`fecha_inicio=${desde}`);
+        if (hasta) params.push(`fecha_fin=${hasta}`);
+        
+        // Lógica de filtrado por origen
+        if (origen === "diario") {
+            if (diarioId) {
+                params.push(`diario_id=${diarioId}`);
+            }
+        } else if (origen === "redes_sociales") {
+            // Filtro para redes sociales
+            if (redSocial === "facebook") {
+                params.push(`url__icontains=facebook.com`);
+            } else if (redSocial === "instagram") {
+                params.push(`url__icontains=instagram.com`);
+            }
+        }
+        
+        if (categoriaId) {
+            params.push(`ia_categoria_id=${categoriaId}`);
+        }
+
+        // Construir URL
+        url += `?${params.join('&')}`;
+        
+        console.log("URL de petición IA:", url);
+
+        try {
+            const res = await fetch(url);
+            if (!res.ok) {
+                throw new Error(`Error HTTP: ${res.status} ${res.statusText}`);
+            }
+            
+            const links = await res.json();
+            console.log("Links recibidos del API IA:", links.length, links);
+            
+            let linksIA = Array.isArray(links) ? links : [];
+
+            // FILTRADO ADICIONAL EN FRONTEND PARA REDES SOCIALES
+            if (origen === "redes_sociales") {
+                // Solo filtrar si no se seleccionó una red social específica
+                if (!redSocial || redSocial === "") {
+                    linksIA = linksIA.filter(link => esRedSocialUrl(link.url));
+                }
+            }
+
+            console.log("Links después de filtro frontend:", linksIA.length);
+
+            // Actualizar contador
+            const totalIACount = document.getElementById('total-ia-count');
+            if (totalIACount) {
+                totalIACount.textContent = linksIA.length;
+            }
+
+            if (linksIA.length === 0) {
+                tabla.innerHTML = `<tr><td colspan="${columnasIA}" class="text-center">No hay links clasificados por IA</td></tr>`;
+                const pagination = document.getElementById('pagination-ia');
+                if (pagination) pagination.innerHTML = '';
+                return;
+            }
+
+            const startIndex = (page - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const paginatedLinks = linksIA.slice(startIndex, endIndex);
+
+            console.log("Links a mostrar:", paginatedLinks.length);
+
+            tabla.innerHTML = "";
+
+            paginatedLinks.forEach(link => {
+                try {
+                    const infoFuente = obtenerInfoFuenteDesdeLink(link);
+                    
+                    const urlTextoEscapado = escapeHtml(link.url || '');
+                    const urlTruncadoEscapado = link.url && link.url.length > 50 ? 
+                        escapeHtml(link.url.slice(0, 50)) + '…' : urlTextoEscapado;
+                    
+                    // CORRECCIÓN: Usar los campos correctos de la API
+                    // Según tu estructura inicial, los campos deberían ser:
+                    // categorias_ia, resumen_ia, confianza_clasificacion
+                    const resumenIA = link.resumen_ia || link.ia_resumen || '';
+                    const resumenEscapado = escapeHtml(resumenIA);
+                    const resumenTruncadoEscapado = resumenIA && resumenIA.length > 80 
+                        ? escapeHtml(resumenIA.slice(0, 80)) + '…' 
+                        : resumenEscapado;
+                    
+                    // Confianza puede venir como confianza_clasificacion o ia_confianza
+                    const confianzaValor = link.confianza_clasificacion || link.ia_confianza || 0;
+                    const confianza = confianzaValor !== undefined && confianzaValor !== null 
+                        ? `${(confianzaValor * 100).toFixed(1)}%` 
+                        : '-';
+
+                    // Categorías IA pueden venir como categorias_ia_info o ia_categorias_info
+                    const categoriasIA = link.categorias_ia_info || link.ia_categorias_info || [];
+                    const categoriasBadges = Array.isArray(categoriasIA)
+                        ? categoriasIA.map(cat => 
+                            `<span class="badge bg-info me-1">${cat.nombre || cat}</span>`
+                          ).join("")
+                        : "-";
+                    
+                    // Crear elemento de logo con manejo de errores
+                    const logoHtml = crearElementoLogo(infoFuente.logo, infoFuente.nombre);
+
+                    const row = document.createElement("tr");
+                    row.innerHTML = `
+                        <td class="align-middle">
+                            <div class="d-flex align-items-center gap-2">
+                                ${logoHtml}
+                                <span>${escapeHtml(infoFuente.nombre)}</span>
+                            </div>
+                        </td>
+                        <td class="align-middle">
+                            <a href="${urlTextoEscapado}" target="_blank" rel="noopener" title="${urlTextoEscapado}">
+                                ${urlTruncadoEscapado}
+                            </a>
+                        </td>
+                        <td class="align-middle">${link.fecha_carga ? new Date(link.fecha_carga).toLocaleDateString() : '-'}</td>
+                        <td class="align-middle">${categoriasBadges}</td>
+                        <td class="align-middle">
+                            <span class="d-inline-block text-truncate" style="max-width: 320px;" data-bs-toggle="tooltip" data-bs-placement="top" title="${resumenEscapado}">
+                                ${resumenTruncadoEscapado}
+                            </span>
+                        </td>
+                        <td class="align-middle">${confianza}</td>
+                    `;
+                    tabla.appendChild(row);
+                } catch (error) {
+                    console.error("Error procesando link:", link, error);
+                }
+            });
+
+            generarPaginacion(linksIA.length, page, 'pagination-ia', 'cargarLinksIA');
+            activarTooltips();
         } catch (error) {
             console.error("Error cargando links IA:", error);
-            tabla.innerHTML = `<tr><td colspan="${columnasIA}" class="text-center text-danger">Error al cargar los datos</td></tr>`;
+            tabla.innerHTML = `<tr><td colspan="${columnasIA}" class="text-center text-danger">Error al cargar los datos: ${error.message}</td></tr>`;
             mostrarToast("Error al cargar links clasificados por IA", "danger");
         }
     }
@@ -511,16 +1022,14 @@
                 </li>`;
         }
 
-        // Páginas (Muestra un rango limitado alrededor de la página actual)
+        // Páginas
         const maxPagesToShow = 5;
         let startPage, endPage;
 
         if (totalPages <= maxPagesToShow) {
-            // Menos páginas que el máximo, muestra todas
             startPage = 1;
             endPage = totalPages;
         } else {
-            // Más páginas que el máximo, calcula el rango
             startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
             endPage = Math.min(totalPages, currentPage + Math.floor(maxPagesToShow / 2));
 
@@ -570,7 +1079,6 @@
             const diarios = await res.json();
             
             selects.forEach(select => {
-                // Asegurar que el select ya tiene la opción 'Todos' antes de agregar los diarios
                 const hasDefaultOption = Array.from(select.options).some(opt => opt.value === "");
                 if (!hasDefaultOption) {
                      const defaultOption = document.createElement("option");
@@ -592,123 +1100,7 @@
         }
     }
 
-    // Función para cargar links pendientes (MODIFICADA PARA FILTRO DE REDES SOCIALES)
-    async function cargarLinks(page = 1) {
-        currentPagePendientes = page;
-        const tabla = document.querySelector("#tabla-links tbody");
-        if (!tabla) return;
-        tabla.innerHTML = `<tr><td colspan="${columnasPendientes}" class="text-center"><div class="spinner-border spinner-border-sm"></div> Cargando...</td></tr>`;
-
-        const desde = document.getElementById("fecha_desde").value;
-        const hasta = document.getElementById("fecha_hasta").value;
-        const origen = obtenerOrigenActual();
-        const origenDetalleSelect = document.getElementById("origen_detalle");
-        const origenDetalleId = origenDetalleSelect ? origenDetalleSelect.value : "";
-
-        let url = "/api/links_list/";
-        const params = [];
-        if (desde) params.push(`fecha_inicio=${desde}`);
-        if (hasta) params.push(`fecha_fin=${hasta}`);
-        
-        // Lógica de filtrado de origen (Diario vs Redes Sociales)
-        if (origen === "diario") {
-             // Si el origen es diario y hay un detalle (diario ID)
-            if (origenDetalleId) {
-                params.push(`diario_id=${origenDetalleId}`);
-            } else {
-                // Si el origen es diario pero no hay detalle (Todos los diarios)
-                params.push(`solo_prensa=1`);
-            }
-        } else if (origen === "redes_sociales") {
-             // Si el origen es redes sociales
-            if (origenDetalleId) {
-                // Filtra por una red social específica (ej: facebook o instagram)
-                // Se asume que el valor es el nombre de la red social ('facebook', 'instagram')
-                params.push(`fuente=${origenDetalleId}`); 
-            } else {
-                // Filtra por Facebook e Instagram (la selección de "Todos" en redes sociales)
-                // Usamos 'fuente_in' para ser explícitos y excluir las opciones eliminadas (Twitter/TikTok)
-                params.push(`fuente_in=facebook,instagram`); 
-            }
-        }
-        // Si origen === "", no se agrega ningún filtro de origen/diario, trae todos los tipos.
-
-        // 👇 siempre trae solo pendientes
-        params.push(`estado=pendiente`);
-
-        if (params.length > 0) url += `?${params.join('&')}`;
-
-        try {
-            const res = await fetch(url);
-            const links = await res.json();
-
-            // Actualizar contador total
-            document.getElementById('total-pendientes-count').textContent = links.length;
-
-            if (links.length === 0) {
-                tabla.innerHTML = `<tr><td colspan="${columnasPendientes}" class="text-center">No hay links pendientes</td></tr>`;
-                document.getElementById('pagination-pendientes').innerHTML = '';
-                return;
-            }
-
-            // Calcular índices para la paginación
-            const startIndex = (page - 1) * itemsPerPage;
-            const endIndex = startIndex + itemsPerPage;
-            const paginatedLinks = links.slice(startIndex, endIndex);
-
-            // Limpiar tabla
-            tabla.innerHTML = "";
-
-            paginatedLinks.forEach(link => {
-                let badge = '';
-                switch (link.estado) {
-                    case 'pendiente': badge = `<span class="badge bg-warning text-dark">Pendiente</span>`; break;
-                    case 'aprobado': badge = `<span class="badge bg-success">Aprobado</span>`; break;
-                    case 'descartado': badge = `<span class="badge bg-danger">Descartado</span>`; break;
-                }
-                const revisado = link.revisado_clasificador ? `<span class="check-icon" title="Revisado por Clasificador">✔</span>` : '';
-                const infoFuente = obtenerInfoFuenteDesdeLink(link);
-                const origenLogo = infoFuente.logo || '/static/img/default_logo.png';
-
-                const categoriasBadges = Array.isArray(link.categorias_info)
-                    ? link.categorias_info.map(cat => `<span class="badge bg-secondary me-1">${cat.nombre}</span>`).join("")
-                    : "-";
-
-                const deshabilitarClasificar = !link.revisado_clasificador ? 'disabled' : '';
-                const revisarOnClick = !link.revisado_clasificador && puedeClasificar ? ` onclick="marcarRevisado(${link.id})"` : '';
-                const accionColumna = puedeClasificar
-                    ? `<td><button class="btn btn-sm btn-primary" onclick="abrirModalClasificar(${link.id})" ${deshabilitarClasificar}>Clasificar</button></td>`
-                    : '';
-
-                const row = document.createElement("tr");
-                row.innerHTML = `
-                    <td>
-                        <div class="d-flex align-items-center gap-2">
-                            <img src="${origenLogo}" alt="logo" style="height:40px; max-width:60px;">
-                            <span>${escapeHtml(infoFuente.nombre)}</span>
-                        </div>
-                    </td>
-                    <td><a href="${link.url}" target="_blank"${revisarOnClick}>
-                        ${link.url.length > 50 ? link.url.slice(0, 50) + '…' : link.url}</a></td>
-                    <td>${new Date(link.fecha_carga).toLocaleDateString()}</td>
-                    <td>${badge}</td>
-                    <td>${revisado}</td>
-                    <td>${categoriasBadges}</td>
-                    ${accionColumna}
-                `;
-                tabla.appendChild(row);
-            });
-
-            // Generar paginación
-            generarPaginacion(links.length, page, 'pagination-pendientes', 'cargarLinks');
-
-        } catch (error) {
-            console.error("Error cargando links:", error);
-            tabla.innerHTML = `<tr><td colspan="${columnasPendientes}" class="text-center text-danger">Error al cargar los datos</td></tr>`;
-            mostrarToast("Error al cargar los links", "danger");
-        }
-    }
-
+    // Función para cargar links clasificados por IA (clasificador IA)
     async function cargarLinksClasificadorIA(page = 1) {
         currentPageClasificadorIA = page;
         const tabla = document.querySelector("#tabla-clasificadorIA tbody");
@@ -745,7 +1137,6 @@
             tabla.innerHTML = "";
 
             paginatedLinks.forEach(link => {
-                // Borrar link.id del set para que solo se consideren los visibles/cargados si están marcados
                 seleccionClasificadorIA.delete(link.id); 
                 let badge = '';
                 switch (link.estado) {
@@ -760,7 +1151,7 @@
                         break;
                 }
 
-                const diarioLogo = link.diario_logo_url || '/static/img/default_logo.png';
+                const infoFuente = obtenerInfoFuenteDesdeLink(link);
                 const isChecked = seleccionClasificadorIA.has(link.id) ? 'checked' : '';
 
                 const row = document.createElement("tr");
@@ -770,8 +1161,8 @@
                     </td>
                     <td class="align-middle">
                         <div class="d-flex align-items-center gap-2">
-                            <img src="${diarioLogo}" alt="logo" style="height:32px; width:auto;">
-                            <span>${link.diario_nombre || "Sin diario"}</span>
+                            ${crearElementoLogo(infoFuente.logo, infoFuente.nombre)}
+                            <span>${escapeHtml(infoFuente.nombre)}</span>
                         </div>
                     </td>
                     <td class="align-middle">
@@ -785,7 +1176,6 @@
                 tabla.appendChild(row);
             });
 
-            // Lógica para mantener el 'Seleccionar todo' desmarcado si no todos los visibles están seleccionados
             const allVisibleSelected = paginatedLinks.every(link => seleccionClasificadorIA.has(link.id));
             const selectAll = document.getElementById('obs_select_all');
             if (selectAll) {
@@ -803,12 +1193,11 @@
 
     function toggleSeleccionIndividualClasificadorIA(id, marcado) {
         if (!seleccionClasificadorIA) return;
-        id = parseInt(id); // Asegurar que es un número
+        id = parseInt(id);
         if (marcado) {
             seleccionClasificadorIA.add(id);
         } else {
             seleccionClasificadorIA.delete(id);
-            // Si desmarco uno, desmarco el "seleccionar todos"
             const selectAll = document.getElementById('obs_select_all');
             if (selectAll) {
                 selectAll.checked = false;
@@ -820,7 +1209,6 @@
     function toggleSeleccionTodosClasificadorIA(checkbox) {
         if (!seleccionClasificadorIA) return;
         const checkboxes = document.querySelectorAll('.obs-checkbox');
-        // El comportamiento correcto es solo modificar los que están VISTOS en la página actual
         checkboxes.forEach(cb => {
             const id = parseInt(cb.dataset.id);
             cb.checked = checkbox.checked;
@@ -881,7 +1269,6 @@
                 mostrarToast("Algunos links no pudieron procesarse con IA.", "warning");
             }
 
-            // Limpiar la selección y recargar
             seleccionClasificadorIA.clear();
             const checkboxes = document.querySelectorAll('.obs-checkbox');
             checkboxes.forEach(cb => (cb.checked = false));
@@ -920,7 +1307,6 @@
             if (!res.ok) throw new Error("No se pudo marcar revisado");
             mostrarToast("Link marcado como revisado", "success");
             cargarLinks(currentPagePendientes);
-            // Solo recargar clasificados si están en una pestaña visible
             if (document.getElementById('clasificados-tab').classList.contains('active')) {
                 cargarLinksClasificados(currentPageClasificados);
             }
@@ -936,13 +1322,11 @@
             return;
         }
         try {
-            // Traemos primero las categorías actuales del link
             const resLink = await fetch(`/api/links/${id}/`);
             if (!resLink.ok) throw new Error("No se pudo obtener el link");
             const linkData = await resLink.json();
             const categoriasActuales = (linkData.categorias_info || []).map(cat => cat.id);
 
-            // Ahora traemos todas las categorías disponibles
             const resCats = await fetch("/api/categorias/");
             if (!resCats.ok) throw new Error("No se pudo obtener las categorías");
             const categorias = await resCats.json();
@@ -954,7 +1338,6 @@
                 </div>`
             ).join("");
 
-            // Usamos SweetAlert2 (asumimos que está cargado)
             Swal.fire({
                 title: 'Clasificar Link',
                 html: `
@@ -1042,100 +1425,6 @@
         return cookieValue;
     }
 
-    async function cargarLinksClasificados(page = 1) {
-        currentPageClasificados = page;
-        const tabla = document.querySelector("#tabla-clasificados tbody");
-        if (!tabla) return;
-        tabla.innerHTML = `<tr><td colspan="${columnasClasificados}" class="text-center"><div class="spinner-border spinner-border-sm"></div> Cargando...</td></tr>`;
-
-        const desde = document.getElementById("clasif_fecha_desde").value;
-        const hasta = document.getElementById("clasif_fecha_hasta").value;
-        const diarioId = document.getElementById("clasif_diario").value;
-        const estado = document.getElementById("clasif_estado").value;
-        const categoriaId = document.getElementById("clasif_categoria").value;
-
-        let url = "/api/links_list/";
-        const params = [];
-        if (desde) params.push(`fecha_inicio=${desde}`);
-        if (hasta) params.push(`fecha_fin=${hasta}`);
-        if (diarioId) params.push(`diario_id=${diarioId}`);
-        if (categoriaId) params.push(`categoria_id=${categoriaId}`);
-
-        if (estado && estado.trim() !== "") {
-            params.push(`estado=${estado.trim()}`);
-        } else {
-            // Cargar Aprobados Y Descartados si no se especifica estado
-            params.push(`estado_in=aprobado,descartado`);
-        }
-        // Se asume que solo queremos prensa en esta sección si estamos usando diarioId/diario
-        if (diarioId) {
-             params.push(`solo_prensa=1`);
-        }
-
-
-        if (params.length > 0) url += `?${params.join('&')}`;
-
-        try {
-            const res = await fetch(url);
-            const links = await res.json();
-            // Ya que el API trae filtrado por estado, links es la lista final
-            const clasificados = links;
-
-            // Actualizar contador total
-            document.getElementById('total-clasificados-count').textContent = clasificados.length;
-
-            if (clasificados.length === 0) {
-                tabla.innerHTML = `<tr><td colspan="${columnasClasificados}" class="text-center">No hay links clasificados</td></tr>`;
-                document.getElementById('pagination-clasificados').innerHTML = '';
-                return;
-            }
-
-            // Calcular índices para la paginación
-            const startIndex = (page - 1) * itemsPerPage;
-            const endIndex = startIndex + itemsPerPage;
-            const paginatedLinks = clasificados.slice(startIndex, endIndex);
-
-            // Limpiar tabla
-            tabla.innerHTML = "";
-
-            paginatedLinks.forEach(link => {
-                let badge = '';
-                switch (link.estado) {
-                    case 'aprobado': badge = `<span class="badge bg-success">Aprobado</span>`; break;
-                    case 'descartado': badge = `<span class="badge bg-danger">Descartado</span>`; break;
-                }
-
-                const categoriasBadges = Array.isArray(link.categorias_info)
-                    ? link.categorias_info.map(cat => `<span class="badge bg-secondary me-1">${cat.nombre}</span>`).join("")
-                    : "-";
-
-                const diarioLogo = link.diario_logo_url || '/static/img/default_logo.png';
-                const accionColumna = puedeClasificar
-                    ? `<td><button class="btn btn-sm btn-warning" onclick="abrirModalClasificar(${link.id})">Reclasificar</button></td>`
-                    : '';
-
-                const row = document.createElement("tr");
-                row.innerHTML = `
-                    <td><img src="${diarioLogo}" alt="logo" style="height:40px; max-width:60px;"></td>
-                    <td><a href="${link.url}" target="_blank">${link.url.length > 50 ? link.url.slice(0,50)+'…' : link.url}</a></td>
-                    <td>${new Date(link.fecha_carga).toLocaleDateString()}</td>
-                    <td>${badge}</td>
-                    <td>${categoriasBadges}</td>
-                    ${accionColumna}
-                `;
-                tabla.appendChild(row);
-            });
-
-            // Generar paginación
-            generarPaginacion(clasificados.length, page, 'pagination-clasificados', 'cargarLinksClasificados');
-
-        } catch (error) {
-            console.error("Error cargando links clasificados:", error);
-            tabla.innerHTML = `<tr><td colspan="${columnasClasificados}" class="text-center text-danger">Error al cargar los datos</td></tr>`;
-            mostrarToast("Error al cargar links clasificados", "danger");
-        }
-    }
-
     async function cargarCategorias(selectIds = ["clasif_categoria", "ia_categoria"]) {
         const selects = selectIds
             .map(id => document.getElementById(id))
@@ -1147,7 +1436,6 @@
             const res = await fetch("/api/categorias/");
             const categorias = await res.json();
             selects.forEach(select => {
-                // Asegurar que el select ya tiene la opción 'Todos' antes de agregar las categorías
                 const hasDefaultOption = Array.from(select.options).some(opt => opt.value === "");
                 if (!hasDefaultOption) {
                      const defaultOption = document.createElement("option");
@@ -1169,32 +1457,40 @@
         }
     }
     
-    // Función para activar Tooltips de Bootstrap (se asume que Bootstrap JS está cargado)
     function activarTooltips() {
-         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-         var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-             return new bootstrap.Tooltip(tooltipTriggerEl);
-         });
+         if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+             var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+             var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                 return new bootstrap.Tooltip(tooltipTriggerEl);
+             });
+         }
     }
 
     document.addEventListener("DOMContentLoaded", async () => {
-        // Inicializar Tooltips al cargar la página si Bootstrap está disponible
+        console.log("DOM cargado - Inicializando página de clasificación...");
+        
         activarTooltips(); 
         
         if (puedeClasificar) {
+            console.log("Usuario puede clasificar");
             await cargarDiarios(["diario", "clasif_diario", "ia_diario"]);
             await cargarCategorias(["clasif_categoria", "ia_categoria"]);
             await actualizarFiltroOrigen();
+            await actualizarFiltroOrigenClasificados();
+            await actualizarFiltroOrigenIA();
             cargarLinks(1);
             cargarLinksClasificados(1);
             cargarLinksIA(1);
-        } else if (es_clasificador_ia) {
-            // Si solo es clasificador IA, inicializa los selectores relevantes para esa vista
+        } else if (esClasificadorIA) {
+            console.log("Usuario es clasificador IA");
             await cargarDiarios(["obs_diario", "ia_diario"]);
             await cargarCategorias(["ia_categoria"]);
+            await actualizarFiltroOrigenIA();
             cargarLinksClasificadorIA(1);
             cargarLinksIA(1);
         }
+        
+        console.log("Inicialización completada");
     });
 </script>
 
