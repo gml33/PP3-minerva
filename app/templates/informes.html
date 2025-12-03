@@ -42,48 +42,74 @@
         </div>
         {% endif %}
 
+        <!-- DATOS PERSONALES PRINCIPALES -->
+        <div class="card mb-4">
+            <div class="card-header">Datos personales</div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label>Apellido</label>
+                        <input type="text" name="apellido" class="form-control">
+                    </div>
+                    <div class="col-md-4">
+                        <label>Nombre</label>
+                        <input type="text" name="nombre" class="form-control">
+                    </div>
+                    <div class="col-md-4">
+                        <label>Documento</label>
+                        <input type="number" min="1000000" max="99999999" name="documento" class="form-control">
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label>Nacionalidad</label>
+                        <input type="text" name="nacionalidad" class="form-control">
+                    </div>
+                    <div class="col-md-4">
+                        <label>Sexo</label>
+                        <select name="sexo" class="form-select">
+                            <option value="">Seleccione sexo</option>
+                            <option value="masculino">Masculino</option>
+                            <option value="femenino">Femenino</option>
+                            <option value="otro">Otro</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label>Fecha de Nacimiento</label>
+                        <input type="date" name="fecha_nacimiento" class="form-control">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <label>Foto</label>
+                        <input type="file" name="foto" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label>Alias</label>
+                        <div class="alias-group">
+                            <input type="text" name="alias[]" class="form-control mb-2">
+                        </div>
+                        <button type="button" class="btn btn-sm btn-secondary mt-1" onclick="agregarCampo('alias')">Agregar otro alias</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- ACORDEÓN DE SECCIONES -->
         <div class="accordion" id="accordionInforme">
-            
-            <!-- SECCIÓN DATOS PERSONALES -->
+            <!-- SECCIÓN ACTIVIDAD CRIMINAL -->
             <div class="accordion-item">
-                <h2 class="accordion-header" id="headingDatosPersonales">
-                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDatosPersonales" aria-expanded="true" aria-controls="collapseDatosPersonales">
-                        Datos Personales
+                <h2 class="accordion-header" id="headingActividadCriminal">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseActividadCriminal" aria-expanded="false" aria-controls="collapseActividadCriminal">
+                        Actividad criminal
                     </button>
                 </h2>
-                <div id="collapseDatosPersonales" class="accordion-collapse collapse show" aria-labelledby="headingDatosPersonales" data-bs-parent="#accordionInforme">
+                <div id="collapseActividadCriminal" class="accordion-collapse collapse" aria-labelledby="headingActividadCriminal" data-bs-parent="#accordionInforme">
                     <div class="accordion-body">
                         <div class="row mb-3">
-                            <div class="col-md-4">
-                                <label>Apellido</label>
-                                <input type="text" name="apellido" class="form-control">
-                            </div>
-                            <div class="col-md-4">
-                                <label>Nombre</label>
-                                <input type="text" name="nombre" class="form-control">
-                            </div>
-                            <div class="col-md-4">
-                                <label>Documento</label>
-                                <input type="number" min="1000000" max="99999999" name="documento" class="form-control">
-                            </div>
-                        </div>
-
-                        <div class="row mb-3">
-                            <div class="col-md-3">
-                                <label>Nacionalidad</label>
-                                <input type="text" name="nacionalidad" class="form-control">
-                            </div>
-                            <div class="col-md-3">
-                                <label>Sexo</label>
-                                <select name="sexo" class="form-select">
-                                    <option value="">Seleccione sexo</option>
-                                    <option value="masculino">Masculino</option>
-                                    <option value="femenino">Femenino</option>
-                                    <option value="otro">Otro</option>
-                                </select>
-                            </div>
-                            <div class="col-md-3">
+                            <div class="col-md-6">
                                 <label>Banda</label>
                                 <select name="banda" class="form-select">
                                     <option value="">Seleccione una banda</option>
@@ -94,14 +120,13 @@
                                     {% endfor %}
                                 </select>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-6">
                                 <label>Actividad</label>
                                 <input type="text" name="actividad" class="form-control">
                             </div>
                         </div>
-
-                        <div class="row mb-3">
-                            <div class="col-md-4">
+                        <div class="row">
+                            <div class="col-md-6">
                                 <label>Rol</label>
                                 <select name="rol" class="form-select">
                                     <option value="">Seleccione un rol</option>
@@ -111,7 +136,7 @@
                                     <option value="lider">Lider</option>
                                 </select>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <label>Situación</label>
                                 <select name="situacion" class="form-select">
                                     <option value="">Seleccione situación</option>
@@ -122,25 +147,6 @@
                                     <option value="profugo">Prófugo</option>
                                 </select>
                             </div>
-                            <div class="col-md-4">
-                                <label>Fecha de Nacimiento</label>
-                                <input type="date" name="fecha_nacimiento" class="form-control">
-                            </div>
-                        </div>
-                        
-                        <!--Foto-->
-                        <div class="mb-3">
-                            <label>Foto</label>
-                            <input type="file" name="foto" class="form-control">
-                        </div>
-
-                        <!-- Alias -->
-                        <div class="mb-3">
-                            <label>Alias</label>
-                            <div class="alias-group">
-                                <input type="text" name="alias[]" class="form-control mb-2">
-                            </div>
-                            <button type="button" class="btn btn-sm btn-secondary" onclick="agregarCampo('alias')">Agregar otro alias</button>
                         </div>
                     </div>
                 </div>
