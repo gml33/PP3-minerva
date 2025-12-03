@@ -115,8 +115,6 @@ class BandaCriminalForm(forms.ModelForm):
         fields = [
             "nombres",
             "zonas_influencia",
-            "lideres",
-            "miembros",
             "bandas_aliadas",
             "bandas_rivales",
         ]
