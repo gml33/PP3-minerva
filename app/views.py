@@ -1320,7 +1320,7 @@ def solicitud_info_detalle_view(request, pk):
         solicitud.save(update_fields=["fecha_lectura"])
 
     if request.method == "POST":
-        form = SolicitudInfoRespuestaForm(request.POST, instance=solicitud)
+        form = SolicitudInfoRespuestaForm(request.POST, request.FILES, instance=solicitud)
         if form.is_valid():
             solicitud = form.save(commit=False)
             solicitud.respondido_por = request.user

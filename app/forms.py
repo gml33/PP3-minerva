@@ -577,17 +577,24 @@ class SolicitudInfoForm(forms.ModelForm):
 class SolicitudInfoRespuestaForm(forms.ModelForm):
     class Meta:
         model = SolicitudInfo
-        fields = ["respuesta"]
+        fields = ["respuesta", "documentacion"]
         widgets = {
             "respuesta": forms.Textarea(
                 attrs={"class": "form-control", "rows": 4, "placeholder": "Redactá la respuesta para el equipo de redacción"}
-            )
+            ),
+            "documentacion": forms.ClearableFileInput(
+                attrs={"class": "form-control", "accept": ".pdf,.doc,.docx,.jpg,.jpeg,.png"}
+            ),
         }
-        labels = {"respuesta": "Respuesta"}
+        labels = {
+            "respuesta": "Respuesta",
+            "documentacion": "Adjuntar documentación",
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["respuesta"].required = True
+        self.fields["documentacion"].required = False
 
 
 class HerramientaOSINTForm(forms.ModelForm):

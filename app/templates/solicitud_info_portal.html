@@ -123,19 +123,20 @@
 <div class="card">
     <div class="card-header">Mis solicitudes registradas</div>
     <div class="card-body p-0">
-        {% if solicitudes_page.paginator.count %}
-        <div class="table-responsive">
-            <table class="table table-striped mb-0">
-                <thead>
-                    <tr>
-                        <th>Creada</th>
-                        <th>Descripción</th>
-                        <th>Artículos vinculados</th>
-                        <th>Estado</th>
-                        <th>Respuesta</th>
-                        <th class="text-end">Acciones</th>
-                    </tr>
-                </thead>
+                {% if solicitudes_page.paginator.count %}
+                <div class="table-responsive">
+                    <table class="table table-striped mb-0">
+                        <thead>
+                            <tr>
+                                <th>Creada</th>
+                                <th>Descripción</th>
+                                <th>Artículos vinculados</th>
+                                <th>Estado</th>
+                                <th>Respuesta</th>
+                                <th>Documento</th>
+                                <th class="text-end">Acciones</th>
+                            </tr>
+                        </thead>
                 <tbody>
                     {% for solicitud in solicitudes_page %}
                     <tr>
@@ -183,6 +184,15 @@
                                 </div>
                             {% else %}
                                 <span class="text-muted">Sin respuesta registrada.</span>
+                            {% endif %}
+                        </td>
+                        <td style="white-space: nowrap;">
+                            {% if solicitud.documentacion %}
+                                <a href="{{ solicitud.documentacion.url }}" class="btn btn-sm btn-outline-secondary" target="_blank">
+                                    Ver archivo
+                                </a>
+                            {% else %}
+                                <span class="text-muted">Sin adjunto</span>
                             {% endif %}
                         </td>
                         <td class="text-end">

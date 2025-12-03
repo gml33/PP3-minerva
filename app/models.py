@@ -465,6 +465,12 @@ class SolicitudInfo(models.Model):
         blank=True,
         related_name="solicitudes_respondidas",
     )
+    documentacion = models.FileField(
+        upload_to="solicitudes_documentacion/",
+        null=True,
+        blank=True,
+        help_text="Adjuntá documentación relacionada en formato PDF, Word o imagen.",
+    )
 
     class Meta:
         verbose_name = "Solicitud de Información"
