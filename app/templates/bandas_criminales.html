@@ -24,7 +24,9 @@
         <form method="post" action="{{ form_action|default:request.path }}">
             {% csrf_token %}
             {% for field in form %}
-                {% if field.name == "alias" %}
+                {% if field.name == "links_diarios" or field.name == "links_redes" %}
+                {{ field }}
+                {% elif field.name == "alias" %}
                 <div class="mb-3">
                     <label class="form-label" for="id_alias_control">Alias</label>
                     {{ field }}
@@ -158,11 +160,12 @@
                         <th>Link</th>
                         <th>Fecha</th>
                         <th>Categorías</th>
+                        <th>Seleccionar</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td colspan="5" class="text-center text-muted">Cargando links aprobados...</td>
+                        <td colspan="6" class="text-center text-muted">Cargando links aprobados...</td>
                     </tr>
                 </tbody>
             </table>
@@ -432,6 +435,8 @@ let paginaLinksBandasActual = 1;
 const LINKS_BANDAS_POR_PAGINA = 10;
 let diariosBandas = [];
 let redesBandas = [];
+let linksBandasSeleccionadosDiario = [];
+let linksBandasSeleccionadosRed = [];
 
 document.addEventListener("DOMContentLoaded", async function () {
     inicializarCamposAlias();
@@ -482,6 +487,7 @@ async function inicializarLinksBandas() {
     if (!tablaLinks) {
         return;
     }
+    inicializarSeleccionLinksBandas();
     await cargarCategoriaBandas();
     await Promise.all([cargarDiariosBandas(), cargarRedesBandas()]);
     actualizarCamposFuenteBandas();
@@ -555,19 +561,82 @@ function actualizarCamposFuenteBandas() {
     }
 }
 
+function inicializarSeleccionLinksBandas() {
+    linksBandasSeleccionadosDiario = parsearListaLinksSeleccionados("id_links_diarios");
+    linksBandasSeleccionadosRed = parsearListaLinksSeleccionados("id_links_redes");
+    actualizarCamposLinksSeleccionados();
+}
+
+function parsearListaLinksSeleccionados(idCampo) {
+    const input = document.getElementById(idCampo);
+    if (!input || !input.value) {
+        return [];
+    }
+    try {
+        const data = JSON.parse(input.value);
+        if (Array.isArray(data)) {
+            return data.map((valor) => parseInt(valor, 10)).filter((valor) => !Number.isNaN(valor));
+        }
+    } catch (error) {
+        console.warn("No se pudo interpretar la selección previa de links:", error);
+    }
+    return [];
+}
+
+function actualizarCamposLinksSeleccionados() {
+    const inputDiario = document.getElementById("id_links_diarios");
+    const inputRed = document.getElementById("id_links_redes");
+    if (inputDiario) {
+        inputDiario.value = JSON.stringify(linksBandasSeleccionadosDiario);
+    }
+    if (inputRed) {
+        inputRed.value = JSON.stringify(linksBandasSeleccionadosRed);
+    }
+}
+
+function toggleSeleccionLinkBanda(id, tipo, checked) {
+    const numericId = parseInt(id, 10);
+    if (Number.isNaN(numericId)) {
+        return;
+    }
+    const esRed = tipo === "red_social";
+    const arrayObjetivo = esRed ? linksBandasSeleccionadosRed : linksBandasSeleccionadosDiario;
+    const indice = arrayObjetivo.indexOf(numericId);
+    if (checked && indice === -1) {
+        arrayObjetivo.push(numericId);
+    } else if (!checked && indice !== -1) {
+        arrayObjetivo.splice(indice, 1);
+    }
+    if (esRed) {
+        linksBandasSeleccionadosRed = arrayObjetivo;
+    } else {
+        linksBandasSeleccionadosDiario = arrayObjetivo;
+    }
+    actualizarCamposLinksSeleccionados();
+}
+
+function linkBandaEstaSeleccionado(tipo, id) {
+    const numericId = parseInt(id, 10);
+    if (Number.isNaN(numericId)) {
+        return false;
+    }
+    const arrayObjetivo = tipo === "red_social" ? linksBandasSeleccionadosRed : linksBandasSeleccionadosDiario;
+    return arrayObjetivo.includes(numericId);
+}
+
 async function cargarLinksBandas() {
     const tbody = document.querySelector("#tabla-links-bandas tbody");
     const paginacion = document.getElementById("paginacion-links-bandas");
     if (!tbody) {
         return;
     }
-    tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Cargando links aprobados...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Cargando links aprobados...</td></tr>`;
     if (paginacion) {
         paginacion.classList.add("d-none");
     }
 
     if (!categoriaBandasId) {
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">No se pudo determinar la categoría Bandas criminales.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">No se pudo determinar la categoría Bandas criminales.</td></tr>`;
         return;
     }
 
@@ -606,7 +675,7 @@ async function cargarLinksBandas() {
             });
 
         if (!linksBandasGlobal.length) {
-            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">No se encontraron links aprobados para los filtros seleccionados.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">No se encontraron links aprobados para los filtros seleccionados.</td></tr>`;
             return;
         }
 
@@ -614,7 +683,7 @@ async function cargarLinksBandas() {
         mostrarLinksBandasPagina(linksBandasGlobal, paginaLinksBandasActual);
     } catch (error) {
         console.error("Error cargando links:", error);
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Error al cargar los links: ${error.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Error al cargar los links: ${error.message}</td></tr>`;
     }
 }
 
@@ -629,15 +698,16 @@ function mostrarLinksBandasPagina(links, pagina) {
     const paginaLinks = links.slice(inicio, inicio + LINKS_BANDAS_POR_PAGINA);
 
     if (!paginaLinks.length) {
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">No se encontraron links para mostrar.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">No se encontraron links para mostrar.</td></tr>`;
         actualizarPaginacionLinksBandas(0, 0);
         return;
     }
 
     paginaLinks.forEach(link => {
+        const tipoFuente = link.tipo_fuente || "diario";
         const logoUrl = link.diario_logo_url || link.red_social_logo_url || link.tv_digital_logo_url || link.radio_digital_logo_url || '/static/img/default_logo.png';
         const fuenteNombre = link.diario_nombre || link.red_social_nombre || link.tv_digital_nombre || link.radio_digital_nombre || "Sin fuente";
-        const tipoLabel = formatearTipoFuenteBandas(link.tipo_fuente);
+        const tipoLabel = formatearTipoFuenteBandas(tipoFuente);
         const badgeTipo = tipoLabel ? `<span class="badge bg-light text-dark border ms-2">${tipoLabel}</span>` : "";
         const badgeIA = link.clasificado_por_ia ? '<span class="badge bg-info ms-2">IA</span>' : "";
         const fecha = link.fecha_carga ? new Date(link.fecha_carga).toLocaleDateString() : "-";
@@ -649,6 +719,7 @@ function mostrarLinksBandasPagina(links, pagina) {
         const textoLink = linkUrl
             ? (linkUrl.length > 60 ? linkUrl.slice(0, 60) + "…" : linkUrl)
             : "Sin URL";
+        const checked = linkBandaEstaSeleccionado(tipoFuente, link.id) ? "checked" : "";
         const tr = document.createElement("tr");
         tr.innerHTML = `
             <td><img src="${logoUrl}" alt="Logo fuente" style="height:40px; max-width:60px"></td>
@@ -656,6 +727,12 @@ function mostrarLinksBandasPagina(links, pagina) {
             <td>${linkUrl ? `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer">${textoLink}</a>` : '<span class="text-muted">Sin URL</span>'}</td>
             <td>${fecha}</td>
             <td>${categorias}</td>
+            <td>
+                <input type="checkbox"
+                    class="form-check-input"
+                    onchange="toggleSeleccionLinkBanda(${link.id}, '${tipoFuente}', this.checked)"
+                    ${checked}>
+            </td>
         `;
         tbody.appendChild(tr);
     });

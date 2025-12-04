@@ -726,6 +726,18 @@ class BandaCriminal(models.Model):
         symmetrical=False,
         related_name="bandas_rivales_de",
     )
+    links_aprobados_diario = models.ManyToManyField(
+        LinkRelevante,
+        blank=True,
+        related_name="bandas_relacionadas_diario",
+        help_text="Links de diarios digitales aprobados asociados a la banda.",
+    )
+    links_aprobados_red_social = models.ManyToManyField(
+        LinkRedSocial,
+        blank=True,
+        related_name="bandas_relacionadas_red",
+        help_text="Links de redes sociales aprobados asociados a la banda.",
+    )
     class Meta:
         verbose_name = "Banda Criminal"
         verbose_name_plural = "Bandas Criminales"

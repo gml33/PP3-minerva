@@ -16,6 +16,7 @@ from .models import (
     HechoDelictivo,
     BandaCriminal,
     LinkRelevante,
+    LinkRedSocial,
     EstadoLink,
     InformeBandaCriminal,
     JerarquiaPrincipal,
@@ -134,6 +135,9 @@ class RadioDigitalForm(forms.ModelForm):
 
 
 class BandaCriminalForm(forms.ModelForm):
+    links_diarios = forms.CharField(required=False, widget=forms.HiddenInput())
+    links_redes = forms.CharField(required=False, widget=forms.HiddenInput())
+
     class Meta:
         model = BandaCriminal
         fields = [
@@ -177,12 +181,26 @@ class BandaCriminalForm(forms.ModelForm):
                 except json.JSONDecodeError:
                     zonas = []
             self.fields["zonas_influencia"].initial = json.dumps(zonas or [], ensure_ascii=False)
+            self.fields["links_diarios"].initial = json.dumps(
+                self._links_ids_from_instance("links_aprobados_diario"), ensure_ascii=False
+            )
+            self.fields["links_redes"].initial = json.dumps(
+                self._links_ids_from_instance("links_aprobados_red_social"), ensure_ascii=False
+            )
         bandas_queryset = BandaCriminal.objects.order_by("nombre")
         if self.instance and self.instance.pk:
             bandas_queryset = bandas_queryset.exclude(pk=self.instance.pk)
         for field_name in ("bandas_aliadas", "bandas_rivales"):
             self.fields[field_name].queryset = bandas_queryset
             self.fields[field_name].label_from_instance = _label_banda
+
+    def _links_ids_from_instance(self, attr):
+        if not self.instance or not self.instance.pk:
+            return []
+        manager = getattr(self.instance, attr, None)
+        if not hasattr(manager, "values_list"):
+            return []
+        return list(manager.all().order_by("pk").values_list("id", flat=True))
 
     def clean_nombre(self):
         nombre = (self.cleaned_data.get("nombre") or "").strip()
@@ -250,6 +268,80 @@ class BandaCriminalForm(forms.ModelForm):
                 "Ingresá al menos una zona de influencia con algún dato."
             )
         return zonas_limpias
+
+    def _parse_ids_json(self, value):
+        if not value:
+            return []
+        if isinstance(value, list):
+            return [int(v) for v in value if str(v).isdigit()]
+        try:
+            data = json.loads(value)
+        except json.JSONDecodeError as exc:
+            raise forms.ValidationError(
+                "No se pudieron procesar los links asociados."
+            ) from exc
+        if not isinstance(data, list):
+            raise forms.ValidationError("Formato inválido para los links seleccionados.")
+        ids = []
+        for entry in data:
+            if isinstance(entry, int):
+                ids.append(entry)
+            elif isinstance(entry, str) and entry.isdigit():
+                ids.append(int(entry))
+        return ids
+
+    def _categoria_bandas(self):
+        if not hasattr(self, "_categoria_bandas_cache"):
+            self._categoria_bandas_cache = Categoria.objects.filter(
+                nombre__iexact="bandas criminales"
+            ).first()
+        return self._categoria_bandas_cache
+
+    def clean_links_diarios(self):
+        ids = self._parse_ids_json(self.cleaned_data.get("links_diarios"))
+        if not ids:
+            return []
+        categoria = self._categoria_bandas()
+        links = LinkRelevante.objects.filter(
+            id__in=ids, estado=EstadoLink.APROBADO
+        )
+        if categoria:
+            links = links.filter(categorias=categoria)
+        links = list(links.distinct())
+        return links
+
+    def clean_links_redes(self):
+        ids = self._parse_ids_json(self.cleaned_data.get("links_redes"))
+        if not ids:
+            return []
+        categoria = self._categoria_bandas()
+        links = LinkRedSocial.objects.filter(
+            id__in=ids, estado=EstadoLink.APROBADO
+        )
+        if categoria:
+            links = links.filter(categorias=categoria)
+        links = list(links.distinct())
+        return links
+
+    def save(self, commit=True):
+        banda = super().save(commit=commit)
+        if commit:
+            self._guardar_links_asociados(banda)
+        else:
+            self._guardar_links_en_m2m = True
+        return banda
+
+    def save_m2m(self):
+        super().save_m2m()
+        if getattr(self, "_guardar_links_en_m2m", False):
+            self._guardar_links_asociados(self.instance)
+            self._guardar_links_en_m2m = False
+
+    def _guardar_links_asociados(self, banda):
+        if not banda or not banda.pk:
+            return
+        banda.links_aprobados_diario.set(self.cleaned_data.get("links_diarios", []))
+        banda.links_aprobados_red_social.set(self.cleaned_data.get("links_redes", []))
 
 
 class InformeBandaCriminalForm(forms.ModelForm):
