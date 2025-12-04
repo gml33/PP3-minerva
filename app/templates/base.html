@@ -112,6 +112,9 @@
                             <a class="nav-link" href="{% url 'crear_informe_banda' %}">Informe de banda</a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link" href="{% url 'crear_informe' %}">Informe individual</a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link" href="{% url 'solicitud_info_portal' %}">Solicitud de información</a>
                         </li>
                         {% elif user.userprofile.rol == 'cliente' or user.username == 'cliente1' %}

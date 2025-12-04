@@ -2767,6 +2767,7 @@ def informes_crear_view(request):
         Roles.ADMIN,
         Roles.INFORMES,
         Roles.GERENCIA,
+        Roles.EDITOR,
     ]:
         return render(request, "403.html", status=403)
 
