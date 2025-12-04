@@ -16,6 +16,51 @@
                     {{ field }}
                 {% elif field.name == "ubicacion_calle" or field.name == "ubicacion_numero" or field.name == "ubicacion_barrio" or field.name == "ubicacion_localidad" or field.name == "ubicacion_ciudad" or field.name == "ubicacion_provincia" %}
                     {# handled separately #}
+                {% elif field.name == "bandas" %}
+                    <div class="mb-3">
+                        {{ field.label_tag }}
+                        <input type="text" id="buscador-bandas" class="form-control mb-2" placeholder="Buscar banda por nombre">
+                        {{ field }}
+                        {% if field.help_text %}
+                            <div class="form-text">{{ field.help_text }}</div>
+                        {% endif %}
+                        {% if field.errors %}
+                            <div class="text-danger small">
+                                {% for error in field.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                {% elif field.name == "autor" %}
+                    <div class="mb-3">
+                        {{ field.label_tag }}
+                        <div class="row g-2 mb-2">
+                            <div class="col-md-4">
+                                <label for="buscador-autor-nombre" class="form-label small text-muted">Buscar por nombre o alias</label>
+                                <input type="text" id="buscador-autor-nombre" class="form-control" placeholder="Ej: Juan o \"El Toro\"">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="buscador-autor-apellido" class="form-label small text-muted">Buscar por apellido</label>
+                                <input type="text" id="buscador-autor-apellido" class="form-control" placeholder="Ej: Pérez">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="buscador-autor-dni" class="form-label small text-muted">Buscar por DNI</label>
+                                <input type="text" id="buscador-autor-dni" class="form-control" placeholder="Ej: 30123456">
+                            </div>
+                        </div>
+                        {{ field }}
+                        {% if field.help_text %}
+                            <div class="form-text">{{ field.help_text }}</div>
+                        {% endif %}
+                        {% if field.errors %}
+                            <div class="text-danger small">
+                                {% for error in field.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
                 {% else %}
                     <div class="mb-3">
                         {{ field.label_tag }}
@@ -168,6 +213,9 @@
     </div>
 </div>
 
+{{ autores_lookup|json_script:"autores-data" }}
+{{ bandas_lookup|json_script:"bandas-data" }}
+
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     document.querySelectorAll(".form-eliminar-hecho").forEach(function (form) {
@@ -193,6 +241,77 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         });
     });
+
+    const autorSelect = document.getElementById("id_autor");
+    const bandasSelect = document.getElementById("id_bandas");
+    const autoresDataElement = document.getElementById("autores-data");
+    const bandasDataElement = document.getElementById("bandas-data");
+    const autoresData = autoresDataElement ? JSON.parse(autoresDataElement.textContent || "[]") : [];
+    const bandasData = bandasDataElement ? JSON.parse(bandasDataElement.textContent || "[]") : [];
+    const autoresMap = new Map(autoresData.map((autor) => [String(autor.id), autor]));
+    const bandasMap = new Map(bandasData.map((banda) => [String(banda.id), banda]));
+
+    const autorFilters = {
+        nombre: document.getElementById("buscador-autor-nombre"),
+        apellido: document.getElementById("buscador-autor-apellido"),
+        dni: document.getElementById("buscador-autor-dni"),
+    };
+
+    function normalizarTexto(valor) {
+        return (valor || "").toString().trim().toLowerCase();
+    }
+
+    function aplicarFiltrosAutor() {
+        if (!autorSelect) {
+            return;
+        }
+        const nombreTerm = normalizarTexto(autorFilters.nombre ? autorFilters.nombre.value : "");
+        const apellidoTerm = normalizarTexto(autorFilters.apellido ? autorFilters.apellido.value : "");
+        const dniTerm = normalizarTexto(autorFilters.dni ? autorFilters.dni.value : "");
+
+        Array.from(autorSelect.options).forEach((option) => {
+            const data = autoresMap.get(option.value) || {};
+            const alias = Array.isArray(data.alias) ? data.alias : [];
+            const coincideNombre =
+                !nombreTerm ||
+                normalizarTexto(data.nombre).includes(nombreTerm) ||
+                alias.some((nombreAlias) => normalizarTexto(nombreAlias).includes(nombreTerm));
+            const coincideApellido =
+                !apellidoTerm || normalizarTexto(data.apellido).includes(apellidoTerm);
+            const coincideDni =
+                !dniTerm || normalizarTexto(data.documento).includes(dniTerm);
+            const visible = coincideNombre && coincideApellido && coincideDni;
+            option.hidden = !visible && !option.selected;
+        });
+    }
+
+    Object.values(autorFilters).forEach((input) => {
+        if (input) {
+            input.addEventListener("input", aplicarFiltrosAutor);
+        }
+    });
+
+    aplicarFiltrosAutor();
+
+    const buscadorBandas = document.getElementById("buscador-bandas");
+
+    function aplicarFiltroBandas() {
+        if (!bandasSelect) {
+            return;
+        }
+        const termino = normalizarTexto(buscadorBandas ? buscadorBandas.value : "");
+        Array.from(bandasSelect.options).forEach((option) => {
+            const data = bandasMap.get(option.value) || {};
+            const nombreBuscado = `${data.nombre || ""} ${data.otros_nombres || ""}`.trim().toLowerCase();
+            const coincide = !termino || nombreBuscado.includes(termino) || normalizarTexto(option.textContent).includes(termino);
+            option.hidden = !coincide && !option.selected;
+        });
+    }
+
+    if (buscadorBandas) {
+        buscadorBandas.addEventListener("input", aplicarFiltroBandas);
+    }
+    aplicarFiltroBandas();
 });
 </script>
 {% endblock %}

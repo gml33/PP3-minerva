@@ -843,6 +843,28 @@ def hechos_delictivos_view(request):
     else:
         form = HechoDelictivoForm(user=request.user)
 
+    autores_queryset = form.fields["autor"].queryset.prefetch_related("alias")
+    form.fields["autor"].queryset = autores_queryset
+    autores_lookup = [
+        {
+            "id": autor.pk,
+            "nombre": autor.nombre or "",
+            "apellido": autor.apellido or "",
+            "documento": autor.documento or "",
+            "alias": list(autor.alias.values_list("nombre", flat=True)),
+        }
+        for autor in autores_queryset
+    ]
+    bandas_queryset = form.fields["bandas"].queryset
+    bandas_lookup = [
+        {
+            "id": banda.pk,
+            "nombre": banda.nombre_principal or "",
+            "otros_nombres": banda.nombres_como_texto or "",
+        }
+        for banda in bandas_queryset
+    ]
+
     hechos = (
         HechoDelictivo.objects.filter(creado_por=request.user)
         .select_related("creado_por", "articulo")
@@ -856,6 +878,8 @@ def hechos_delictivos_view(request):
         {
             "form": form,
             "hechos": hechos,
+            "autores_lookup": autores_lookup,
+            "bandas_lookup": bandas_lookup,
         },
     )
 
