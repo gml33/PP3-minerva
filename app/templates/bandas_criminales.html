@@ -334,7 +334,12 @@
                                     {% with lideres=banda.lideres.all %}
                                         {% if lideres %}
                                             {% for lider in lideres %}
-                                                {{ lider }}{% if not forloop.last %}, {% endif %}
+                                                <a href="#"
+                                                   class="link-detalle-informe"
+                                                   data-informe-id="{{ lider.id }}"
+                                                   title="Ver informe de {{ lider }}">
+                                                    {{ lider }}
+                                                </a>{% if not forloop.last %}, {% endif %}
                                             {% endfor %}
                                         {% else %}
                                             <span class="text-muted">Sin líderes</span>
@@ -345,7 +350,12 @@
                                     {% with miembros=banda.miembros.all %}
                                         {% if miembros %}
                                             {% for miembro in miembros %}
-                                                {{ miembro }}{% if not forloop.last %}, {% endif %}
+                                                <a href="#"
+                                                   class="link-detalle-informe"
+                                                   data-informe-id="{{ miembro.id }}"
+                                                   title="Ver informe de {{ miembro }}">
+                                                    {{ miembro }}
+                                                </a>{% if not forloop.last %}, {% endif %}
                                             {% endfor %}
                                         {% else %}
                                             <span class="text-muted">Sin miembros</span>
@@ -424,6 +434,20 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="modalDetalleInformeBandas" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Detalle del informe</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body" id="detalleInformeBandas">
+                <p class="text-muted mb-0">Seleccioná un integrante para ver su informe.</p>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -439,6 +463,7 @@ let redesBandas = [];
 let linksBandasSeleccionadosDiario = [];
 let linksBandasSeleccionadosRed = [];
 const linksRevisadosBandas = new Set();
+let modalDetalleInformeBandasInstance = null;
 
 document.addEventListener("DOMContentLoaded", async function () {
     inicializarCamposAlias();
@@ -495,6 +520,165 @@ document.addEventListener("DOMContentLoaded", async function () {
         });
     });
 });
+
+document.addEventListener("click", function (event) {
+    const enlace = event.target.closest(".link-detalle-informe");
+    if (!enlace) {
+        return;
+    }
+    event.preventDefault();
+    const informeId = enlace.dataset.informeId;
+    if (!informeId) {
+        return;
+    }
+    const bandaModalEl = document.getElementById("modalDetalleBanda");
+    if (bandaModalEl && window.bootstrap) {
+        const bandaModal = window.bootstrap.Modal.getInstance(bandaModalEl);
+        if (bandaModal) {
+            bandaModal.hide();
+        }
+    }
+    mostrarDetalleInformeDesdeBandas(informeId);
+});
+
+function mostrarDetalleInformeDesdeBandas(informeId) {
+    const modalElement = document.getElementById("modalDetalleInformeBandas");
+    const detalleContainer = document.getElementById("detalleInformeBandas");
+    if (!modalElement || !detalleContainer) {
+        return;
+    }
+    if (!modalDetalleInformeBandasInstance && window.bootstrap) {
+        modalDetalleInformeBandasInstance = new window.bootstrap.Modal(modalElement);
+    }
+    if (modalDetalleInformeBandasInstance) {
+        modalDetalleInformeBandasInstance.show();
+    }
+    detalleContainer.innerHTML = "<p class='text-muted mb-0'>Cargando datos del informe...</p>";
+
+    fetch(`/api/informes/${informeId}/detalle/`)
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error("No se pudo cargar el informe");
+            }
+            return response.json();
+        })
+        .then((data) => {
+            if (data.status !== "ok") {
+                throw new Error("Respuesta inválida");
+            }
+            detalleContainer.innerHTML = construirDetalleInformeHTML(data.informe);
+        })
+        .catch((error) => {
+            console.error("Error al cargar el informe:", error);
+            detalleContainer.innerHTML = "<p class='text-danger mb-0'>No se pudo cargar el informe.</p>";
+        });
+}
+
+function construirDetalleInformeHTML(inf) {
+    if (!inf) {
+        return "<p class='text-danger mb-0'>No se pudo cargar el informe.</p>";
+    }
+    const sexo = inf.sexo_display || capitalizarTexto(inf.sexo) || "No informado";
+    const aliasTexto = listaEnTexto(inf.alias, "Sin alias registrados");
+    const telefonosTexto = listaEnTexto(inf.telefonos, "Sin teléfonos registrados");
+    const domicilios = listaComoItems(
+        inf.domicilios,
+        (d) =>
+            `<li>${valorODash(d.calle)} ${valorODash(d.altura)}, ${valorODash(d.barrio)}, ${valorODash(d.ciudad)}, ${valorODash(d.provincia)}</li>`,
+        "Sin domicilios registrados"
+    );
+    const vehiculos = listaComoItems(
+        inf.vehiculos,
+        (v) =>
+            `<li>${valorODash(v.marca)} ${valorODash(v.modelo)} (${valorODash(v.dominio)}) - Color: ${valorODash(v.color)}</li>`,
+        "Sin vehículos registrados"
+    );
+    const empleadores = listaComoItems(
+        inf.empleadores,
+        (e) =>
+            `<li>${valorODash(e.nombre)} (CUIT: ${valorODash(e.cuit)}) - Alta: ${valorODash(e.alta)} - Baja: ${valorODash(e.baja)}</li>`,
+        "Sin empleadores registrados"
+    );
+    const vinculos = listaComoItems(
+        inf.vinculos,
+        (v) =>
+            `<li>${valorODash(v.nombre_apellido)} (DNI: ${valorODash(v.dni)}) - Tipo: ${valorODash(v.tipo)}</li>`,
+        "Sin vínculos registrados"
+    );
+    const articulos = Array.isArray(inf.articulos) && inf.articulos.length
+        ? inf.articulos
+            .map(
+                (a) =>
+                    `<tr><td>${valorODash(a.titulo)}</td><td>${valorODash(a.categoria)}</td><td>${valorODash(a.fecha)}</td></tr>`
+            )
+            .join("")
+        : "<tr><td colspan=\"3\" class=\"text-muted\">Sin artículos asociados</td></tr>";
+
+    return `
+        ${inf.foto ? `<img src="${inf.foto}" alt="Foto del informe" class="img-fluid mb-3" style="max-height: 300px;">` : ""}
+        <div class="mb-2">
+            <small class="text-muted">Última edición:</small>
+            <span class="badge bg-info text-dark">${valorODash(inf.fecha_modificacion)}</span>
+        </div>
+        <p><strong>Generado por:</strong> ${valorODash(inf.generado_por)}</p>
+        <p><strong>Fecha creación:</strong> ${valorODash(inf.fecha_creacion)}</p>
+        <hr>
+        <p><strong>Apellido:</strong> ${valorODash(inf.apellido)}</p>
+        <p><strong>Nombre:</strong> ${valorODash(inf.nombre)}</p>
+        <p><strong>Documento:</strong> ${valorODash(inf.documento)}</p>
+        <p><strong>CUIT:</strong> ${valorODash(inf.cuit)}</p>
+        <p><strong>Nacionalidad:</strong> ${valorODash(inf.nacionalidad)}</p>
+        <p><strong>Sexo:</strong> ${sexo}</p>
+        <p><strong>Banda:</strong> ${valorODash(inf.banda)}</p>
+        <p><strong>Rol:</strong> ${valorODash(inf.rol)}</p>
+        <p><strong>Situación:</strong> ${valorODash(inf.situacion)}</p>
+        <p><strong>Actividad:</strong> ${valorODash(inf.actividad)}</p>
+        <p><strong>Fecha nacimiento:</strong> ${valorODash(inf.fecha_nacimiento)}</p>
+        <hr>
+        <p><strong>Alias:</strong> ${aliasTexto}</p>
+        <p><strong>Teléfonos:</strong> ${telefonosTexto}</p>
+        <hr>
+        <p><strong>Domicilios:</strong></p>
+        <ul>${domicilios}</ul>
+        <p><strong>Vehículos:</strong></p>
+        <ul>${vehiculos}</ul>
+        <p><strong>Empleadores:</strong></p>
+        <ul>${empleadores}</ul>
+        <p><strong>Vínculos:</strong></p>
+        <ul>${vinculos}</ul>
+        <hr>
+        <p><strong>Artículos Asociados:</strong></p>
+        <table class="table table-sm">
+            <thead><tr><th>Título</th><th>Categoría</th><th>Fecha</th></tr></thead>
+            <tbody>${articulos}</tbody>
+        </table>
+    `;
+}
+
+function listaEnTexto(valores, textoVacio) {
+    if (Array.isArray(valores) && valores.length) {
+        return valores.join(", ");
+    }
+    return textoVacio;
+}
+
+function listaComoItems(valores, formateador, textoVacio) {
+    if (Array.isArray(valores) && valores.length) {
+        return valores.map(formateador).join("");
+    }
+    return `<li class="text-muted">${textoVacio}</li>`;
+}
+
+function valorODash(valor) {
+    return valor ? valor : "-";
+}
+
+function capitalizarTexto(texto) {
+    if (!texto || typeof texto !== "string") {
+        return "";
+    }
+    return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
 
 async function cargarCategoriaBandas() {
     if (categoriaBandasId) {
