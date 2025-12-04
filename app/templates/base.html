@@ -77,12 +77,9 @@
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'configuraciones' %}">Configuraciones</a>
                         </li>
-                        {% elif user.userprofile.rol == 'prensa' %}
+{% elif user.userprofile.rol == 'prensa' %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'prensa' %}">Prensa</a>
-                        </li>
-                        <li class="nav-item">
-                           
                         </li>
                         {% elif user.userprofile.rol == 'clasificadorIA' %}
                         <li class="nav-item">
