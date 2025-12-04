@@ -112,6 +112,68 @@
 </div>
 
 <div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Links aprobados vinculados a bandas criminales</span>
+        <span class="badge text-bg-info text-uppercase">Categoría fija: Bandas criminales</span>
+    </div>
+    <div class="card-body">
+        <div class="row g-3 align-items-end mb-3">
+            <div class="col-md-3">
+                <label class="form-label" for="bandas_fecha_desde">Desde</label>
+                <input type="date" class="form-control" id="bandas_fecha_desde">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="bandas_fecha_hasta">Hasta</label>
+                <input type="date" class="form-control" id="bandas_fecha_hasta">
+            </div>
+            <div class="col-md-3 col-lg-2">
+                <label class="form-label" for="bandas_origen">Origen de datos</label>
+                <select id="bandas_origen" class="form-select">
+                    <option value="diario">Diarios digitales</option>
+                    <option value="red_social">Redes sociales</option>
+                </select>
+            </div>
+            <div class="col-md-3 col-lg-2" id="bandas-grupo-diario">
+                <label class="form-label" for="bandas_filtro_diario">Diario digital</label>
+                <select id="bandas_filtro_diario" class="form-select">
+                    <option value="">Todos</option>
+                </select>
+            </div>
+            <div class="col-md-3 col-lg-2 d-none" id="bandas-grupo-red">
+                <label class="form-label" for="bandas_filtro_red">Red social</label>
+                <select id="bandas_filtro_red" class="form-select">
+                    <option value="">Todas</option>
+                </select>
+            </div>
+            <div class="col-md-3 col-lg-2 d-flex">
+                <button type="button" class="btn btn-outline-primary w-100" onclick="cargarLinksBandas()">Filtrar</button>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-striped mb-0" id="tabla-links-bandas">
+                <thead>
+                    <tr>
+                        <th>Logo</th>
+                        <th>Fuente</th>
+                        <th>Link</th>
+                        <th>Fecha</th>
+                        <th>Categorías</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="5" class="text-center text-muted">Cargando links aprobados...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <nav id="paginacion-links-bandas" class="mt-3 d-none">
+            <ul class="pagination justify-content-center mb-0"></ul>
+        </nav>
+    </div>
+</div>
+
+<div class="card mb-4">
     <div class="card-header">Filtrar bandas criminales</div>
     <div class="card-body">
         <form method="get" action="" class="row g-3">
@@ -363,9 +425,18 @@
 {% block scripts %}
 {{ block.super }}
 <script>
-document.addEventListener("DOMContentLoaded", function () {
+const CATEGORIA_BANDAS = "bandas criminales";
+let categoriaBandasId = null;
+let linksBandasGlobal = [];
+let paginaLinksBandasActual = 1;
+const LINKS_BANDAS_POR_PAGINA = 10;
+let diariosBandas = [];
+let redesBandas = [];
+
+document.addEventListener("DOMContentLoaded", async function () {
     inicializarCamposAlias();
     inicializarZonasInfluencia();
+    await inicializarLinksBandas();
 
     const modalTitle = document.getElementById("modalDetalleBandaTitulo");
     const modalBody = document.getElementById("modalDetalleBandaBody");
@@ -405,6 +476,252 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 });
+
+async function inicializarLinksBandas() {
+    const tablaLinks = document.getElementById("tabla-links-bandas");
+    if (!tablaLinks) {
+        return;
+    }
+    await cargarCategoriaBandas();
+    await Promise.all([cargarDiariosBandas(), cargarRedesBandas()]);
+    actualizarCamposFuenteBandas();
+    await cargarLinksBandas();
+
+    const origenSelect = document.getElementById("bandas_origen");
+    if (origenSelect) {
+        origenSelect.addEventListener("change", () => {
+            actualizarCamposFuenteBandas();
+            cargarLinksBandas();
+        });
+    }
+}
+
+async function cargarCategoriaBandas() {
+    if (categoriaBandasId) {
+        return;
+    }
+    try {
+        const res = await fetch("/api/categorias/");
+        const categorias = await res.json();
+        const categoria = categorias.find(cat => normalizarTexto(cat.nombre) === CATEGORIA_BANDAS);
+        if (categoria) {
+            categoriaBandasId = categoria.id;
+        } else {
+            console.warn("No se encontró la categoría 'bandas criminales'.");
+        }
+    } catch (error) {
+        console.error("Error cargando categorías:", error);
+    }
+}
+
+async function cargarDiariosBandas() {
+    try {
+        const res = await fetch("/api/diarios/");
+        diariosBandas = await res.json();
+        const select = document.getElementById("bandas_filtro_diario");
+        if (select) {
+            select.innerHTML = '<option value="">Todos</option>';
+            diariosBandas.forEach(diario => select.add(new Option(diario.nombre, diario.id)));
+        }
+    } catch (error) {
+        console.error("Error cargando diarios:", error);
+    }
+}
+
+async function cargarRedesBandas() {
+    try {
+        const res = await fetch("/api/redes/");
+        redesBandas = await res.json();
+        const select = document.getElementById("bandas_filtro_red");
+        if (select) {
+            select.innerHTML = '<option value="">Todas</option>';
+            redesBandas.forEach(red => select.add(new Option(red.nombre, red.id)));
+        }
+    } catch (error) {
+        console.error("Error cargando redes sociales:", error);
+    }
+}
+
+function actualizarCamposFuenteBandas() {
+    const origen = document.getElementById("bandas_origen");
+    const grupoDiario = document.getElementById("bandas-grupo-diario");
+    const grupoRed = document.getElementById("bandas-grupo-red");
+    const valor = origen ? origen.value : "diario";
+    if (grupoDiario) {
+        grupoDiario.classList.toggle("d-none", valor !== "diario");
+    }
+    if (grupoRed) {
+        grupoRed.classList.toggle("d-none", valor !== "red_social");
+    }
+}
+
+async function cargarLinksBandas() {
+    const tbody = document.querySelector("#tabla-links-bandas tbody");
+    const paginacion = document.getElementById("paginacion-links-bandas");
+    if (!tbody) {
+        return;
+    }
+    tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Cargando links aprobados...</td></tr>`;
+    if (paginacion) {
+        paginacion.classList.add("d-none");
+    }
+
+    if (!categoriaBandasId) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">No se pudo determinar la categoría Bandas criminales.</td></tr>`;
+        return;
+    }
+
+    const desde = document.getElementById("bandas_fecha_desde")?.value;
+    const hasta = document.getElementById("bandas_fecha_hasta")?.value;
+    const origen = document.getElementById("bandas_origen")?.value || "diario";
+    const diario = document.getElementById("bandas_filtro_diario")?.value;
+    const red = document.getElementById("bandas_filtro_red")?.value;
+
+    let url = "/api/links_list/";
+    const params = [];
+    if (desde) params.push(`fecha_inicio=${desde}`);
+    if (hasta) params.push(`fecha_fin=${hasta}`);
+    if (origen) params.push(`fuente=${origen}`);
+    if (origen === "diario" && diario) params.push(`diario_id=${diario}`);
+    if (origen === "red_social" && red) params.push(`red_social_id=${red}`);
+    params.push(`categoria_id=${categoriaBandasId}`);
+    params.push(`estado=aprobado`);
+
+    if (params.length) {
+        url += `?${params.join("&")}`;
+    }
+
+    try {
+        const res = await fetch(url);
+        if (!res.ok) {
+            throw new Error(`Error HTTP ${res.status}`);
+        }
+        const links = await res.json();
+        linksBandasGlobal = links
+            .filter(link => link.estado === "aprobado")
+            .sort((a, b) => {
+                const fechaA = a.fecha_carga ? new Date(a.fecha_carga).getTime() : 0;
+                const fechaB = b.fecha_carga ? new Date(b.fecha_carga).getTime() : 0;
+                return fechaB - fechaA;
+            });
+
+        if (!linksBandasGlobal.length) {
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">No se encontraron links aprobados para los filtros seleccionados.</td></tr>`;
+            return;
+        }
+
+        paginaLinksBandasActual = 1;
+        mostrarLinksBandasPagina(linksBandasGlobal, paginaLinksBandasActual);
+    } catch (error) {
+        console.error("Error cargando links:", error);
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Error al cargar los links: ${error.message}</td></tr>`;
+    }
+}
+
+function mostrarLinksBandasPagina(links, pagina) {
+    const tbody = document.querySelector("#tabla-links-bandas tbody");
+    if (!tbody) {
+        return;
+    }
+    tbody.innerHTML = "";
+
+    const inicio = (pagina - 1) * LINKS_BANDAS_POR_PAGINA;
+    const paginaLinks = links.slice(inicio, inicio + LINKS_BANDAS_POR_PAGINA);
+
+    if (!paginaLinks.length) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">No se encontraron links para mostrar.</td></tr>`;
+        actualizarPaginacionLinksBandas(0, 0);
+        return;
+    }
+
+    paginaLinks.forEach(link => {
+        const logoUrl = link.diario_logo_url || link.red_social_logo_url || link.tv_digital_logo_url || link.radio_digital_logo_url || '/static/img/default_logo.png';
+        const fuenteNombre = link.diario_nombre || link.red_social_nombre || link.tv_digital_nombre || link.radio_digital_nombre || "Sin fuente";
+        const tipoLabel = formatearTipoFuenteBandas(link.tipo_fuente);
+        const badgeTipo = tipoLabel ? `<span class="badge bg-light text-dark border ms-2">${tipoLabel}</span>` : "";
+        const badgeIA = link.clasificado_por_ia ? '<span class="badge bg-info ms-2">IA</span>' : "";
+        const fecha = link.fecha_carga ? new Date(link.fecha_carga).toLocaleDateString() : "-";
+        const categorias = link.categorias_info && link.categorias_info.length
+            ? link.categorias_info.map(cat => `<span class="badge bg-secondary me-1">${cat.nombre}</span>`).join("")
+            : "-";
+
+        const linkUrl = link.url || "";
+        const textoLink = linkUrl
+            ? (linkUrl.length > 60 ? linkUrl.slice(0, 60) + "…" : linkUrl)
+            : "Sin URL";
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td><img src="${logoUrl}" alt="Logo fuente" style="height:40px; max-width:60px"></td>
+            <td>${fuenteNombre}${badgeTipo}${badgeIA}</td>
+            <td>${linkUrl ? `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer">${textoLink}</a>` : '<span class="text-muted">Sin URL</span>'}</td>
+            <td>${fecha}</td>
+            <td>${categorias}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    const totalPaginas = Math.ceil(links.length / LINKS_BANDAS_POR_PAGINA);
+    actualizarPaginacionLinksBandas(totalPaginas, pagina);
+}
+
+function actualizarPaginacionLinksBandas(totalPaginas, paginaActual) {
+    const paginacion = document.getElementById("paginacion-links-bandas");
+    if (!paginacion) {
+        return;
+    }
+    const ul = paginacion.querySelector("ul");
+    if (!ul) {
+        return;
+    }
+    ul.innerHTML = "";
+
+    if (totalPaginas <= 1) {
+        paginacion.classList.add("d-none");
+        return;
+    }
+
+    paginacion.classList.remove("d-none");
+
+    const liPrev = document.createElement("li");
+    liPrev.className = `page-item ${paginaActual === 1 ? "disabled" : ""}`;
+    liPrev.innerHTML = `<a class="page-link" role="button" onclick="cambiarPaginaLinksBandas(${paginaActual - 1})">Anterior</a>`;
+    ul.appendChild(liPrev);
+
+    for (let i = 1; i <= totalPaginas; i++) {
+        const li = document.createElement("li");
+        li.className = `page-item ${i === paginaActual ? "active" : ""}`;
+        li.innerHTML = `<a class="page-link" role="button" onclick="cambiarPaginaLinksBandas(${i})">${i}</a>`;
+        ul.appendChild(li);
+    }
+
+    const liNext = document.createElement("li");
+    liNext.className = `page-item ${paginaActual === totalPaginas ? "disabled" : ""}`;
+    liNext.innerHTML = `<a class="page-link" role="button" onclick="cambiarPaginaLinksBandas(${paginaActual + 1})">Siguiente</a>`;
+    ul.appendChild(liNext);
+}
+
+function cambiarPaginaLinksBandas(nuevaPagina) {
+    if (nuevaPagina < 1 || nuevaPagina === paginaLinksBandasActual) {
+        return;
+    }
+    const totalPaginas = Math.ceil(linksBandasGlobal.length / LINKS_BANDAS_POR_PAGINA);
+    if (nuevaPagina > totalPaginas) {
+        return;
+    }
+    paginaLinksBandasActual = nuevaPagina;
+    mostrarLinksBandasPagina(linksBandasGlobal, paginaLinksBandasActual);
+}
+
+function formatearTipoFuenteBandas(tipo) {
+    const etiquetas = {
+        diario: "Diario digital",
+        red_social: "Red social",
+        tv_digital: "TV digital",
+        radio_digital: "Radio digital",
+    };
+    return etiquetas[tipo] || "";
+}
+
 
 function inicializarCamposAlias() {
     const hiddenField = document.getElementById("id_alias");
@@ -615,6 +932,14 @@ function filtrarBandasSelect(selectId, filtro) {
             option.hidden = option.textContent.toLowerCase().indexOf(texto) === -1;
         }
     });
+}
+
+function normalizarTexto(texto) {
+    return (texto || "")
+        .toString()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
 }
 </script>
 {% endblock %}
