@@ -170,7 +170,7 @@ class BandaCriminalAdmin(admin.ModelAdmin):
         "cantidad_lideres",
         "cantidad_miembros",
     )
-    search_fields = ("nombres",)
+    search_fields = ("nombre",)
     filter_horizontal = ("lideres", "miembros", "bandas_aliadas", "bandas_rivales")
 
     @admin.display(description="Nombres / alias")
@@ -192,7 +192,7 @@ class BandaCriminalAdmin(admin.ModelAdmin):
     def get_search_results(self, request, queryset, search_term):
         queryset, use_distinct = super().get_search_results(request, queryset, search_term)
         if search_term:
-            queryset |= self.model.objects.filter(nombres__icontains=search_term)
+            queryset |= self.model.objects.filter(alias__icontains=search_term)
             queryset |= self.model.objects.filter(zonas_influencia__icontains=search_term)
         return queryset, use_distinct
 

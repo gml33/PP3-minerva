@@ -115,8 +115,12 @@
                                     <select name="banda" class="form-select" id="bandaSelect">
                                         <option value="">Seleccione una banda</option>
                                         {% for banda in bandas %}
-                                        {% with nombre=banda.nombre_principal|default:banda %}
-                                        <option value="{{ banda.id }}">{{ nombre }}</option>
+                                        {% with alias_lista=banda.alias %}
+                                        <option value="{{ banda.id }}">
+                                            {{ banda.nombre_principal|default:"Banda sin nombre" }}{% if alias_lista %}
+                                                (Alias: {{ alias_lista|join:", " }})
+                                            {% endif %}
+                                        </option>
                                         {% endwith %}
                                         {% endfor %}
                                     </select>

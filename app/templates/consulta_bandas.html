@@ -151,8 +151,14 @@
         <tbody>
             {% for banda in bandas %}
             <tr>
-                <td>{{ banda.nombres|join:", " }}</td>
-                <td>{{ banda.alias|join:", " }}</td>
+                <td>{{ banda.nombre|default:"Sin nombre" }}</td>
+                <td>
+                    {% if banda.alias %}
+                        {{ banda.alias|join:", " }}
+                    {% else %}
+                        <span class="text-muted">Sin alias</span>
+                    {% endif %}
+                </td>
                 <td>
                     {% if banda.zonas_influencia.0.barrio %}
                         {% for zona in banda.zonas_influencia %}
@@ -217,9 +223,11 @@
                     }
                 }
 
+                const aliasTexto = Array.isArray(banda.alias) && banda.alias.length ? banda.alias.join(", ") : "Sin alias";
+
                 let html = `
                     <p><strong>Nombre:</strong> ${banda.nombre}</p>
-                    <p><strong>Alias:</strong> ${banda.alias.join(", ")}</p>
+                    <p><strong>Alias:</strong> ${aliasTexto}</p>
                     <p><strong>Zonas de influencia:</strong> ${zonasHtml}</p>
                     <hr>
                     <p><strong>Líder:</strong> ${banda.lider.nombre} (${banda.lider.alias}) - DNI: ${banda.lider.dni}</p>

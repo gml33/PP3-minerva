@@ -689,10 +689,15 @@ class HechoDelictivo(models.Model):
 
 
 class BandaCriminal(models.Model):
-    nombres = models.JSONField(
+    nombre = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Nombre principal o denominación oficial de la banda.",
+    )
+    alias = models.JSONField(
         default=list,
-        db_column="nombre",
-        help_text="Lista de nombres o alias asociados a la banda.",
+        blank=True,
+        help_text="Lista de alias o denominaciones alternativas de la banda.",
     )
     zonas_influencia = models.JSONField(
         default=list,
@@ -724,26 +729,42 @@ class BandaCriminal(models.Model):
     class Meta:
         verbose_name = "Banda Criminal"
         verbose_name_plural = "Bandas Criminales"
-        ordering = ["nombres"]
+        ordering = ["nombre"]
 
     def __str__(self):
         return self.nombre_principal or "Banda sin nombre"
 
     @property
     def nombre_principal(self):
-        if isinstance(self.nombres, list) and self.nombres:
-            return self.nombres[0]
-        if isinstance(self.nombres, str):
-            return self.nombres
+        nombre = (self.nombre or "").strip()
+        if nombre:
+            return nombre
+        alias = self.alias or []
+        if isinstance(alias, str):
+            try:
+                alias = json.loads(alias)
+            except json.JSONDecodeError:
+                alias = [alias] if alias else []
+        if isinstance(alias, list):
+            for valor in alias:
+                if isinstance(valor, str):
+                    texto = valor.strip()
+                    if texto:
+                        return texto
         return ""
 
     @property
     def nombres_como_texto(self):
-        if isinstance(self.nombres, list):
-            return ", ".join(self.nombres)
-        if isinstance(self.nombres, str):
-            return self.nombres
-        return ""
+        nombres = [self.nombre_principal] if self.nombre_principal else []
+        alias = self.alias or []
+        if isinstance(alias, str):
+            try:
+                alias = json.loads(alias)
+            except json.JSONDecodeError:
+                alias = [alias] if alias else []
+        if isinstance(alias, list):
+            nombres.extend([a.strip() for a in alias if isinstance(a, str) and a.strip()])
+        return ", ".join(filter(None, nombres))
 
     def _zonas_influencia_list(self):
         data = self.zonas_influencia or []

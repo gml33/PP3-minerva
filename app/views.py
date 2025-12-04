@@ -267,11 +267,20 @@ def _bandas_info_payload():
             Prefetch("lideres", queryset=personas_prefetch, to_attr="prefetched_lideres"),
             Prefetch("miembros", queryset=personas_prefetch, to_attr="prefetched_miembros"),
         )
-        .order_by("nombres")
+        .order_by("nombre")
     )
 
     datos = []
     for banda in bandas:
+        alias = banda.alias or []
+        if isinstance(alias, str):
+            try:
+                alias = json.loads(alias)
+            except json.JSONDecodeError:
+                alias = [alias] if alias else []
+        if not isinstance(alias, list):
+            alias = []
+        alias = [valor.strip() for valor in alias if isinstance(valor, str) and valor.strip()]
         lideres = getattr(banda, "prefetched_lideres", banda.lideres.all())
         miembros = getattr(banda, "prefetched_miembros", banda.miembros.all())
         lugartenientes = [
@@ -288,6 +297,7 @@ def _bandas_info_payload():
             {
                 "id": banda.id,
                 "nombre": banda.nombre_principal,
+                "alias": alias,
                 "zonas": banda.zonas_influencia_detalle,
                 "lideres": [persona_payload(persona) for persona in lideres],
                 "lugartenientes": [persona_payload(persona) for persona in lugartenientes],
@@ -856,14 +866,25 @@ def hechos_delictivos_view(request):
         for autor in autores_queryset
     ]
     bandas_queryset = form.fields["bandas"].queryset
-    bandas_lookup = [
-        {
-            "id": banda.pk,
-            "nombre": banda.nombre_principal or "",
-            "otros_nombres": banda.nombres_como_texto or "",
-        }
-        for banda in bandas_queryset
-    ]
+    bandas_lookup = []
+    for banda in bandas_queryset:
+        alias = banda.alias or []
+        if isinstance(alias, str):
+            try:
+                alias = json.loads(alias)
+            except json.JSONDecodeError:
+                alias = [alias] if alias else []
+        if not isinstance(alias, list):
+            alias = []
+        alias_text = ", ".join([a.strip() for a in alias if isinstance(a, str) and a.strip()])
+        bandas_lookup.append(
+            {
+                "id": banda.pk,
+                "nombre": banda.nombre_principal or "",
+                "alias": alias_text,
+                "zonas": banda.zonas_resumen or "",
+            }
+        )
 
     hechos = (
         HechoDelictivo.objects.filter(creado_por=request.user)
@@ -901,21 +922,26 @@ def bandas_criminales_view(request):
     )
 
     if filtros["nombre"]:
-        bandas_queryset = bandas_queryset.filter(nombres__icontains=filtros["nombre"])
+        bandas_queryset = bandas_queryset.filter(
+            Q(nombre__icontains=filtros["nombre"])
+            | Q(alias__icontains=filtros["nombre"])
+        )
     if filtros["zona"]:
         bandas_queryset = bandas_queryset.filter(
             zonas_influencia__icontains=filtros["zona"]
         )
     if filtros["aliada"]:
         bandas_queryset = bandas_queryset.filter(
-            bandas_aliadas__nombres__icontains=filtros["aliada"]
+            Q(bandas_aliadas__nombre__icontains=filtros["aliada"])
+            | Q(bandas_aliadas__alias__icontains=filtros["aliada"])
         )
     if filtros["rival"]:
         bandas_queryset = bandas_queryset.filter(
-            bandas_rivales__nombres__icontains=filtros["rival"]
+            Q(bandas_rivales__nombre__icontains=filtros["rival"])
+            | Q(bandas_rivales__alias__icontains=filtros["rival"])
         )
 
-    bandas_queryset = bandas_queryset.distinct().order_by("nombres")
+    bandas_queryset = bandas_queryset.distinct().order_by("nombre")
     paginator = Paginator(bandas_queryset, 10)
     pagina = request.GET.get("page")
     bandas = paginator.get_page(pagina)
@@ -987,20 +1013,25 @@ def banda_criminal_editar_view(request, pk):
         "lideres", "miembros", "bandas_aliadas", "bandas_rivales"
     )
     if filtros["nombre"]:
-        bandas_queryset = bandas_queryset.filter(nombres__icontains=filtros["nombre"])
+        bandas_queryset = bandas_queryset.filter(
+            Q(nombre__icontains=filtros["nombre"])
+            | Q(alias__icontains=filtros["nombre"])
+        )
     if filtros["zona"]:
         bandas_queryset = bandas_queryset.filter(
             zonas_influencia__icontains=filtros["zona"]
         )
     if filtros["aliada"]:
         bandas_queryset = bandas_queryset.filter(
-            bandas_aliadas__nombres__icontains=filtros["aliada"]
+            Q(bandas_aliadas__nombre__icontains=filtros["aliada"])
+            | Q(bandas_aliadas__alias__icontains=filtros["aliada"])
         )
     if filtros["rival"]:
         bandas_queryset = bandas_queryset.filter(
-            bandas_rivales__nombres__icontains=filtros["rival"]
+            Q(bandas_rivales__nombre__icontains=filtros["rival"])
+            | Q(bandas_rivales__alias__icontains=filtros["rival"])
         )
-    bandas_queryset = bandas_queryset.distinct().order_by("nombres")
+    bandas_queryset = bandas_queryset.distinct().order_by("nombre")
     paginator = Paginator(bandas_queryset, 10)
     pagina = request.GET.get("page")
     bandas = paginator.get_page(pagina)
@@ -1054,7 +1085,7 @@ def crear_banda_rapida_view(request):
     nombre = (payload.get("nombre") or "").strip()
     if not nombre:
         return JsonResponse({"error": "El nombre de la banda es obligatorio."}, status=400)
-    banda = BandaCriminal.objects.create(nombres=[nombre], zonas_influencia=[])
+    banda = BandaCriminal.objects.create(nombre=nombre, alias=[], zonas_influencia=[])
     log_actividad(
         request,
         TipoActividad.OTRO,
@@ -2776,7 +2807,7 @@ def informes_view(request):
             "informes": informes,
             "categorias": categorias,
             "usuarios": usuarios,
-            "bandas": BandaCriminal.objects.order_by("nombres"),
+            "bandas": BandaCriminal.objects.order_by("nombre"),
             "fecha_desde": fecha_desde,
             "fecha_hasta": fecha_hasta,
             "selected_categoria": int(categoria_id) if categoria_id and categoria_id.isdigit() else 0,
@@ -2964,7 +2995,7 @@ def informes_crear_view(request):
             "articulos": articulos,
             "categorias": Categoria.objects.all(),
             "usuarios": User.objects.all(),
-            "bandas": BandaCriminal.objects.order_by("nombres"),
+            "bandas": BandaCriminal.objects.order_by("nombre"),
             "selected_categoria": (
                 int(categoria_id) if categoria_id and categoria_id.isdigit() and categoria_id != "0" else 0
             ),
@@ -3215,7 +3246,7 @@ def consulta_informes_view(request):
 
     informes = informes.distinct().order_by("-fecha_creacion")
 
-    bandas = BandaCriminal.objects.all().order_by("nombres")
+    bandas = BandaCriminal.objects.all().order_by("nombre")
 
     return render(
         request,
@@ -4975,7 +5006,9 @@ def consulta_bandas_view(request):
 
     # Aplicar filtros
     if nombre_banda:
-        bandas = bandas.filter(nombres__icontains=nombre_banda)
+        bandas = bandas.filter(
+            Q(nombre__icontains=nombre_banda) | Q(alias__icontains=nombre_banda)
+        )
     if alias:
         bandas = bandas.filter(alias__icontains=alias)
     if zonas_influencia:
@@ -4993,15 +5026,21 @@ def consulta_bandas_view(request):
     if miembro_dni:
         bandas = bandas.filter(miembros__documento__icontains=miembro_dni)
     if banda_aliada:
-        bandas = bandas.filter(bandas_aliadas__nombres__icontains=banda_aliada)
+        bandas = bandas.filter(
+            Q(bandas_aliadas__nombre__icontains=banda_aliada)
+            | Q(bandas_aliadas__alias__icontains=banda_aliada)
+        )
     if lider_banda_aliada:
         bandas = bandas.filter(bandas_aliadas__lideres__nombre__icontains=lider_banda_aliada)
     if banda_rival:
-        bandas = bandas.filter(bandas_rivales__nombres__icontains=banda_rival)
+        bandas = bandas.filter(
+            Q(bandas_rivales__nombre__icontains=banda_rival)
+            | Q(bandas_rivales__alias__icontains=banda_rival)
+        )
     if lider_banda_rival:
         bandas = bandas.filter(bandas_rivales__lideres__nombre__icontains=lider_banda_rival)
 
-    bandas = bandas.distinct().order_by("nombres")
+    bandas = bandas.distinct().order_by("nombre")
 
     return render(request, "consulta_bandas.html", {
         "bandas": bandas,
@@ -5052,10 +5091,16 @@ def api_detalle_banda(request, id):
 
     # CORRECCIÓN: Obtener alias de la banda de forma segura
     alias_banda = []
-    if hasattr(banda, 'alias'):
+    if hasattr(banda, "alias"):
         alias_banda = banda.alias or []
+        if isinstance(alias_banda, str):
+            try:
+                alias_banda = json.loads(alias_banda)
+            except json.JSONDecodeError:
+                alias_banda = [alias_banda] if alias_banda else []
+        if not isinstance(alias_banda, list):
+            alias_banda = []
     else:
-        # Si no existe el campo alias, obtener de otra forma o dejar vacío
         alias_banda = []
 
     # CORRECCIÓN: Formatear zonas de influencia
@@ -5091,7 +5136,7 @@ def api_detalle_banda(request, id):
     # Serializar datos de la banda
     data = {
         "id": banda.id,
-        "nombre": banda.nombres or banda.nombre_principal or "Sin nombre",
+        "nombre": banda.nombre_principal or banda.nombres_como_texto or "Sin nombre",
         "alias": alias_banda,  # ← CORREGIDO: Usar alias_banda en lugar de banda.alias
         "zonas_influencia": zonas_influencia_formateadas,  # ← CORREGIDO: Usar zonas formateadas
         "lider": lider_principal_data,  # ← CORREGIDO: Estructura que espera el frontend
@@ -5101,7 +5146,7 @@ def api_detalle_banda(request, id):
         "bandas_aliadas": [
             {
                 "id": aliada.id,
-                "nombre": aliada.nombres or aliada.nombre_principal or "Sin nombre",
+                "nombre": aliada.nombre_principal or aliada.nombres_como_texto or "Sin nombre",
                 "lider": aliada.lideres.first().nombre if aliada.lideres.exists() else "Sin líder"
             }
             for aliada in banda.bandas_aliadas.all()
@@ -5109,7 +5154,7 @@ def api_detalle_banda(request, id):
         "bandas_rivales": [
             {
                 "id": rival.id,
-                "nombre": rival.nombres or rival.nombre_principal or "Sin nombre", 
+                "nombre": rival.nombre_principal or rival.nombres_como_texto or "Sin nombre",
                 "lider": rival.lideres.first().nombre if rival.lideres.exists() else "Sin líder"
             }
             for rival in banda.bandas_rivales.all()
@@ -5176,7 +5221,7 @@ def exportar_banda_pdf(request, banda_id):
         messages.error(request, "Error al generar el PDF de la banda.")
         return redirect('consulta_bandas')
 
-    nombre_archivo = f"Banda_{slugify(banda.nombres or banda.nombre_principal or 'banda')}_{datetime.now().strftime('%Y%m%d')}.pdf"
+    nombre_archivo = f"Banda_{slugify(banda.nombre_principal or 'banda')}_{datetime.now().strftime('%Y%m%d')}.pdf"
     response = HttpResponse(pdf, content_type="application/pdf")
     response["Content-Disposition"] = f"attachment; filename={nombre_archivo}"
     return response

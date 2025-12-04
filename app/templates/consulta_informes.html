@@ -149,7 +149,7 @@
                                 <option value="">Seleccione una banda</option>
                                 {% for banda in bandas %}
                                 <option value="{{ banda.id }}" {% if request.GET.banda == banda.id|stringformat:"i" %}selected{% endif %}>
-                                    {{ banda.nombres.0|default:banda.nombre_principal }}
+                                    {{ banda.nombres_como_texto|default:"Banda sin nombre" }}
                                 </option>
                                 {% endfor %}
                             </select>

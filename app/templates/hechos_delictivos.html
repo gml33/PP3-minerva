@@ -19,7 +19,7 @@
                 {% elif field.name == "bandas" %}
                     <div class="mb-3">
                         {{ field.label_tag }}
-                        <input type="text" id="buscador-bandas" class="form-control mb-2" placeholder="Buscar banda por nombre">
+                        <input type="text" id="buscador-bandas" class="form-control mb-2" placeholder="Buscar banda por nombre, alias o zona">
                         {{ field }}
                         {% if field.help_text %}
                             <div class="form-text">{{ field.help_text }}</div>
@@ -185,9 +185,16 @@
                             <td>
                                 {% with bandas=hecho.bandas.all %}
                                     {% if bandas %}
-                                        {% for banda in bandas %}
-                                            {{ banda.nombre_principal|default:banda }}{% if not forloop.last %}, {% endif %}
-                                        {% endfor %}
+                                        <ul class="mb-0">
+                                            {% for banda in bandas %}
+                                                <li>
+                                                    <strong>{{ banda.nombre_principal|default:"Banda sin nombre" }}</strong>
+                                                    {% if banda.alias %}
+                                                        <br><small class="text-muted">Alias: {{ banda.alias|join:", " }}</small>
+                                                    {% endif %}
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
                                     {% else %}
                                         <span class="text-muted">Sin bandas asociadas</span>
                                     {% endif %}
@@ -302,7 +309,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const termino = normalizarTexto(buscadorBandas ? buscadorBandas.value : "");
         Array.from(bandasSelect.options).forEach((option) => {
             const data = bandasMap.get(option.value) || {};
-            const nombreBuscado = `${data.nombre || ""} ${data.otros_nombres || ""}`.trim().toLowerCase();
+            const nombreBuscado = `${data.nombre || ""} ${data.alias || ""} ${data.zonas || ""}`.trim().toLowerCase();
             const coincide = !termino || nombreBuscado.includes(termino) || normalizarTexto(option.textContent).includes(termino);
             option.hidden = !coincide && !option.selected;
         });

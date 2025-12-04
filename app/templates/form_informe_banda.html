@@ -50,6 +50,15 @@
             </div>
         </div>
 
+        <div class="row g-4 mt-2">
+            <div class="col-md-6">
+                <label class="form-label d-block">Alias registrados</label>
+                <div class="form-control" style="height:auto; min-height: 80px;" id="alias-display">
+                    <span class="text-muted">Seleccioná una banda para ver los alias registrados.</span>
+                </div>
+            </div>
+        </div>
+
         <div class="alert alert-info mt-3">
             Los integrantes, jerarquías, zonas y relaciones se completan automáticamente según la banda seleccionada.
         </div>
@@ -248,6 +257,7 @@
             const miembrosDisplay = document.getElementById('info-miembros');
             const aliadasDisplay = document.getElementById('info-aliadas');
             const rivalesDisplay = document.getElementById('info-rivales');
+            const aliasDisplay = document.getElementById('alias-display');
             if (!selectBanda || !zonasDisplay) {
                 return;
             }
@@ -328,6 +338,7 @@
                 const data = bandasMap[id];
                 if (!data) {
                     zonasDisplay.innerHTML = '<span class="text-muted">Seleccioná una banda para ver sus zonas.</span>';
+                    if (aliasDisplay) aliasDisplay.innerHTML = '<span class="text-muted">Seleccioná una banda para ver los alias registrados.</span>';
                     if (lideresDisplay) lideresDisplay.innerHTML = '<span class="text-muted">Seleccioná una banda.</span>';
                     if (lugartenientesDisplay) lugartenientesDisplay.innerHTML = '<span class="text-muted">Seleccioná una banda.</span>';
                     if (miembrosDisplay) miembrosDisplay.innerHTML = '<span class="text-muted">Seleccioná una banda.</span>';
@@ -352,6 +363,16 @@
                 });
                 zonasDisplay.innerHTML = '';
                 zonasDisplay.appendChild(list);
+                if (aliasDisplay) {
+                    const alias = Array.isArray(data.alias) ? data.alias : [];
+                    if (!alias.length) {
+                        aliasDisplay.innerHTML = '<span class="text-muted">No se registraron alias para esta banda.</span>';
+                    } else {
+                        aliasDisplay.innerHTML = alias
+                            .map((nombre) => `<span class="badge bg-secondary me-1 mb-1">${nombre}</span>`)
+                            .join('');
+                    }
+                }
                 renderPersonas(data.lideres, lideresDisplay, 'No se registraron líderes para esta banda.');
                 renderPersonas(
                     data.lugartenientes,

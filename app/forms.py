@@ -126,19 +126,22 @@ class BandaCriminalForm(forms.ModelForm):
     class Meta:
         model = BandaCriminal
         fields = [
-            "nombres",
+            "nombre",
+            "alias",
             "zonas_influencia",
             "bandas_aliadas",
             "bandas_rivales",
         ]
         widgets = {
-            "nombres": forms.HiddenInput(),
+            "nombre": forms.TextInput(attrs={"class": "form-control"}),
+            "alias": forms.HiddenInput(),
             "zonas_influencia": forms.HiddenInput(),
             "bandas_aliadas": forms.SelectMultiple(attrs={"class": "form-select", "size": 6}),
             "bandas_rivales": forms.SelectMultiple(attrs={"class": "form-select", "size": 6}),
         }
         labels = {
-            "nombres": "Nombres o alias",
+            "nombre": "Nombre principal",
+            "alias": "Alias",
             "zonas_influencia": "Zonas de influencia",
             "bandas_aliadas": "Bandas aliadas",
             "bandas_rivales": "Bandas rivales",
@@ -146,14 +149,16 @@ class BandaCriminalForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        def _label_banda(obj):
+            return obj.nombres_como_texto or "Banda sin nombre"
         if not self.is_bound:
-            valores = self.instance.nombres if getattr(self.instance, "nombres", None) else []
-            if isinstance(valores, str):
+            alias = getattr(self.instance, "alias", []) or []
+            if isinstance(alias, str):
                 try:
-                    valores = json.loads(valores)
+                    alias = json.loads(alias)
                 except json.JSONDecodeError:
-                    valores = [valores] if valores else []
-            self.fields["nombres"].initial = json.dumps(valores or [], ensure_ascii=False)
+                    alias = [alias] if alias else []
+            self.fields["alias"].initial = json.dumps(alias or [], ensure_ascii=False)
             zonas = getattr(self.instance, "zonas_influencia", []) or []
             if isinstance(zonas, str):
                 try:
@@ -161,30 +166,40 @@ class BandaCriminalForm(forms.ModelForm):
                 except json.JSONDecodeError:
                     zonas = []
             self.fields["zonas_influencia"].initial = json.dumps(zonas or [], ensure_ascii=False)
+        bandas_queryset = BandaCriminal.objects.order_by("nombre")
+        if self.instance and self.instance.pk:
+            bandas_queryset = bandas_queryset.exclude(pk=self.instance.pk)
+        for field_name in ("bandas_aliadas", "bandas_rivales"):
+            self.fields[field_name].queryset = bandas_queryset
+            self.fields[field_name].label_from_instance = _label_banda
 
-    def clean_nombres(self):
-        raw = self.cleaned_data.get("nombres")
+    def clean_nombre(self):
+        nombre = (self.cleaned_data.get("nombre") or "").strip()
+        if not nombre:
+            raise forms.ValidationError("Ingresá el nombre principal de la banda.")
+        return nombre
+
+    def clean_alias(self):
+        raw = self.cleaned_data.get("alias")
         if isinstance(raw, list):
-            nombres = raw
+            alias = raw
         else:
             if not raw:
-                nombres = []
+                alias = []
             else:
                 try:
-                    nombres = json.loads(raw)
+                    alias = json.loads(raw)
                 except json.JSONDecodeError as exc:
                     raise forms.ValidationError(
-                        "No se pudieron procesar los nombres ingresados."
+                        "No se pudieron procesar los alias ingresados."
                     ) from exc
-        nombres_limpios = []
-        for nombre in nombres:
+        alias_limpios = []
+        for nombre in alias:
             if isinstance(nombre, str):
                 valor = nombre.strip()
                 if valor:
-                    nombres_limpios.append(valor)
-        if not nombres_limpios:
-            raise forms.ValidationError("Ingresá al menos un nombre para la banda.")
-        return nombres_limpios
+                    alias_limpios.append(valor)
+        return alias_limpios
 
     def clean_zonas_influencia(self):
         raw = self.cleaned_data.get("zonas_influencia")
@@ -255,6 +270,11 @@ class InformeBandaCriminalForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        bandas_queryset = BandaCriminal.objects.order_by("nombre")
+        self.fields["banda"].queryset = bandas_queryset
+        self.fields["banda"].label_from_instance = (
+            lambda obj: obj.nombres_como_texto or "Banda sin nombre"
+        )
         self.fields["introduccion_descripcion"].required = False
         self.fields["conclusion_relevante"].required = False
         self.fields["posible_evolucion"].required = False
@@ -481,7 +501,11 @@ class HechoDelictivoForm(forms.ModelForm):
             self.fields["autor"].queryset = autores_queryset
 
         self.fields["noticias"].queryset = links_queryset
-        self.fields["bandas"].queryset = BandaCriminal.objects.order_by("nombres")
+        bandas_queryset = BandaCriminal.objects.order_by("nombre")
+        self.fields["bandas"].queryset = bandas_queryset
+        self.fields["bandas"].label_from_instance = (
+            lambda obj: obj.nombres_como_texto or "Banda sin nombre"
+        )
         self.fields["articulo"].queryset = articulo_queryset
         self.fields["articulo"].required = True
 

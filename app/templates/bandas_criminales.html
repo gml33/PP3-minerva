@@ -13,21 +13,26 @@
     <div class="card-body">
         {% if modo_edicion and banda_actual %}
         <div class="alert alert-info py-2">
-            Estás editando <strong>{{ banda_actual.nombres_como_texto }}</strong>.
+            Estás editando <strong>{{ banda_actual.nombre_principal|default:"Banda sin nombre" }}</strong>.
+            {% with alias_lista=banda_actual.alias %}
+                {% if alias_lista %}
+                    <br><small class="text-muted">Alias: {{ alias_lista|join:", " }}</small>
+                {% endif %}
+            {% endwith %}
         </div>
         {% endif %}
         <form method="post" action="{{ form_action|default:request.path }}">
             {% csrf_token %}
             {% for field in form %}
-                {% if field.name == "nombres" %}
+                {% if field.name == "alias" %}
                 <div class="mb-3">
-                    <label class="form-label" for="id_nombres_control">Nombres o alias</label>
+                    <label class="form-label" for="id_alias_control">Alias</label>
                     {{ field }}
-                    <div id="nombres-dynamic-list" class="d-flex flex-column gap-2"></div>
-                    <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="btn-agregar-nombre">
-                        Agregar otro nombre
+                    <div id="alias-dynamic-list" class="d-flex flex-column gap-2"></div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="btn-agregar-alias">
+                        Agregar alias
                     </button>
-                    <div class="form-text">Cargá uno o más nombres/alias para esta banda.</div>
+                    <div class="form-text">Añadí alias o denominaciones alternativas (opcional).</div>
                     {% if field.errors %}
                     <div class="text-danger small mt-2">
                         {% for error in field.errors %}{{ error }}{% endfor %}
@@ -142,7 +147,8 @@
             <table class="table table-striped mb-0">
                 <thead>
                     <tr>
-                        <th>Nombres / Alias</th>
+                        <th>Nombre</th>
+                        <th>Alias</th>
                         <th>Zonas de influencia</th>
                         <th>Líderes</th>
                         <th>Miembros</th>
@@ -155,11 +161,18 @@
                     {% for banda in bandas %}
                     <tr {% if banda_actual and banda.pk == banda_actual.pk %}class="table-info"{% endif %}>
                         <td>
-                            {% with nombres=banda.nombres_como_texto %}
-                                {% if nombres %}
-                                    {{ nombres|truncatechars:35 }}
+                            {% if banda.nombre_principal %}
+                                {{ banda.nombre_principal|truncatechars:35 }}
+                            {% else %}
+                                <span class="text-muted">Sin nombre</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% with alias_lista=banda.alias %}
+                                {% if alias_lista %}
+                                    {{ alias_lista|join:", "|truncatechars:35 }}
                                 {% else %}
-                                    <span class="text-muted">Sin nombre</span>
+                                    <span class="text-muted">Sin alias</span>
                                 {% endif %}
                             {% endwith %}
                         </td>
@@ -224,7 +237,16 @@
                                 <button type="button" class="btn btn-sm btn-outline-danger btn-eliminar-banda">Eliminar</button>
                             </form>
                             <div id="banda-detalle-{{ banda.pk }}" class="d-none">
-                                <p><strong>Nombres / Alias:</strong> {{ banda.nombres_como_texto|default:"Sin nombre" }}</p>
+                                <p><strong>Nombre:</strong> {{ banda.nombre_principal|default:"Sin nombre" }}</p>
+                                <p><strong>Alias:</strong>
+                                    {% with alias_lista=banda.alias %}
+                                        {% if alias_lista %}
+                                            {{ alias_lista|join:", " }}
+                                        {% else %}
+                                            <span class="text-muted">Sin alias</span>
+                                        {% endif %}
+                                    {% endwith %}
+                                </p>
                                 <div class="mb-2">
                                     <strong>Zonas de influencia:</strong>
                                     {% if banda.zonas_influencia_detalle %}
@@ -342,7 +364,7 @@
 {{ block.super }}
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    inicializarCamposNombres();
+    inicializarCamposAlias();
     inicializarZonasInfluencia();
 
     const modalTitle = document.getElementById("modalDetalleBandaTitulo");
@@ -384,10 +406,10 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 });
 
-function inicializarCamposNombres() {
-    const hiddenField = document.getElementById("id_nombres");
-    const listContainer = document.getElementById("nombres-dynamic-list");
-    const addButton = document.getElementById("btn-agregar-nombre");
+function inicializarCamposAlias() {
+    const hiddenField = document.getElementById("id_alias");
+    const listContainer = document.getElementById("alias-dynamic-list");
+    const addButton = document.getElementById("btn-agregar-alias");
 
     if (!hiddenField || !listContainer || !addButton) {
         return;
@@ -400,12 +422,12 @@ function inicializarCamposNombres() {
         const input = document.createElement("input");
         input.type = "text";
         input.className = "form-control";
-        input.placeholder = "Alias o denominación";
+        input.placeholder = "Alias o denominación alternativa";
         input.value = valor || "";
 
         const btn = document.createElement("button");
         btn.type = "button";
-        btn.className = "btn btn-outline-danger btn-remove-nombre";
+        btn.className = "btn btn-outline-danger btn-remove-alias";
         btn.textContent = "Quitar";
 
         wrapper.appendChild(input);
@@ -429,12 +451,10 @@ function inicializarCamposNombres() {
         sincronizarHidden();
     });
 
-    listContainer.addEventListener("input", () => {
-        sincronizarHidden();
-    });
+    listContainer.addEventListener("input", sincronizarHidden);
 
     listContainer.addEventListener("click", (event) => {
-        if (event.target.matches(".btn-remove-nombre")) {
+        if (event.target.matches(".btn-remove-alias")) {
             const wrapper = event.target.closest(".input-group");
             if (wrapper) {
                 wrapper.remove();
@@ -449,7 +469,7 @@ function inicializarCamposNombres() {
     try {
         const iniciales = JSON.parse(hiddenField.value || "[]");
         if (Array.isArray(iniciales) && iniciales.length) {
-            iniciales.forEach((nombre) => crearFila(nombre));
+            iniciales.forEach((alias) => crearFila(alias));
         } else {
             crearFila("");
         }

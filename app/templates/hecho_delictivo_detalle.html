@@ -88,7 +88,12 @@
                     {% if bandas %}
                         <ul class="mb-0">
                             {% for banda in bandas %}
-                                <li>{{ banda.nombre_principal|default:banda }}</li>
+                                <li>
+                                    <strong>{{ banda.nombre_principal|default:"Banda sin nombre" }}</strong>
+                                    {% if banda.alias %}
+                                        <br><small class="text-muted">Alias: {{ banda.alias|join:", " }}</small>
+                                    {% endif %}
+                                </li>
                             {% endfor %}
                         </ul>
                     {% else %}
