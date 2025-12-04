@@ -160,12 +160,13 @@
                         <th>Link</th>
                         <th>Fecha</th>
                         <th>Categorías</th>
+                        <th>Revisado</th>
                         <th>Seleccionar</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td colspan="6" class="text-center text-muted">Cargando links aprobados...</td>
+                        <td colspan="7" class="text-center text-muted">Cargando links aprobados...</td>
                     </tr>
                 </tbody>
             </table>
@@ -437,11 +438,24 @@ let diariosBandas = [];
 let redesBandas = [];
 let linksBandasSeleccionadosDiario = [];
 let linksBandasSeleccionadosRed = [];
+const linksRevisadosBandas = new Set();
 
 document.addEventListener("DOMContentLoaded", async function () {
     inicializarCamposAlias();
     inicializarZonasInfluencia();
-    await inicializarLinksBandas();
+    await cargarCategoriaBandas();
+    await Promise.all([cargarDiariosBandas(), cargarRedesBandas()]);
+    inicializarSeleccionLinksBandas();
+    actualizarCamposFuenteBandas();
+    await cargarLinksBandas();
+
+    const origenSelect = document.getElementById("bandas_origen");
+    if (origenSelect) {
+        origenSelect.addEventListener("change", () => {
+            actualizarCamposFuenteBandas();
+            cargarLinksBandas();
+        });
+    }
 
     const modalTitle = document.getElementById("modalDetalleBandaTitulo");
     const modalBody = document.getElementById("modalDetalleBandaBody");
@@ -481,26 +495,6 @@ document.addEventListener("DOMContentLoaded", async function () {
         });
     });
 });
-
-async function inicializarLinksBandas() {
-    const tablaLinks = document.getElementById("tabla-links-bandas");
-    if (!tablaLinks) {
-        return;
-    }
-    inicializarSeleccionLinksBandas();
-    await cargarCategoriaBandas();
-    await Promise.all([cargarDiariosBandas(), cargarRedesBandas()]);
-    actualizarCamposFuenteBandas();
-    await cargarLinksBandas();
-
-    const origenSelect = document.getElementById("bandas_origen");
-    if (origenSelect) {
-        origenSelect.addEventListener("change", () => {
-            actualizarCamposFuenteBandas();
-            cargarLinksBandas();
-        });
-    }
-}
 
 async function cargarCategoriaBandas() {
     if (categoriaBandasId) {
@@ -564,6 +558,8 @@ function actualizarCamposFuenteBandas() {
 function inicializarSeleccionLinksBandas() {
     linksBandasSeleccionadosDiario = parsearListaLinksSeleccionados("id_links_diarios");
     linksBandasSeleccionadosRed = parsearListaLinksSeleccionados("id_links_redes");
+    linksBandasSeleccionadosDiario.forEach((id) => linksRevisadosBandas.add(id));
+    linksBandasSeleccionadosRed.forEach((id) => linksRevisadosBandas.add(id));
     actualizarCamposLinksSeleccionados();
 }
 
@@ -592,6 +588,13 @@ function actualizarCamposLinksSeleccionados() {
     if (inputRed) {
         inputRed.value = JSON.stringify(linksBandasSeleccionadosRed);
     }
+}
+
+function marcarLinkBandaRevisado(id) {
+    linksRevisadosBandas.add(id);
+    setTimeout(() => {
+        mostrarLinksBandasPagina(linksBandasGlobal, paginaLinksBandasActual);
+    }, 300);
 }
 
 function toggleSeleccionLinkBanda(id, tipo, checked) {
@@ -630,13 +633,13 @@ async function cargarLinksBandas() {
     if (!tbody) {
         return;
     }
-    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Cargando links aprobados...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">Cargando links aprobados...</td></tr>`;
     if (paginacion) {
         paginacion.classList.add("d-none");
     }
 
     if (!categoriaBandasId) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">No se pudo determinar la categoría Bandas criminales.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">No se pudo determinar la categoría Bandas criminales.</td></tr>`;
         return;
     }
 
@@ -675,7 +678,7 @@ async function cargarLinksBandas() {
             });
 
         if (!linksBandasGlobal.length) {
-            tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">No se encontraron links aprobados para los filtros seleccionados.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">No se encontraron links aprobados para los filtros seleccionados.</td></tr>`;
             return;
         }
 
@@ -683,7 +686,7 @@ async function cargarLinksBandas() {
         mostrarLinksBandasPagina(linksBandasGlobal, paginaLinksBandasActual);
     } catch (error) {
         console.error("Error cargando links:", error);
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Error al cargar los links: ${error.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">Error al cargar los links: ${error.message}</td></tr>`;
     }
 }
 
@@ -698,7 +701,7 @@ function mostrarLinksBandasPagina(links, pagina) {
     const paginaLinks = links.slice(inicio, inicio + LINKS_BANDAS_POR_PAGINA);
 
     if (!paginaLinks.length) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">No se encontraron links para mostrar.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">No se encontraron links para mostrar.</td></tr>`;
         actualizarPaginacionLinksBandas(0, 0);
         return;
     }
@@ -719,19 +722,24 @@ function mostrarLinksBandasPagina(links, pagina) {
         const textoLink = linkUrl
             ? (linkUrl.length > 60 ? linkUrl.slice(0, 60) + "…" : linkUrl)
             : "Sin URL";
+        const revisado = linksRevisadosBandas.has(link.id);
+        const disabled = revisado ? "" : "disabled";
+        const badgeRevisado = revisado ? "✔" : "";
         const checked = linkBandaEstaSeleccionado(tipoFuente, link.id) ? "checked" : "";
         const tr = document.createElement("tr");
         tr.innerHTML = `
             <td><img src="${logoUrl}" alt="Logo fuente" style="height:40px; max-width:60px"></td>
             <td>${fuenteNombre}${badgeTipo}${badgeIA}</td>
-            <td>${linkUrl ? `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer">${textoLink}</a>` : '<span class="text-muted">Sin URL</span>'}</td>
+            <td>${linkUrl ? `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer" onclick="marcarLinkBandaRevisado(${link.id})">${textoLink}</a>` : '<span class="text-muted">Sin URL</span>'}</td>
             <td>${fecha}</td>
             <td>${categorias}</td>
+            <td><span class="badge ${revisado ? 'bg-success' : 'bg-secondary'}">${badgeRevisado || 'Pendiente'}</span></td>
             <td>
                 <input type="checkbox"
                     class="form-check-input"
                     onchange="toggleSeleccionLinkBanda(${link.id}, '${tipoFuente}', this.checked)"
-                    ${checked}>
+                    ${checked}
+                    ${disabled}>
             </td>
         `;
         tbody.appendChild(tr);

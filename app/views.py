@@ -317,6 +317,35 @@ def _bandas_info_payload():
     return datos
 
 
+def _sincronizar_informe_banda(informe, banda_obj):
+    """
+    Garantiza que el informe quede asociado a la banda correcta y
+    que su rol (lider o no) se refleje en las relaciones ManyToMany.
+    """
+    if not informe:
+        return
+
+    bandas_relacionadas = BandaCriminal.objects.filter(
+        Q(miembros=informe) | Q(lideres=informe)
+    )
+    if banda_obj:
+        bandas_relacionadas = bandas_relacionadas.exclude(pk=banda_obj.pk)
+
+    for banda in bandas_relacionadas:
+        banda.miembros.remove(informe)
+        banda.lideres.remove(informe)
+
+    if not banda_obj:
+        return
+
+    banda_obj.miembros.add(informe)
+    rol_informe = (informe.rol or "").strip().lower()
+    if rol_informe == "lider":
+        banda_obj.lideres.add(informe)
+    else:
+        banda_obj.lideres.remove(informe)
+
+
 def _user_has_panel_access(user, roles_permitidos):
     perfil = getattr(user, "userprofile", None)
     rol_usuario = getattr(perfil, "rol", None)
@@ -2877,8 +2906,7 @@ def informes_crear_view(request):
                 informe.foto = request.FILES["foto"]
                 
             informe.save()
-            if banda_asociada:
-                banda_asociada.miembros.add(informe)
+            _sincronizar_informe_banda(informe, banda_asociada)
             # Asegurarse de que el objeto esté guardado antes de manipular ManyToMany (m2m)
 
             # 👇 Creación de M2M y modelos relacionados (debe ir DESPUÉS de informe.save())
@@ -3104,11 +3132,14 @@ def api_detalle_informe(request, id):
 
 @login_required
 def eliminar_informe_view(request, id):
-    # Se añade restricción de rol (ADMIN/INFORMES/GERENCIA) para eliminar
-    if not _user_has_panel_access(request.user, [Roles.INFORMES, Roles.GERENCIA]):
-        return render(request, "403.html", status=403)
-        
     informe = get_object_or_404(InformeIndividual, id=id)
+    puede_eliminar = (
+        _user_has_panel_access(request.user, [Roles.INFORMES, Roles.GERENCIA])
+        or informe.generado_por_id == request.user.id
+    )
+    if not puede_eliminar:
+        return render(request, "403.html", status=403)
+
     if request.method == "POST":
         informe.delete()
         log_actividad(request, TipoActividad.OTRO, f"Se eliminó el informe ID {id}")
@@ -3263,13 +3294,21 @@ def editar_individuo_view(request, id):
     individuo = get_object_or_404(InformeIndividual, pk=id)
     
     if request.method == "POST":
-        # Se necesita request.FILES para la foto
+        banda_asociada = None
+        banda_id = request.POST.get("banda")
+        if banda_id:
+            try:
+                banda_asociada = BandaCriminal.objects.get(pk=int(banda_id))
+            except (BandaCriminal.DoesNotExist, ValueError):
+                banda_asociada = None
+
         form = InformeIndividualForm(request.POST, request.FILES, instance=individuo)
         if form.is_valid():
-            # TODO: Aquí se necesita manejar la actualización de los modelos relacionados (Alias, Domicilios, etc)
-            # de forma similar a `informes_crear_view`. 
-            # Si sólo se usa `form.save()`, los modelos relacionados NO se actualizarán.
-            form.save() 
+            informe = form.save(commit=False)
+            if banda_asociada:
+                informe.banda = banda_asociada.nombre_principal or banda_asociada.nombres_como_texto or ""
+            informe.save()
+            _sincronizar_informe_banda(informe, banda_asociada)
             messages.success(request, f"Informe ID {individuo.id} actualizado correctamente.")
             return redirect("informes")
         else:
