@@ -319,7 +319,7 @@ def _informes_banda_queryset():
 
 @login_required
 def informe_banda_crear_view(request):
-    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA, Roles.ADMIN]:
+    if request.user.userprofile.rol not in [Roles.EDITOR, Roles.REDACTOR_IA, Roles.ADMIN]:
         return render(request, "403.html", status=403)
 
     if request.method == "POST":
@@ -356,7 +356,7 @@ def informe_banda_crear_view(request):
 
 @login_required
 def informe_banda_detalle_view(request, pk):
-    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA, Roles.ADMIN]:
+    if request.user.userprofile.rol not in [Roles.EDITOR, Roles.REDACTOR_IA, Roles.ADMIN]:
         return render(request, "403.html", status=403)
 
     jerarquias_prefetch = Prefetch(
@@ -397,7 +397,7 @@ def informe_banda_detalle_view(request, pk):
 
 @login_required
 def informe_banda_editar_view(request, pk):
-    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA, Roles.ADMIN]:
+    if request.user.userprofile.rol not in [Roles.EDITOR, Roles.REDACTOR_IA, Roles.ADMIN]:
         return render(request, "403.html", status=403)
 
     informe = get_object_or_404(InformeBandaCriminal, pk=pk)
@@ -434,7 +434,7 @@ def informe_banda_editar_view(request, pk):
 
 @login_required
 def informe_banda_eliminar_view(request, pk):
-    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA, Roles.ADMIN]:
+    if request.user.userprofile.rol not in [Roles.EDITOR, Roles.REDACTOR_IA, Roles.ADMIN]:
         return render(request, "403.html", status=403)
 
     informe = get_object_or_404(InformeBandaCriminal, pk=pk)
@@ -457,7 +457,7 @@ def informe_banda_eliminar_view(request, pk):
 
 @login_required
 def informe_banda_exportar_view(request, pk):
-    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA, Roles.ADMIN]:
+    if request.user.userprofile.rol not in [Roles.EDITOR, Roles.REDACTOR_IA, Roles.ADMIN]:
         return render(request, "403.html", status=403)
     if Document is None:
         messages.error(
