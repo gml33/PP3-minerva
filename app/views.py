@@ -202,7 +202,7 @@ def logout_view(request):
 
 @login_required
 def prensa_view(request):
-    if request.user.userprofile.rol in [Roles.PRENSA, Roles.ADMIN]:
+    if _user_has_panel_access(request.user, [Roles.PRENSA]):
         solicitudes_pendientes = SolicitudInfo.objects.filter(
             fecha_respuesta__isnull=True
         ).count()
@@ -223,7 +223,9 @@ def prensa_view(request):
 
 @login_required
 def redaccion_view(request):
-    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA, Roles.PRENSA, Roles.ADMIN]:
+    if not _user_has_panel_access(
+        request.user, [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA, Roles.PRENSA]
+    ):
         return render(request, "403.html", status=403)
 
     solicitudes_usuario = (
@@ -315,6 +317,14 @@ def _bandas_info_payload():
     return datos
 
 
+def _user_has_panel_access(user, roles_permitidos):
+    perfil = getattr(user, "userprofile", None)
+    rol_usuario = getattr(perfil, "rol", None)
+    if rol_usuario == Roles.ADMIN:
+        return True
+    return rol_usuario in roles_permitidos
+
+
 def _informes_banda_queryset():
     return (
         InformeBandaCriminal.objects.select_related("banda")
@@ -329,7 +339,7 @@ def _informes_banda_queryset():
 
 @login_required
 def informe_banda_crear_view(request):
-    if request.user.userprofile.rol not in [Roles.EDITOR, Roles.REDACTOR_IA, Roles.ADMIN]:
+    if not _user_has_panel_access(request.user, [Roles.EDITOR, Roles.REDACTOR_IA]):
         return render(request, "403.html", status=403)
 
     if request.method == "POST":
@@ -366,7 +376,7 @@ def informe_banda_crear_view(request):
 
 @login_required
 def informe_banda_detalle_view(request, pk):
-    if request.user.userprofile.rol not in [Roles.EDITOR, Roles.REDACTOR_IA, Roles.ADMIN]:
+    if not _user_has_panel_access(request.user, [Roles.EDITOR, Roles.REDACTOR_IA]):
         return render(request, "403.html", status=403)
 
     jerarquias_prefetch = Prefetch(
@@ -407,7 +417,7 @@ def informe_banda_detalle_view(request, pk):
 
 @login_required
 def informe_banda_editar_view(request, pk):
-    if request.user.userprofile.rol not in [Roles.EDITOR, Roles.REDACTOR_IA, Roles.ADMIN]:
+    if not _user_has_panel_access(request.user, [Roles.EDITOR, Roles.REDACTOR_IA]):
         return render(request, "403.html", status=403)
 
     informe = get_object_or_404(InformeBandaCriminal, pk=pk)
@@ -444,7 +454,7 @@ def informe_banda_editar_view(request, pk):
 
 @login_required
 def informe_banda_eliminar_view(request, pk):
-    if request.user.userprofile.rol not in [Roles.EDITOR, Roles.REDACTOR_IA, Roles.ADMIN]:
+    if not _user_has_panel_access(request.user, [Roles.EDITOR, Roles.REDACTOR_IA]):
         return render(request, "403.html", status=403)
 
     informe = get_object_or_404(InformeBandaCriminal, pk=pk)
@@ -467,7 +477,7 @@ def informe_banda_eliminar_view(request, pk):
 
 @login_required
 def informe_banda_exportar_view(request, pk):
-    if request.user.userprofile.rol not in [Roles.EDITOR, Roles.REDACTOR_IA, Roles.ADMIN]:
+    if not _user_has_panel_access(request.user, [Roles.EDITOR, Roles.REDACTOR_IA]):
         return render(request, "403.html", status=403)
     if Document is None:
         messages.error(
@@ -829,7 +839,7 @@ def informe_banda_exportar_view(request, pk):
 
 @login_required
 def hechos_delictivos_view(request):
-    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA, Roles.ADMIN]:
+    if not _user_has_panel_access(request.user, [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA]):
         return render(request, "403.html", status=403)
 
     if request.method == "POST":
@@ -907,7 +917,7 @@ def hechos_delictivos_view(request):
 
 @login_required
 def bandas_criminales_view(request):
-    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA, Roles.ADMIN]:
+    if not _user_has_panel_access(request.user, [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA]):
         return render(request, "403.html", status=403)
 
     filtros = {
@@ -981,7 +991,7 @@ def bandas_criminales_view(request):
 def banda_criminal_editar_view(request, pk):
     banda = get_object_or_404(BandaCriminal, pk=pk)
 
-    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA, Roles.ADMIN]:
+    if not _user_has_panel_access(request.user, [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA]):
         return render(request, "403.html", status=403)
 
     filtros = {
@@ -1054,7 +1064,7 @@ def banda_criminal_editar_view(request, pk):
 def banda_criminal_eliminar_view(request, pk):
     banda = get_object_or_404(BandaCriminal, pk=pk)
 
-    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA, Roles.ADMIN]:
+    if not _user_has_panel_access(request.user, [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA]):
         return render(request, "403.html", status=403)
 
     if request.method == "POST":
@@ -1076,7 +1086,7 @@ def banda_criminal_eliminar_view(request, pk):
 def crear_banda_rapida_view(request):
     if request.method != "POST":
         return JsonResponse({"error": "Método no permitido"}, status=405)
-    if request.user.userprofile.rol not in [Roles.ADMIN, Roles.INFORMES, Roles.GERENCIA]:
+    if not _user_has_panel_access(request.user, [Roles.INFORMES, Roles.GERENCIA]):
         return JsonResponse({"error": "No autorizado"}, status=403)
     try:
         payload = json.loads(request.body.decode("utf-8"))
@@ -1109,7 +1119,7 @@ def articulo_editar_view(request, id):
         pk=id,
     )
 
-    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA, Roles.ADMIN]:
+    if not _user_has_panel_access(request.user, [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA]):
         return render(request, "403.html", status=403)
 
     if (
@@ -1151,7 +1161,7 @@ def articulo_editar_view(request, id):
 
 @login_required
 def osint_panel_view(request):
-    if request.user.userprofile.rol not in [Roles.PRENSA, Roles.ADMIN]:
+    if not _user_has_panel_access(request.user, [Roles.PRENSA]):
         return render(request, "403.html", status=403)
 
     herramientas = HerramientaOSINT.objects.all()
@@ -1166,7 +1176,7 @@ def osint_panel_view(request):
 
 @login_required
 def solicitud_info_portal_view(request):
-    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA, Roles.ADMIN]:
+    if not _user_has_panel_access(request.user, [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA]):
         return render(request, "403.html", status=403)
 
     solicitudes_usuario = (
@@ -1230,7 +1240,7 @@ def solicitud_info_portal_view(request):
 
 @login_required
 def solicitud_info_portal_detalle_view(request, pk):
-    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA, Roles.ADMIN]:
+    if not _user_has_panel_access(request.user, [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA]):
         return render(request, "403.html", status=403)
 
     solicitud = get_object_or_404(
@@ -1253,7 +1263,7 @@ def solicitud_info_portal_detalle_view(request, pk):
 # NUEVA VISTA: Editar solicitud de información
 @login_required
 def solicitud_info_portal_editar_view(request, pk):
-    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA, Roles.ADMIN]:
+    if not _user_has_panel_access(request.user, [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA]):
         return render(request, "403.html", status=403)
 
     solicitud = get_object_or_404(
@@ -1309,7 +1319,7 @@ def solicitud_info_portal_editar_view(request, pk):
 
 @login_required
 def solicitud_info_portal_eliminar_view(request, pk):
-    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA, Roles.ADMIN]:
+    if not _user_has_panel_access(request.user, [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA]):
         return render(request, "403.html", status=403)
 
     solicitud = get_object_or_404(SolicitudInfo, pk=pk)
@@ -1341,7 +1351,7 @@ def solicitud_info_crear_view(request):
 
 @login_required
 def solicitudes_info_list_view(request):
-    if request.user.userprofile.rol not in [Roles.PRENSA, Roles.ADMIN]:
+    if not _user_has_panel_access(request.user, [Roles.PRENSA]):
         return render(request, "403.html", status=403)
 
     solicitudes = (
@@ -1363,7 +1373,7 @@ def solicitudes_info_list_view(request):
 
 @login_required
 def solicitud_info_detalle_view(request, pk):
-    if request.user.userprofile.rol not in [Roles.PRENSA, Roles.ADMIN]:
+    if not _user_has_panel_access(request.user, [Roles.PRENSA]):
         return render(request, "403.html", status=403)
 
     solicitud = get_object_or_404(
@@ -2756,11 +2766,7 @@ def lista_links(request):
 
 @login_required
 def informes_view(request):
-    if request.user.userprofile.rol not in [
-        Roles.INFORMES,
-        Roles.ADMIN,
-        Roles.GERENCIA,
-    ]:
+    if not _user_has_panel_access(request.user, [Roles.INFORMES, Roles.GERENCIA]):
         return render(request, "403.html", status=403)
 
     # ------------------ FILTRO DE ARTÍCULOS ------------------
@@ -2789,7 +2795,7 @@ def informes_view(request):
     qs_informes = InformeIndividual.objects.select_related("generado_por").order_by(
         "-fecha_creacion"
     )
-    if request.user.userprofile.rol not in [Roles.ADMIN, Roles.GERENCIA]:
+    if not _user_has_panel_access(request.user, [Roles.GERENCIA]):
         informes = qs_informes.filter(generado_por=request.user)
     else:
         informes = qs_informes
@@ -2818,19 +2824,14 @@ def informes_view(request):
 
 @login_required
 def informes_crear_view(request):
-    if request.user.userprofile.rol not in [
-        Roles.ADMIN,
-        Roles.INFORMES,
-        Roles.GERENCIA,
-        Roles.EDITOR,
-    ]:
+    if not _user_has_panel_access(request.user, [Roles.INFORMES, Roles.GERENCIA, Roles.EDITOR]):
         return render(request, "403.html", status=403)
 
     # ------------------ INFORMES (Lista para la tabla lateral) -------------------
     qs_informes = InformeIndividual.objects.select_related("generado_por").order_by(
         "-fecha_creacion"
     )
-    if request.user.userprofile.rol not in [Roles.ADMIN, Roles.GERENCIA]:
+    if not _user_has_panel_access(request.user, [Roles.GERENCIA]):
         informes = qs_informes.filter(generado_por=request.user)
     else:
         informes = qs_informes
@@ -3104,7 +3105,7 @@ def api_detalle_informe(request, id):
 @login_required
 def eliminar_informe_view(request, id):
     # Se añade restricción de rol (ADMIN/INFORMES/GERENCIA) para eliminar
-    if request.user.userprofile.rol not in [Roles.ADMIN, Roles.INFORMES, Roles.GERENCIA]:
+    if not _user_has_panel_access(request.user, [Roles.INFORMES, Roles.GERENCIA]):
         return render(request, "403.html", status=403)
         
     informe = get_object_or_404(InformeIndividual, id=id)
@@ -3122,10 +3123,7 @@ def eliminar_informe_view(request, id):
 @login_required
 def consulta_informes_view(request):
     # Acceso para roles Cliente/Admin/Gerencia o usuario especial cliente1
-    if not (
-        request.user.userprofile.rol in [Roles.CLIENTE, Roles.ADMIN, Roles.GERENCIA]
-        or request.user.username == "cliente1"
-    ):
+    if not (_user_has_panel_access(request.user, [Roles.CLIENTE, Roles.GERENCIA]) or request.user.username == "cliente1"):
         return render(request, "403.html", status=403)
         
     informes = InformeIndividual.objects.select_related(
@@ -3258,7 +3256,7 @@ def consulta_informes_view(request):
 def editar_individuo_view(request, id):
     # CORRECCIÓN: La vista original estaba mezclando crear y editar. La forma más limpia
     # es usar esta función solo para editar. La creación se hace en informes_crear_view (POST).
-    if request.user.userprofile.rol not in [Roles.ADMIN, Roles.INFORMES, Roles.GERENCIA]:
+    if not _user_has_panel_access(request.user, [Roles.INFORMES, Roles.GERENCIA]):
         return render(request, "403.html", status=403)
         
     # El `id` es obligatorio para editar
@@ -3943,7 +3941,7 @@ def _obtener_estadisticas_informes(desde=None, hasta=None):
 
 @login_required
 def estadisticas_view(request):
-    if request.user.userprofile.rol not in [Roles.ADMIN, Roles.GERENCIA]:
+    if not _user_has_panel_access(request.user, [Roles.GERENCIA]):
         return render(request, "403.html", status=403)
 
     desde = request.GET.get("desde")
@@ -4006,7 +4004,7 @@ def estadisticas_view(request):
 def exportar_estadisticas_pdf(request):
     if HTML is None:
         return _weasyprint_unavailable_response(request, "estadisticas")
-    if request.user.userprofile.rol not in [Roles.ADMIN, Roles.GERENCIA]:
+    if not _user_has_panel_access(request.user, [Roles.GERENCIA]):
         return render(request, "403.html", status=403)
         
     usuario = request.GET.get("usuario")
@@ -4146,7 +4144,7 @@ def exportar_estadisticas_pdf(request):
 @require_GET
 def estadisticas_api_view(request):
     """EndPoint JSON para las nuevas estadísticas de usuarios de prensa."""
-    if request.user.userprofile.rol not in [Roles.ADMIN, Roles.GERENCIA]:
+    if not _user_has_panel_access(request.user, [Roles.GERENCIA]):
         return JsonResponse({"error": "Acceso denegado"}, status=403)
 
     usuario = request.GET.get("usuario")
@@ -4206,7 +4204,9 @@ def estadisticas_api_view(request):
 @login_required
 def consultar_articulo_view(request, id):
     # Se debe permitir a REDACCION, ADMIN y CLIENTE consultar artículos.
-    if request.user.userprofile.rol not in [Roles.ADMIN, Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA, Roles.CLIENTE]:
+    if not _user_has_panel_access(
+        request.user, [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA, Roles.CLIENTE]
+    ):
         return JsonResponse({"status": "error", "message": "Acceso denegado"}, status=403)
         
     try:
@@ -4237,7 +4237,7 @@ def consultar_articulo_view(request, id):
 
 @login_required
 def configuraciones(request):
-    if request.user.userprofile.rol not in [Roles.GERENTE_PRODUCCION, Roles.ADMIN]:
+    if not _user_has_panel_access(request.user, [Roles.GERENTE_PRODUCCION]):
         return render(request, "403.html", status=403)
 
     config_sistema = ConfiguracionSistema.obtener()
@@ -4752,7 +4752,7 @@ def crear_hecho_delictivo(request):
     if request.method != "POST":
         return redirect("hechos_delictivos")
 
-    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA, Roles.ADMIN]:
+    if not _user_has_panel_access(request.user, [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA]):
         messages.error(request, "No tenés permisos para registrar hechos delictivos.")
         return redirect("hechos_delictivos")
 
@@ -4782,7 +4782,7 @@ def crear_hecho_delictivo(request):
 @login_required
 def editar_hecho_delictivo(request, id):
     hecho = get_object_or_404(HechoDelictivo, id=id)
-    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA, Roles.ADMIN]:
+    if not _user_has_panel_access(request.user, [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA]):
         return render(request, "403.html", status=403)
     if hecho.creado_por not in [request.user, None] and request.user.userprofile.rol != Roles.ADMIN:
         return render(request, "403.html", status=403)
@@ -4819,7 +4819,7 @@ def editar_hecho_delictivo(request, id):
 @login_required
 def eliminar_hecho_delictivo(request, id):
     hecho = get_object_or_404(HechoDelictivo, id=id)
-    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA, Roles.ADMIN]:
+    if not _user_has_panel_access(request.user, [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA]):
         return render(request, "403.html", status=403)
     if hecho.creado_por not in [request.user, None] and request.user.userprofile.rol != Roles.ADMIN:
         return render(request, "403.html", status=403)
@@ -4842,7 +4842,7 @@ def hecho_delictivo_detalle_view(request, id):
         ),
         id=id,
     )
-    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA, Roles.ADMIN]:
+    if not _user_has_panel_access(request.user, [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA]):
         return render(request, "403.html", status=403)
     if (
         request.user.userprofile.rol in [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA]
@@ -4869,7 +4869,7 @@ def exportar_hecho_delictivo_pdf(request, id):
         ),
         id=id,
     )
-    if request.user.userprofile.rol not in [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA, Roles.ADMIN]:
+    if not _user_has_panel_access(request.user, [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA]):
         return render(request, "403.html", status=403)
     if (
         request.user.userprofile.rol in [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA]
@@ -4982,7 +4982,7 @@ def consulta_bandas_view(request):
     Vista para consultar bandas criminales - disponible para cliente1
     """
     # VERIFICACIÓN ESPECÍFICA PARA cliente1 Y ROL CLIENTE - MODIFICADO
-    if not (request.user.userprofile.rol in [Roles.CLIENTE, Roles.ADMIN, Roles.GERENCIA] or request.user.username == 'cliente1'):
+    if not (_user_has_panel_access(request.user, [Roles.CLIENTE, Roles.GERENCIA]) or request.user.username == 'cliente1'):
         return render(request, "403.html", status=403)
         
     bandas = BandaCriminal.objects.prefetch_related(
@@ -5054,7 +5054,7 @@ def api_detalle_banda(request, id):
     API para obtener detalle de una banda criminal
     """
     # VERIFICACIÓN ESPECÍFICA PARA cliente1 Y ROL CLIENTE - MODIFICADO
-    if not (request.user.userprofile.rol in [Roles.CLIENTE, Roles.ADMIN, Roles.GERENCIA] or request.user.username == 'cliente1'):
+    if not (_user_has_panel_access(request.user, [Roles.CLIENTE, Roles.GERENCIA]) or request.user.username == 'cliente1'):
         return JsonResponse({"status": "error", "msg": "Acceso denegado"}, status=403)
 
     try:
@@ -5180,7 +5180,7 @@ def exportar_banda_pdf(request, banda_id):
         return _weasyprint_unavailable_response(request, "consulta_bandas")
         
     # VERIFICACIÓN ESPECÍFICA PARA cliente1 Y ROL CLIENTE - MODIFICADO
-    if not (request.user.userprofile.rol in [Roles.CLIENTE, Roles.ADMIN, Roles.GERENCIA] or request.user.username == 'cliente1'):
+    if not (_user_has_panel_access(request.user, [Roles.CLIENTE, Roles.GERENCIA]) or request.user.username == 'cliente1'):
         return render(request, "403.html", status=403)
 
     try:
