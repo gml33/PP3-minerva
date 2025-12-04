@@ -68,6 +68,17 @@ class InformeIndividualForm(forms.ModelForm):
             )
         return documento
 
+    def clean(self):
+        cleaned_data = super().clean()
+        banda = cleaned_data.get("banda")
+        rol = (cleaned_data.get("rol") or "").strip()
+        if banda and not rol:
+            self.add_error(
+                "rol",
+                "Seleccioná el rol que ocupa en la banda asociada.",
+            )
+        return cleaned_data
+
 
 class CategoriaForm(forms.ModelForm):
     class Meta:
