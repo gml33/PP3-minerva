@@ -237,7 +237,7 @@ def _build_redaccion_context(
     titulo="Redacción de artículos para individualización",
     categoria_slug="individualizacion",
     categoria_nombre="Individualización",
-    filtrar_articulos_por_categoria=False,
+    filtrar_articulos_por_categoria=True,
     mostrar_selector_categoria=False,
     es_panel_bandas=False,
 ):
