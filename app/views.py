@@ -2869,6 +2869,41 @@ def lista_links(request):
 
 
 @login_required
+def api_buscar_individualizacion(request):
+    if not _user_has_panel_access(request.user, [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA]):
+        return JsonResponse({"status": "error", "msg": "No autorizado"}, status=403)
+
+    nombre = request.GET.get("nombre", "").strip()
+    apellido = request.GET.get("apellido", "").strip()
+    documento = request.GET.get("documento", "").strip()
+
+    if not any([nombre, apellido, documento]):
+        return JsonResponse({"status": "error", "msg": "Ingresá al menos un criterio."}, status=400)
+
+    qs = InformeIndividual.objects.all()
+    if documento:
+        qs = qs.filter(documento__iexact=documento)
+    if nombre:
+        qs = qs.filter(nombre__icontains=nombre)
+    if apellido:
+        qs = qs.filter(apellido__icontains=apellido)
+
+    qs = qs.select_related("generado_por").order_by("-fecha_creacion")[:10]
+    data = [
+        {
+            "id": informe.id,
+            "nombre": informe.nombre,
+            "apellido": informe.apellido,
+            "documento": informe.documento,
+            "generado_por": informe.generado_por.username if informe.generado_por else "-",
+            "fecha_creacion": informe.fecha_creacion.strftime("%d/%m/%Y %H:%M"),
+        }
+        for informe in qs
+    ]
+    return JsonResponse({"status": "ok", "coincidencias": data})
+
+
+@login_required
 def informes_view(request):
     if not _user_has_panel_access(request.user, [Roles.EDITOR, Roles.GERENCIA]):
         return render(request, "403.html", status=403)

@@ -116,6 +116,33 @@
     </div>
 </div>
 
+<div class="card mb-4">
+    <div class="card-header">
+        🔍 Radar de fichas existentes
+    </div>
+    <div class="card-body">
+        <form id="form-buscar-ficha" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label mb-0" for="busqueda_nombre">Nombre</label>
+                <input type="text" id="busqueda_nombre" class="form-control" placeholder="Nombre">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label mb-0" for="busqueda_apellido">Apellido</label>
+                <input type="text" id="busqueda_apellido" class="form-control" placeholder="Apellido">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label mb-0" for="busqueda_documento">Documento</label>
+                <input type="text" id="busqueda_documento" class="form-control" placeholder="Documento">
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-outline-primary w-100">Buscar ficha existente</button>
+                <button type="button" id="btn-limpiar-busqueda" class="btn btn-warning text-dark">Limpiar</button>
+            </div>
+        </form>
+        <div id="resultado-busqueda-ficha" class="mt-3"></div>
+    </div>
+</div>
+
 <div class="modal fade" id="modalEditarArticulo" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -494,6 +521,9 @@
     const listaSolicitudesArticulo = document.getElementById("listaSolicitudesArticulo");
     const btnCancelarEdicion = document.getElementById("btnCancelarEdicion");
     const btnCerrarEdicion = document.getElementById("btnCerrarEdicion");
+    const formBusquedaFicha = document.getElementById("form-buscar-ficha");
+    const resultadoBusquedaFicha = document.getElementById("resultado-busqueda-ficha");
+    const btnLimpiarBusqueda = document.getElementById("btn-limpiar-busqueda");
 
     document.addEventListener("DOMContentLoaded", async () => {
         console.log("Iniciando carga de componentes...");
@@ -516,7 +546,79 @@
                 cargarLinksAprobados();
             });
         }
+
+        if (formBusquedaFicha) {
+            formBusquedaFicha.addEventListener("submit", buscarFichaExistente);
+        }
+        if (btnLimpiarBusqueda) {
+            btnLimpiarBusqueda.addEventListener("click", limpiarBusquedaFicha);
+        }
     });
+
+    function limpiarBusquedaFicha() {
+        if (formBusquedaFicha) {
+            formBusquedaFicha.reset();
+        }
+        if (resultadoBusquedaFicha) {
+            resultadoBusquedaFicha.innerHTML = "";
+        }
+    }
+
+    async function buscarFichaExistente(event) {
+        event.preventDefault();
+        if (!resultadoBusquedaFicha) {
+            return;
+        }
+        const nombre = document.getElementById("busqueda_nombre")?.value.trim() || "";
+        const apellido = document.getElementById("busqueda_apellido")?.value.trim() || "";
+        const documento = document.getElementById("busqueda_documento")?.value.trim() || "";
+
+        if (!nombre && !apellido && !documento) {
+            resultadoBusquedaFicha.innerHTML = `<div class="alert alert-warning mb-0">Ingresá al menos un nombre, apellido o documento.</div>`;
+            return;
+        }
+
+        const params = new URLSearchParams();
+        if (nombre) params.append("nombre", nombre);
+        if (apellido) params.append("apellido", apellido);
+        if (documento) params.append("documento", documento);
+
+        resultadoBusquedaFicha.innerHTML = `<div class="text-muted">Buscando coincidencias...</div>`;
+
+        try {
+            const response = await fetch(`/api/informes/buscar/?${params.toString()}`);
+            const data = await response.json();
+            if (!response.ok || data.status !== "ok") {
+                throw new Error(data.msg || "No se pudo realizar la búsqueda");
+            }
+            mostrarResultadoBusquedaFicha(data.coincidencias || []);
+        } catch (error) {
+            console.error("Error buscando fichas:", error);
+            resultadoBusquedaFicha.innerHTML = `<div class="alert alert-danger mb-0">${escapeHtml(error.message || "Error al buscar fichas.")}</div>`;
+        }
+    }
+
+    function mostrarResultadoBusquedaFicha(coincidencias) {
+        if (!resultadoBusquedaFicha) {
+            return;
+        }
+        if (!coincidencias.length) {
+            resultadoBusquedaFicha.innerHTML = `<div class="alert alert-success mb-0">No se encontraron fichas existentes con los datos proporcionados.</div>`;
+            return;
+        }
+        const items = coincidencias
+            .map(
+                (c) =>
+                    `<li><strong>#${c.id}</strong> - ${escapeHtml(c.apellido || "")}, ${escapeHtml(c.nombre || "")} (Doc.: ${escapeHtml(c.documento || "-")}) · Registrado por ${escapeHtml(c.generado_por || "-")} el ${escapeHtml(c.fecha_creacion || "-")}</li>`
+            )
+            .join("");
+        resultadoBusquedaFicha.innerHTML = `
+            <div class="alert alert-warning mb-2">
+                Atención: existe${coincidencias.length > 1 ? "n" : ""} ${coincidencias.length} coincidencia${coincidencias.length > 1 ? "s" : ""} con los datos ingresados.
+            </div>
+            <ul class="mb-0 ps-3">${items}</ul>
+        `;
+    }
 
     // FUNCIONES PARA MANEJAR UBICACIONES MÚLTIPLES
     function agregarUbicacion() {

@@ -34,6 +34,7 @@ from .views import (
     registrar_clic_link,
     exportar_articulo_pdf,
     InformeIndividualViewSet,
+    api_buscar_individualizacion,
     informes_view,
     estadisticas_view,
     exportar_estadisticas_pdf,
@@ -121,6 +122,11 @@ urlpatterns = [
     path("prensa/", prensa_view, name="prensa"),
     path("redaccion/", redaccion_view, name="redaccion"),
     path("redaccion/bandas-criminales/", redaccion_bandas_view, name="redaccion_bandas"),
+    path(
+        "api/informes/buscar/",
+        api_buscar_individualizacion,
+        name="api_buscar_individualizacion",
+    ),
     path(
         "redaccion/informe-banda/nuevo/",
         informe_banda_crear_view,
