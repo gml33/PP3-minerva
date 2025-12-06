@@ -384,38 +384,6 @@
                                         <p class="mb-0 text-muted">Sin zonas registradas.</p>
                                     {% endif %}
                                 </div>
-                                <p><strong>Líderes:</strong>
-                                    {% with lideres=banda.lideres.all %}
-                                        {% if lideres %}
-                                            {% for lider in lideres %}
-                                                <a href="#"
-                                                   class="link-detalle-informe"
-                                                   data-informe-id="{{ lider.id }}"
-                                                   title="Ver informe de {{ lider }}">
-                                                    {{ lider }}
-                                                </a>{% if not forloop.last %}, {% endif %}
-                                            {% endfor %}
-                                        {% else %}
-                                            <span class="text-muted">Sin líderes</span>
-                                        {% endif %}
-                                    {% endwith %}
-                                </p>
-                                <p><strong>Miembros:</strong>
-                                    {% with miembros=banda.miembros.all %}
-                                        {% if miembros %}
-                                            {% for miembro in miembros %}
-                                                <a href="#"
-                                                   class="link-detalle-informe"
-                                                   data-informe-id="{{ miembro.id }}"
-                                                   title="Ver informe de {{ miembro }}">
-                                                    {{ miembro }}
-                                                </a>{% if not forloop.last %}, {% endif %}
-                                            {% endfor %}
-                                        {% else %}
-                                            <span class="text-muted">Sin miembros</span>
-                                        {% endif %}
-                                    {% endwith %}
-                                </p>
                                 <p><strong>Bandas aliadas:</strong>
                                     {% with aliadas=banda.bandas_aliadas.all %}
                                         {% if aliadas %}
