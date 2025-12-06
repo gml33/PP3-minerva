@@ -113,6 +113,58 @@
     </div>
 </div>
 
+{% if rol_usuario == 'redaccion' %}
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Artículos registrados con categoría "Bandas criminales"</span>
+        <span class="badge text-bg-info text-uppercase">Categoría fija: Bandas criminales</span>
+    </div>
+    <div class="card-body p-0">
+        {% if articulos_bandas %}
+        <div class="table-responsive">
+            <table class="table table-striped mb-0">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Título</th>
+                        <th>Barrio</th>
+                        <th>Zona de influencia</th>
+                        <th>Localidad</th>
+                        <th>Provincia</th>
+                        <th>Estado</th>
+                        <th>Autor</th>
+                        <th>Fecha</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for articulo in articulos_bandas %}
+                    <tr>
+                        <td>{{ articulo.id }}</td>
+                        <td>{{ articulo.titulo|default:"Sin título" }}</td>
+                        <td>{{ articulo.barrio|default:"-" }}</td>
+                        <td>{{ articulo.zona_influencia|default:"-" }}</td>
+                        <td>{{ articulo.localidad|default:"-" }}</td>
+                        <td>{{ articulo.provincia|default:"-" }}</td>
+                        <td>{{ articulo.get_estado_display }}</td>
+                        <td>
+                            {% if articulo.generado_por %}
+                                {{ articulo.generado_por.username }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>{{ articulo.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted p-3 mb-0">Aún no hay artículos registrados en esta categoría.</p>
+        {% endif %}
+    </div>
+</div>
+{% else %}
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span>Links aprobados vinculados a bandas criminales</span>
@@ -176,6 +228,7 @@
         </nav>
     </div>
 </div>
+{% endif %}
 
 <div class="card mb-4">
     <div class="card-header">Filtrar bandas criminales</div>
@@ -774,11 +827,28 @@ function actualizarCamposLinksSeleccionados() {
     }
 }
 
-function marcarLinkBandaRevisado(id) {
-    linksRevisadosBandas.add(id);
-    setTimeout(() => {
-        mostrarLinksBandasPagina(linksBandasGlobal, paginaLinksBandasActual);
-    }, 300);
+async function marcarLinkBandaRevisado(id, tipoFuente = "diario") {
+    const endpoint = obtenerEndpointPorFuenteBandas(tipoFuente);
+    try {
+        const resp = await fetch(`${endpoint}${id}/`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken") },
+            body: JSON.stringify({ revisado_redactor: true }),
+        });
+        if (!resp.ok) {
+            throw new Error(`No se pudo marcar el link (HTTP ${resp.status})`);
+        }
+        linksRevisadosBandas.add(id);
+        const link = linksBandasGlobal.find((item) => item.id === id);
+        if (link) {
+            link.revisado_redactor = true;
+        }
+        setTimeout(() => {
+            mostrarLinksBandasPagina(linksBandasGlobal, paginaLinksBandasActual);
+        }, 200);
+    } catch (error) {
+        console.error("Error al marcar el link como revisado:", error);
+    }
 }
 
 function toggleSeleccionLinkBanda(id, tipo, checked) {
@@ -906,7 +976,11 @@ function mostrarLinksBandasPagina(links, pagina) {
         const textoLink = linkUrl
             ? (linkUrl.length > 60 ? linkUrl.slice(0, 60) + "…" : linkUrl)
             : "Sin URL";
-        const revisado = linksRevisadosBandas.has(link.id);
+        const revisadoBackend = Boolean(link.revisado_redactor);
+        if (revisadoBackend) {
+            linksRevisadosBandas.add(link.id);
+        }
+        const revisado = revisadoBackend || linksRevisadosBandas.has(link.id);
         const disabled = revisado ? "" : "disabled";
         const badgeRevisado = revisado ? "✔" : "";
         const checked = linkBandaEstaSeleccionado(tipoFuente, link.id) ? "checked" : "";
@@ -914,7 +988,7 @@ function mostrarLinksBandasPagina(links, pagina) {
         tr.innerHTML = `
             <td><img src="${logoUrl}" alt="Logo fuente" style="height:40px; max-width:60px"></td>
             <td>${fuenteNombre}${badgeTipo}${badgeIA}</td>
-            <td>${linkUrl ? `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer" onclick="marcarLinkBandaRevisado(${link.id})">${textoLink}</a>` : '<span class="text-muted">Sin URL</span>'}</td>
+            <td>${linkUrl ? `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer" onclick="marcarLinkBandaRevisado(${link.id}, '${tipoFuente}')">${textoLink}</a>` : '<span class="text-muted">Sin URL</span>'}</td>
             <td>${fecha}</td>
             <td>${categorias}</td>
             <td><span class="badge ${revisado ? 'bg-success' : 'bg-secondary'}">${badgeRevisado || 'Pendiente'}</span></td>
@@ -989,6 +1063,16 @@ function formatearTipoFuenteBandas(tipo) {
         radio_digital: "Radio digital",
     };
     return etiquetas[tipo] || "";
+}
+
+function obtenerEndpointPorFuenteBandas(tipo) {
+    const base = {
+        diario: "/api/links/",
+        red_social: "/api/links_red_social/",
+        tv_digital: "/api/links_tv_digital/",
+        radio_digital: "/api/links_radio_digital/",
+    };
+    return base[tipo] || "/api/links/";
 }
 
 
@@ -1209,6 +1293,21 @@ function normalizarTexto(texto) {
         .toLowerCase()
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "");
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== "") {
+        const cookies = document.cookie.split(";");
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.startsWith(name + "=")) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
 }
 </script>
 {% endblock %}

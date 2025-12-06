@@ -1035,6 +1035,18 @@ def bandas_criminales_view(request):
     else:
         form = BandaCriminalForm()
 
+    categoria_bandas = Categoria.objects.filter(
+        nombre__iexact="bandas criminales"
+    ).first()
+    articulos_bandas = (
+        Articulo.objects.select_related("generado_por", "categoria")
+        .filter(categoria=categoria_bandas)
+        .order_by("-fecha_creacion")
+        if categoria_bandas
+        else Articulo.objects.none()
+    )
+    rol_usuario = getattr(getattr(request.user, "userprofile", None), "rol", "")
+
     return render(
         request,
         "bandas_criminales.html",
@@ -1044,6 +1056,8 @@ def bandas_criminales_view(request):
             "modo_edicion": False,
             "form_action": reverse("bandas_criminales"),
             "filtros": filtros,
+            "articulos_bandas": articulos_bandas,
+            "rol_usuario": rol_usuario,
         },
     )
 
@@ -1107,6 +1121,18 @@ def banda_criminal_editar_view(request, pk):
     pagina = request.GET.get("page")
     bandas = paginator.get_page(pagina)
 
+    categoria_bandas = Categoria.objects.filter(
+        nombre__iexact="bandas criminales"
+    ).first()
+    articulos_bandas = (
+        Articulo.objects.select_related("generado_por", "categoria")
+        .filter(categoria=categoria_bandas)
+        .order_by("-fecha_creacion")
+        if categoria_bandas
+        else Articulo.objects.none()
+    )
+    rol_usuario = getattr(getattr(request.user, "userprofile", None), "rol", "")
+
     return render(
         request,
         "bandas_criminales.html",
@@ -1117,6 +1143,8 @@ def banda_criminal_editar_view(request, pk):
             "banda_actual": banda,
             "form_action": reverse("banda_criminal_editar", args=[banda.pk]),
             "filtros": filtros,
+            "articulos_bandas": articulos_bandas,
+            "rol_usuario": rol_usuario,
         },
     )
 
@@ -2426,6 +2454,7 @@ def api_links_list(request):
                     'estado': getattr(link, 'estado', EstadoLink.PENDIENTE),
                     'fecha_carga': link.fecha_carga.isoformat() if link.fecha_carga else None,
                     'revisado_clasificador': getattr(link, 'revisado_clasificador', False),
+                    'revisado_redactor': getattr(link, 'revisado_redactor', False),
                     'diario_logo_url': None,
                     'diario_nombre': None,
                     'diario_digital': None,
@@ -2474,6 +2503,7 @@ def api_links_list(request):
                     'estado': getattr(link, 'estado', EstadoLink.PENDIENTE),
                     'fecha_carga': link.fecha_carga.isoformat() if link.fecha_carga else None,
                     'revisado_clasificador': getattr(link, 'revisado_clasificador', False),
+                    'revisado_redactor': getattr(link, 'revisado_redactor', False),
                     'diario_logo_url': None,
                     'diario_nombre': None,
                     'diario_digital': None,
@@ -2524,6 +2554,7 @@ def api_links_list(request):
                     'estado': getattr(link, 'estado', EstadoLink.PENDIENTE),
                     'fecha_carga': link.fecha_carga.isoformat() if link.fecha_carga else None,
                     'revisado_clasificador': getattr(link, 'revisado_clasificador', False),
+                    'revisado_redactor': getattr(link, 'revisado_redactor', False),
                     'diario_logo_url': None,
                     'diario_nombre': None,
                     'diario_digital': None,
@@ -2576,6 +2607,7 @@ def api_links_list(request):
                     'estado': getattr(link, 'estado', EstadoLink.PENDIENTE),
                     'fecha_carga': link.fecha_carga.isoformat() if link.fecha_carga else None,
                     'revisado_clasificador': getattr(link, 'revisado_clasificador', False),
+                    'revisado_redactor': getattr(link, 'revisado_redactor', False),
                     'diario_logo_url': link.diario_digital.logo.url if hasattr(link.diario_digital, 'logo') and link.diario_digital and link.diario_digital.logo else None,
                     'diario_nombre': link.diario_digital.nombre if link.diario_digital else 'Sin diario',
                     'diario_digital': link.diario_digital.id if link.diario_digital else None,
