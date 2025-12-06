@@ -870,7 +870,7 @@ def informe_banda_exportar_view(request, pk):
 
 @login_required
 def hechos_delictivos_view(request):
-    if not _user_has_panel_access(request.user, [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA]):
+    if not _user_has_panel_access(request.user, [Roles.REDACCION, Roles.REDACTOR_IA]):
         return render(request, "403.html", status=403)
 
     if request.method == "POST":
@@ -948,7 +948,7 @@ def hechos_delictivos_view(request):
 
 @login_required
 def bandas_criminales_view(request):
-    if not _user_has_panel_access(request.user, [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA]):
+    if not _user_has_panel_access(request.user, [Roles.REDACCION, Roles.REDACTOR_IA]):
         return render(request, "403.html", status=403)
 
     filtros = {
@@ -1022,7 +1022,7 @@ def bandas_criminales_view(request):
 def banda_criminal_editar_view(request, pk):
     banda = get_object_or_404(BandaCriminal, pk=pk)
 
-    if not _user_has_panel_access(request.user, [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA]):
+    if not _user_has_panel_access(request.user, [Roles.REDACCION, Roles.REDACTOR_IA]):
         return render(request, "403.html", status=403)
 
     filtros = {
@@ -1095,7 +1095,7 @@ def banda_criminal_editar_view(request, pk):
 def banda_criminal_eliminar_view(request, pk):
     banda = get_object_or_404(BandaCriminal, pk=pk)
 
-    if not _user_has_panel_access(request.user, [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA]):
+    if not _user_has_panel_access(request.user, [Roles.REDACCION, Roles.REDACTOR_IA]):
         return render(request, "403.html", status=403)
 
     if request.method == "POST":
@@ -1150,7 +1150,7 @@ def articulo_editar_view(request, id):
         pk=id,
     )
 
-    if not _user_has_panel_access(request.user, [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA]):
+    if not _user_has_panel_access(request.user, [Roles.REDACCION, Roles.REDACTOR_IA]):
         return render(request, "403.html", status=403)
 
     if (
@@ -1207,7 +1207,7 @@ def osint_panel_view(request):
 
 @login_required
 def solicitud_info_portal_view(request):
-    if not _user_has_panel_access(request.user, [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA]):
+    if not _user_has_panel_access(request.user, [Roles.REDACCION, Roles.REDACTOR_IA]):
         return render(request, "403.html", status=403)
 
     solicitudes_usuario = (
@@ -1271,7 +1271,7 @@ def solicitud_info_portal_view(request):
 
 @login_required
 def solicitud_info_portal_detalle_view(request, pk):
-    if not _user_has_panel_access(request.user, [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA]):
+    if not _user_has_panel_access(request.user, [Roles.REDACCION, Roles.REDACTOR_IA]):
         return render(request, "403.html", status=403)
 
     solicitud = get_object_or_404(
@@ -1279,7 +1279,7 @@ def solicitud_info_portal_detalle_view(request, pk):
         pk=pk,
     )
 
-    if request.user.userprofile.rol in [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA] and solicitud.usuario_creador != request.user:
+    if request.user.userprofile.rol in [Roles.REDACCION, Roles.REDACTOR_IA] and solicitud.usuario_creador != request.user:
         return render(request, "403.html", status=403)
 
     return render(
@@ -1294,7 +1294,7 @@ def solicitud_info_portal_detalle_view(request, pk):
 # NUEVA VISTA: Editar solicitud de información
 @login_required
 def solicitud_info_portal_editar_view(request, pk):
-    if not _user_has_panel_access(request.user, [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA]):
+    if not _user_has_panel_access(request.user, [Roles.REDACCION, Roles.REDACTOR_IA]):
         return render(request, "403.html", status=403)
 
     solicitud = get_object_or_404(
@@ -1302,7 +1302,7 @@ def solicitud_info_portal_editar_view(request, pk):
         pk=pk,
     )
 
-    if request.user.userprofile.rol in [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA] and solicitud.usuario_creador != request.user:
+    if request.user.userprofile.rol in [Roles.REDACCION, Roles.REDACTOR_IA] and solicitud.usuario_creador != request.user:
         return render(request, "403.html", status=403)
 
     if request.method == "POST":
@@ -1350,12 +1350,12 @@ def solicitud_info_portal_editar_view(request, pk):
 
 @login_required
 def solicitud_info_portal_eliminar_view(request, pk):
-    if not _user_has_panel_access(request.user, [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA]):
+    if not _user_has_panel_access(request.user, [Roles.REDACCION, Roles.REDACTOR_IA]):
         return render(request, "403.html", status=403)
 
     solicitud = get_object_or_404(SolicitudInfo, pk=pk)
 
-    if request.user.userprofile.rol in [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA] and solicitud.usuario_creador != request.user:
+    if request.user.userprofile.rol in [Roles.REDACCION, Roles.REDACTOR_IA] and solicitud.usuario_creador != request.user:
         return render(request, "403.html", status=403)
 
     if request.method == "POST":
