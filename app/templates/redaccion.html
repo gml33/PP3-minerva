@@ -274,6 +274,7 @@
                                     <th>Link</th>
                                     <th>Fecha</th>
                                     <th>Categorías</th>
+                                    <th>Asociados</th>
                                     <th>Seleccionar</th>
                                     <th>Revisado</th>
                                 </tr>
@@ -930,7 +931,7 @@
             console.error("Error cargando links:", e);
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="7" class="text-center text-danger">
+                    <td colspan="8" class="text-center text-danger">
                         <strong>Error al cargar links</strong><br>
                         <small>${e.message}</small><br>
                         <button class="btn btn-sm btn-warning mt-2" onclick="cargarLinksAprobados()">Reintentar</button>
@@ -1178,7 +1179,7 @@
         const linksPagina = links.slice(inicio, fin);
 
         if (linksPagina.length === 0) {
-            tbody.innerHTML = "<tr><td colspan='7' class='text-center text-muted'>No hay links clasificados</td></tr>";
+            tbody.innerHTML = "<tr><td colspan='8' class='text-center text-muted'>No hay links clasificados</td></tr>";
             crearPaginacion(0, 0, "links");
             return;
         }
@@ -1193,6 +1194,9 @@
             const fuenteNombre = link.diario_nombre || link.red_social_nombre || link.tv_digital_nombre || link.radio_digital_nombre || 'Sin fuente';
             const tipoFuente = link.tipo_fuente || "diario";
             const badgeIA = link.clasificado_por_ia ? '<span class="badge bg-info ms-2">IA</span>' : '';
+            const asociadosHtml = Array.isArray(link.asociados) && link.asociados.length
+                ? link.asociados.map(a => `<div>#${a.id} - ${escapeHtml(a.titulo || 'Sin título')}</div>`).join("")
+                : "<span class='text-muted'>Sin asociar</span>";
             const tr = document.createElement("tr");
             tr.innerHTML = `
                 <td><img src="${logoUrl}" alt="Logo de la fuente" style="height:40px; max-width:60px"></td>
@@ -1200,6 +1204,7 @@
                 <td><a href="${link.url}" target="_blank" onclick="marcarRevisadoRedactor(${link.id}, '${tipoFuente}', this)">${urlTexto}</a></td>
                 <td>${fechaCarga}</td>
                 <td>${categoriasBadges}</td>
+                <td>${asociadosHtml}</td>
                 <td><input type="checkbox" name="link_seleccionado" value="${link.id}" ${link.revisado_redactor ? "" : "disabled"}></td>
                 <td class="check-revisado">${link.revisado_redactor ? "✔" : ""}</td>`;
             tbody.appendChild(tr);

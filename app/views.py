@@ -2468,6 +2468,7 @@ def api_links_list(request):
                     'resumen_ia': getattr(link, 'resumen_ia', ""),
                     'confianza_clasificacion': getattr(link, 'confianza_clasificacion', None),
                     'clasificado_por_ia': getattr(link, 'clasificado_por_ia', False),
+                    'asociados': [],
                 })
         elif fuente == 'tv_digital':
             links = LinkTvDigital.objects.select_related('tv_digital').prefetch_related('categorias').all()
@@ -2519,6 +2520,7 @@ def api_links_list(request):
                     'categorias_info': [{'id': cat.id, 'nombre': cat.nombre} for cat in link.categorias.all()],
                     'resumen_ia': getattr(link, 'resumen_ia', ""),
                     'confianza_clasificacion': getattr(link, 'confianza_clasificacion', None),
+                    'asociados': [],
                 })
         elif fuente == 'radio_digital':
             links = LinkRadioDigital.objects.select_related('radio_digital').prefetch_related('categorias').all()
@@ -2571,10 +2573,11 @@ def api_links_list(request):
                     'resumen_ia': getattr(link, 'resumen_ia', ""),
                     'confianza_clasificacion': getattr(link, 'confianza_clasificacion', None),
                     'clasificado_por_ia': getattr(link, 'clasificado_por_ia', False),
+                    'asociados': [],
                 })
         else:
             # Filtrar links de diarios digitales
-            links = LinkRelevante.objects.select_related('diario_digital').prefetch_related('categorias').all()
+            links = LinkRelevante.objects.select_related('diario_digital').prefetch_related('categorias', 'articulos').all()
 
             if fecha_inicio:
                 links = links.filter(fecha_carga__date__gte=parse_date(fecha_inicio))
@@ -2600,6 +2603,13 @@ def api_links_list(request):
                 links = links.filter(clasificado_por_ia=True)
 
             for link in links:
+                asociados = [
+                    {
+                        "id": articulo.id,
+                        "titulo": articulo.titulo,
+                    }
+                    for articulo in getattr(link, "articulos", []).all()
+                ] if hasattr(link, "articulos") else []
                 data.append({
                     'id': link.id,
                     'tipo_fuente': 'diario',
@@ -2624,6 +2634,7 @@ def api_links_list(request):
                     'resumen_ia': getattr(link, 'resumen_ia', ""),
                     'confianza_clasificacion': getattr(link, 'confianza_clasificacion', None),
                     'clasificado_por_ia': getattr(link, 'clasificado_por_ia', False),
+                    'asociados': asociados,
                 })
 
         return JsonResponse(data, safe=False)

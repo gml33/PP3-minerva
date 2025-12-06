@@ -212,13 +212,14 @@
                         <th>Link</th>
                         <th>Fecha</th>
                         <th>Categorías</th>
+                        <th>Asociados</th>
                         <th>Revisado</th>
                         <th>Seleccionar</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td colspan="7" class="text-center text-muted">Cargando links aprobados...</td>
+                        <td colspan="8" class="text-center text-muted">Cargando links aprobados...</td>
                     </tr>
                 </tbody>
             </table>
@@ -887,13 +888,13 @@ async function cargarLinksBandas() {
     if (!tbody) {
         return;
     }
-    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">Cargando links aprobados...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Cargando links aprobados...</td></tr>`;
     if (paginacion) {
         paginacion.classList.add("d-none");
     }
 
     if (!categoriaBandasId) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">No se pudo determinar la categoría Bandas criminales.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger">No se pudo determinar la categoría Bandas criminales.</td></tr>`;
         return;
     }
 
@@ -932,7 +933,7 @@ async function cargarLinksBandas() {
             });
 
         if (!linksBandasGlobal.length) {
-            tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">No se encontraron links aprobados para los filtros seleccionados.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">No se encontraron links aprobados para los filtros seleccionados.</td></tr>`;
             return;
         }
 
@@ -940,7 +941,7 @@ async function cargarLinksBandas() {
         mostrarLinksBandasPagina(linksBandasGlobal, paginaLinksBandasActual);
     } catch (error) {
         console.error("Error cargando links:", error);
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">Error al cargar los links: ${error.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger">Error al cargar los links: ${error.message}</td></tr>`;
     }
 }
 
@@ -955,7 +956,7 @@ function mostrarLinksBandasPagina(links, pagina) {
     const paginaLinks = links.slice(inicio, inicio + LINKS_BANDAS_POR_PAGINA);
 
     if (!paginaLinks.length) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">No se encontraron links para mostrar.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">No se encontraron links para mostrar.</td></tr>`;
         actualizarPaginacionLinksBandas(0, 0);
         return;
     }
@@ -971,6 +972,9 @@ function mostrarLinksBandasPagina(links, pagina) {
         const categorias = link.categorias_info && link.categorias_info.length
             ? link.categorias_info.map(cat => `<span class="badge bg-secondary me-1">${cat.nombre}</span>`).join("")
             : "-";
+        const asociadosHtml = Array.isArray(link.asociados) && link.asociados.length
+            ? link.asociados.map(a => `<div>#${a.id} - ${escapeHtml(String(a.titulo || "Sin título"))}</div>`).join("")
+            : "<span class='text-muted'>Sin asociar</span>";
 
         const linkUrl = link.url || "";
         const textoLink = linkUrl
@@ -991,6 +995,7 @@ function mostrarLinksBandasPagina(links, pagina) {
             <td>${linkUrl ? `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer" onclick="marcarLinkBandaRevisado(${link.id}, '${tipoFuente}')">${textoLink}</a>` : '<span class="text-muted">Sin URL</span>'}</td>
             <td>${fecha}</td>
             <td>${categorias}</td>
+            <td>${asociadosHtml}</td>
             <td><span class="badge ${revisado ? 'bg-success' : 'bg-secondary'}">${badgeRevisado || 'Pendiente'}</span></td>
             <td>
                 <input type="checkbox"
@@ -1308,6 +1313,18 @@ function getCookie(name) {
         }
     }
     return cookieValue;
+}
+
+function escapeHtml(str) {
+    if (str === null || str === undefined) {
+        return "";
+    }
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
 }
 </script>
 {% endblock %}
