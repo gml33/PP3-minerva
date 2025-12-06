@@ -429,6 +429,7 @@
     const categoriaFijaSlug = "{{ categoria_fija_slug|default:'individualizacion'|escapejs }}";
     const categoriaFijaNombre = "{{ categoria_fija_nombre|default:'Individualización'|escapejs }}";
     let categoriaFijaId = null;
+    const filtrarArticulosPorCategoria = {{ filtrar_articulos_por_categoria|yesno:"true,false"|default:"false" }};
     let diariosDisponibles = [];
     let redesDisponibles = [];
     // Variables globales para la paginación
@@ -674,16 +675,6 @@
         return basePorFuente[tipo] || "/api/links/";
     }
 
-    function formatearTipoFuente(tipo) {
-        const etiquetas = {
-            diario: "Diario digital",
-            red_social: "Red social",
-            tv_digital: "TV digital",
-            radio_digital: "Radio digital",
-        };
-        return etiquetas[tipo] || "";
-    }
-
     function mostrarToast(mensaje, tipo = 'primary') {
         const toastEl = document.getElementById('liveToast');
         const toastBody = document.getElementById('toastBody');
@@ -698,6 +689,33 @@
             .toLowerCase()
             .normalize("NFD")
             .replace(/[\u0300-\u036f]/g, "");
+    }
+
+    function articuloPerteneceACategoriaFija(articulo) {
+        if (!filtrarArticulosPorCategoria) {
+            return true;
+        }
+        const categoriaCampo = articulo.categoria;
+        let categoriaId = null;
+        let categoriaNombre = "";
+        if (categoriaCampo && typeof categoriaCampo === "object") {
+            categoriaId = categoriaCampo.id;
+            categoriaNombre = categoriaCampo.nombre || "";
+        } else if (categoriaCampo) {
+            categoriaId = categoriaCampo;
+        }
+        if (!categoriaNombre && articulo.categoria_nombre) {
+            categoriaNombre = articulo.categoria_nombre;
+        }
+        const coincideId =
+            categoriaFijaId &&
+            categoriaId &&
+            Number(categoriaId) === Number(categoriaFijaId);
+        const coincideNombre =
+            categoriaFijaSlug &&
+            categoriaNombre &&
+            normalizarTexto(categoriaNombre) === normalizarTexto(categoriaFijaSlug);
+        return Boolean(coincideId || coincideNombre);
     }
 
     function escapeHtml(str) {
@@ -1114,13 +1132,11 @@
             const logoUrl = link.diario_logo_url || link.red_social_logo_url || link.tv_digital_logo_url || link.radio_digital_logo_url || '/static/img/default_logo.png';
             const fuenteNombre = link.diario_nombre || link.red_social_nombre || link.tv_digital_nombre || link.radio_digital_nombre || 'Sin fuente';
             const tipoFuente = link.tipo_fuente || "diario";
-            const tipoLabel = formatearTipoFuente(tipoFuente);
-            const badgeTipo = tipoLabel ? `<span class="badge bg-light text-dark border ms-2">${tipoLabel}</span>` : "";
             const badgeIA = link.clasificado_por_ia ? '<span class="badge bg-info ms-2">IA</span>' : '';
             const tr = document.createElement("tr");
             tr.innerHTML = `
                 <td><img src="${logoUrl}" alt="Logo de la fuente" style="height:40px; max-width:60px"></td>
-                <td>${fuenteNombre}${badgeTipo}${badgeIA}</td>
+                <td>${fuenteNombre}${badgeIA}</td>
                 <td><a href="${link.url}" target="_blank" onclick="marcarRevisadoRedactor(${link.id}, '${tipoFuente}', this)">${urlTexto}</a></td>
                 <td>${fechaCarga}</td>
                 <td>${categoriasBadges}</td>
@@ -1214,10 +1230,15 @@
             
             const articulos = await res.json();
             console.log("Artículos recibidos (acordeón):", articulos);
+
+            let articulosProcesados = articulos;
+            if (filtrarArticulosPorCategoria) {
+                articulosProcesados = articulos.filter(articuloPerteneceACategoriaFija);
+            }
+
+            articulosGlobal = articulosProcesados;
             
-            articulosGlobal = articulos;
-            
-            if (articulos.length === 0) {
+            if (articulosProcesados.length === 0) {
                 tbody.innerHTML = "<tr><td colspan='7' class='text-center text-muted'>No se encontraron artículos</td></tr>";
                 document.getElementById('paginacion-acordeon').classList.add('d-none');
                 return;

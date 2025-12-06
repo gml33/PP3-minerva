@@ -237,6 +237,7 @@ def _build_redaccion_context(
     titulo="Redacción de Artículos",
     categoria_slug="individualizacion",
     categoria_nombre="Individualización",
+    filtrar_articulos_por_categoria=False,
 ):
     solicitudes_usuario = (
         SolicitudInfo.objects.select_related("respondido_por")
@@ -250,6 +251,7 @@ def _build_redaccion_context(
         "titulo_pantalla": titulo,
         "categoria_fija_slug": categoria_slug,
         "categoria_fija_nombre": categoria_nombre,
+        "filtrar_articulos_por_categoria": filtrar_articulos_por_categoria,
     }
 
 
@@ -263,6 +265,7 @@ def redaccion_bandas_view(request):
         titulo="Redacción de artículos para bandas criminales",
         categoria_slug="bandas criminales",
         categoria_nombre="Bandas criminales",
+        filtrar_articulos_por_categoria=True,
     )
     return render(request, "redaccion.html", context)
 
