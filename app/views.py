@@ -169,7 +169,9 @@ def login_view(request):
                 return redirect("clasificacion")
             elif rol == Roles.CLASIFICADOR_IA:
                 return redirect("clasificacion")
-            elif rol in [Roles.REDACCION, Roles.EDITOR, Roles.REDACTOR_IA]:
+            elif rol == Roles.EDITOR:
+                return redirect("crear_informe")
+            elif rol in [Roles.REDACCION, Roles.REDACTOR_IA]:
                 return redirect("redaccion")
             elif rol == Roles.ADMIN:
                 return redirect("actividad")
