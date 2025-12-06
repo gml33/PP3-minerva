@@ -228,20 +228,32 @@ def redaccion_view(request):
     ):
         return render(request, "403.html", status=403)
 
+    context = _build_redaccion_context(request)
+    return render(request, "redaccion.html", context)
+
+
+def _build_redaccion_context(request):
     solicitudes_usuario = (
         SolicitudInfo.objects.select_related("respondido_por")
         .prefetch_related("articulos")
         .filter(usuario_creador=request.user)
         .order_by("-fecha_creacion")
     )
-    return render(
-        request,
-        "redaccion.html",
-        {
-            "solicitudes_usuario": solicitudes_usuario,
-            "rol_usuario": request.user.userprofile.rol,
-        },
-    )
+    return {
+        "solicitudes_usuario": solicitudes_usuario,
+        "rol_usuario": request.user.userprofile.rol,
+        "titulo_pantalla": "Redacción de Artículos",
+    }
+
+
+@login_required
+def redaccion_bandas_view(request):
+    if not _user_has_panel_access(request.user, [Roles.REDACCION]):
+        return render(request, "403.html", status=403)
+
+    context = _build_redaccion_context(request)
+    context["titulo_pantalla"] = "Redacción de artículos para bandas criminales"
+    return render(request, "redaccion.html", context)
 
 
 def _bandas_info_payload():

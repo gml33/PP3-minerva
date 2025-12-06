@@ -20,6 +20,7 @@ from .views import (
     logout_view,
     clasificacion_view,
     redaccion_view,
+    redaccion_bandas_view,
     informe_banda_crear_view,
     informe_banda_detalle_view,
     informe_banda_editar_view,
@@ -119,6 +120,7 @@ urlpatterns = [
     path("logout/", logout_view, name="logout"),
     path("prensa/", prensa_view, name="prensa"),
     path("redaccion/", redaccion_view, name="redaccion"),
+    path("redaccion/bandas-criminales/", redaccion_bandas_view, name="redaccion_bandas"),
     path(
         "redaccion/informe-banda/nuevo/",
         informe_banda_crear_view,
