@@ -49,7 +49,7 @@
                                     <div class="row g-2">
                                         <div class="col-12 col-md-6"><a class="dropdown-item text-white" href="{% url 'prensa' %}">Prensa</a></div>
                                         <div class="col-12 col-md-6"><a class="dropdown-item text-white" href="{% url 'clasificacion' %}">Clasificación</a></div>
-                                        <div class="col-12 col-md-6"><a class="dropdown-item text-white" href="{% url 'redaccion' %}">Redacción</a></div>
+                                        <div class="col-12 col-md-6"><a class="dropdown-item text-white" href="{% url 'redaccion' %}">Redacción de artículos para individualización</a></div>
                                         <div class="col-12 col-md-6"><a class="dropdown-item text-white" href="{% url 'solicitud_info_portal' %}">Solicitud de información</a></div>
                                         <div class="col-12 col-md-6"><a class="dropdown-item text-white" href="{% url 'hechos_delictivos' %}">Hechos Delictivos</a></div>
                                         <div class="col-12 col-md-6"><a class="dropdown-item text-white" href="{% url 'bandas_criminales' %}">Bandas Criminales</a></div>
@@ -87,7 +87,7 @@
                         </li>
 {% elif user.userprofile.rol == 'redaccion' %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'redaccion' %}">Redacción</a>
+                            <a class="nav-link" href="{% url 'redaccion' %}">Redacción de artículos para individualización</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'redaccion_bandas' %}">Redacción de artículos para bandas criminales</a>

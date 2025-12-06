@@ -385,6 +385,8 @@ class ArticuloSerializer(serializers.ModelSerializer):
             "descripcion",
             "categoria",
             "estado",
+            "zona_influencia",
+            "barrio",
             "fecha_creacion",
             "fecha_modificacion",
             "generado_por",

@@ -424,6 +424,16 @@ class Articulo(models.Model):
     fecha_leido_por_redaccion = models.DateTimeField(null=True, blank=True)
     fecha_aprobado_por_redaccion = models.DateTimeField(null=True, blank=True)
     aprobacion = models.BooleanField(default=False)
+    zona_influencia = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Zona o territorio al que se asocia el artículo.",
+    )
+    barrio = models.CharField(
+        max_length=150,
+        blank=True,
+        help_text="Barrio específico relacionado al hecho redactado.",
+    )
     
     class Meta:
         verbose_name_plural = "Artículos"

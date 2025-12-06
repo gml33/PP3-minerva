@@ -234,7 +234,7 @@ def redaccion_view(request):
 
 def _build_redaccion_context(
     request,
-    titulo="Redacción de Artículos",
+    titulo="Redacción de artículos para individualización",
     categoria_slug="individualizacion",
     categoria_nombre="Individualización",
     filtrar_articulos_por_categoria=False,
