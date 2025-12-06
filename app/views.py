@@ -232,7 +232,12 @@ def redaccion_view(request):
     return render(request, "redaccion.html", context)
 
 
-def _build_redaccion_context(request):
+def _build_redaccion_context(
+    request,
+    titulo="Redacción de Artículos",
+    categoria_slug="individualizacion",
+    categoria_nombre="Individualización",
+):
     solicitudes_usuario = (
         SolicitudInfo.objects.select_related("respondido_por")
         .prefetch_related("articulos")
@@ -242,7 +247,9 @@ def _build_redaccion_context(request):
     return {
         "solicitudes_usuario": solicitudes_usuario,
         "rol_usuario": request.user.userprofile.rol,
-        "titulo_pantalla": "Redacción de Artículos",
+        "titulo_pantalla": titulo,
+        "categoria_fija_slug": categoria_slug,
+        "categoria_fija_nombre": categoria_nombre,
     }
 
 
@@ -251,8 +258,12 @@ def redaccion_bandas_view(request):
     if not _user_has_panel_access(request.user, [Roles.REDACCION]):
         return render(request, "403.html", status=403)
 
-    context = _build_redaccion_context(request)
-    context["titulo_pantalla"] = "Redacción de artículos para bandas criminales"
+    context = _build_redaccion_context(
+        request,
+        titulo="Redacción de artículos para bandas criminales",
+        categoria_slug="bandas criminales",
+        categoria_nombre="Bandas criminales",
+    )
     return render(request, "redaccion.html", context)
 
 
