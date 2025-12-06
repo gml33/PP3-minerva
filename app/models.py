@@ -434,6 +434,16 @@ class Articulo(models.Model):
         blank=True,
         help_text="Barrio específico relacionado al hecho redactado.",
     )
+    localidad = models.CharField(
+        max_length=150,
+        blank=True,
+        help_text="Localidad asociada al hecho redactado.",
+    )
+    provincia = models.CharField(
+        max_length=150,
+        blank=True,
+        help_text="Provincia relacionada al hecho redactado.",
+    )
     
     class Meta:
         verbose_name_plural = "Artículos"

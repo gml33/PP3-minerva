@@ -238,6 +238,8 @@ def _build_redaccion_context(
     categoria_slug="individualizacion",
     categoria_nombre="Individualización",
     filtrar_articulos_por_categoria=False,
+    mostrar_selector_categoria=False,
+    es_panel_bandas=False,
 ):
     solicitudes_usuario = (
         SolicitudInfo.objects.select_related("respondido_por")
@@ -252,6 +254,8 @@ def _build_redaccion_context(
         "categoria_fija_slug": categoria_slug,
         "categoria_fija_nombre": categoria_nombre,
         "filtrar_articulos_por_categoria": filtrar_articulos_por_categoria,
+        "mostrar_selector_categoria": mostrar_selector_categoria,
+        "es_panel_bandas": es_panel_bandas,
     }
 
 
@@ -266,6 +270,8 @@ def redaccion_bandas_view(request):
         categoria_slug="bandas criminales",
         categoria_nombre="Bandas criminales",
         filtrar_articulos_por_categoria=True,
+        mostrar_selector_categoria=False,
+        es_panel_bandas=True,
     )
     return render(request, "redaccion.html", context)
 

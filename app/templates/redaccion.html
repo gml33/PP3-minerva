@@ -41,26 +41,44 @@
     <div class="card-header">Nuevo Artículo</div>
     <div class="card-body">
         <form id="formArticulo">
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <label class="form-label">Título</label>
-                    <input type="text" class="form-control" id="titulo" required>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label">Fecha del Hecho</label>
-                    <input type="date" class="form-control" id="fecha_hecho" required> <!-- CAMBIADO: id="fecha" → id="fecha_hecho" -->
-                </div>
+            <div class="mb-3">
+                <label class="form-label">Título</label>
+                <input type="text" class="form-control" id="titulo" required>
             </div>
             <div class="mb-3">
                 <label class="form-label">Descripción</label>
                 <textarea class="form-control" id="descripcion" rows="4" required></textarea>
             </div>
+            {% if mostrar_selector_categoria %}
             <div class="mb-3">
                 <label class="form-label">Categoría</label>
                 <select id="categoria" class="form-select">
                     <option value="">Seleccione una categoría</option>
                 </select>
             </div>
+            {% endif %}
+            {% if es_panel_bandas %}
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Barrio</label>
+                    <input type="text" id="barrio" class="form-control" placeholder="Barrio">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Zona de influencia</label>
+                    <input type="text" id="zona_influencia" class="form-control" placeholder="Zona de influencia">
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Localidad</label>
+                    <input type="text" id="localidad" class="form-control" placeholder="Localidad">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Provincia</label>
+                    <input type="text" id="provincia" class="form-control" placeholder="Provincia">
+                </div>
+            </div>
+            {% else %}
             
             <!-- NUEVO CAMPO: UBICACIÓN -->
             <div class="mb-3">
@@ -83,6 +101,7 @@
                 </div>
                 <button type="button" class="btn btn-sm btn-secondary" onclick="agregarUbicacion()">Agregar otra ubicación</button>
             </div>
+            {% endif %}
 
             <div class="mb-3">
                 <label class="form-label">Estado</label>
@@ -111,22 +130,47 @@
                             <label class="form-label" for="edit-titulo">Título</label>
                             <input type="text" class="form-control" id="edit-titulo" required>
                         </div>
+                        {% if not es_panel_bandas %}
                         <div class="col-md-6">
                             <label class="form-label" for="edit-fecha_hecho">Fecha del Hecho</label> <!-- CAMBIADO: for="edit-fecha" → for="edit-fecha_hecho" -->
                             <input type="date" class="form-control" id="edit-fecha_hecho" required> <!-- CAMBIADO: id="edit-fecha" → id="edit-fecha_hecho" -->
                         </div>
+                        {% endif %}
                     </div>
                     <div class="mb-3">
                         <label class="form-label" for="edit-descripcion">Descripción</label>
                         <textarea class="form-control" id="edit-descripcion" rows="4" required></textarea>
                     </div>
+                    {% if mostrar_selector_categoria %}
                     <div class="mb-3">
                         <label class="form-label" for="edit-categoria">Categoría</label>
                         <select id="edit-categoria" class="form-select">
                             <option value="">Seleccione una categoría</option>
                         </select>
                     </div>
-                    
+                    {% endif %}
+                    {% if es_panel_bandas %}
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Barrio</label>
+                            <input type="text" id="edit-barrio" class="form-control" placeholder="Barrio">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Zona de influencia</label>
+                            <input type="text" id="edit-zona_influencia" class="form-control" placeholder="Zona de influencia">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Localidad</label>
+                            <input type="text" id="edit-localidad" class="form-control" placeholder="Localidad">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Provincia</label>
+                            <input type="text" id="edit-provincia" class="form-control" placeholder="Provincia">
+                        </div>
+                    </div>
+                    {% else %}
                     <!-- NUEVO CAMPO: UBICACIÓN EN EDICIÓN -->
                     <div class="mb-3">
                         <label class="form-label">Ubicación</label>
@@ -135,6 +179,7 @@
                         </div>
                         <button type="button" class="btn btn-sm btn-secondary" onclick="agregarUbicacionEdicion()">Agregar otra ubicación</button>
                     </div>
+                    {% endif %}
 
                     <div class="mb-3">
                         <label class="form-label" for="edit-estado">Estado</label>
@@ -430,6 +475,8 @@
     const categoriaFijaNombre = "{{ categoria_fija_nombre|default:'Individualización'|escapejs }}";
     let categoriaFijaId = null;
     const filtrarArticulosPorCategoria = {{ filtrar_articulos_por_categoria|yesno:"true,false"|default:"false" }};
+    const mostrarSelectorCategoria = {{ mostrar_selector_categoria|yesno:"true,false"|default:"false" }};
+    const esPanelBandas = {{ es_panel_bandas|yesno:"true,false"|default:"false" }};
     let diariosDisponibles = [];
     let redesDisponibles = [];
     // Variables globales para la paginación
@@ -453,13 +500,6 @@
         await Promise.all([cargarDiarios(), cargarRedesSociales()]);
         actualizarCampoFiltroOrigen();
         await cargarLinksAprobados();
-        
-        // Establecer fecha actual por defecto
-        const fechaInput = document.getElementById('fecha_hecho'); // CAMBIADO: 'fecha' → 'fecha_hecho'
-        if (fechaInput) {
-            const today = new Date().toISOString().split('T')[0];
-            fechaInput.value = today;
-        }
         
         // Cargar artículos con retardo para evitar conflictos
         setTimeout(() => {
@@ -935,24 +975,37 @@
     document.getElementById("formArticulo").addEventListener("submit", async e => {
         e.preventDefault();
         const titulo = document.getElementById("titulo").value;
-        const fecha_hecho = document.getElementById("fecha_hecho").value; // CAMBIADO: fecha → fecha_hecho
         const descripcion = document.getElementById("descripcion").value;
-        const categoria = document.getElementById("categoria").value;
+        const categoriaSeleccionada = mostrarSelectorCategoria
+            ? (document.getElementById("categoria")?.value || "")
+            : (categoriaFijaId || "");
+        const categoria = categoriaSeleccionada || null;
         const estado = document.getElementById("estado").value;
         const links = [...document.querySelectorAll('input[name="link_seleccionado"]:checked')]
             .map(cb => parseInt(cb.value));
         
-        // NUEVOS CAMPOS: Obtener ubicaciones
-        const ubicaciones = obtenerUbicaciones();
+        const ubicaciones = esPanelBandas ? [] : obtenerUbicaciones();
+        const barrio = esPanelBandas ? (document.getElementById("barrio")?.value || "") : "";
+        const zonaInfluencia = esPanelBandas ? (document.getElementById("zona_influencia")?.value || "") : "";
+        const localidad = esPanelBandas ? (document.getElementById("localidad")?.value || "") : "";
+        const provincia = esPanelBandas ? (document.getElementById("provincia")?.value || "") : "";
+
+        if (!mostrarSelectorCategoria && !categoria) {
+            mostrarToast("No se pudo asignar la categoría fija. Intentá recargar la página.", "danger");
+            return;
+        }
 
         const payload = JSON.stringify({
             titulo,
-            fecha_hecho, // CAMBIADO: fecha → fecha_hecho
             descripcion,
             categoria,
             estado,
             links_incluidos: links,
-            ubicaciones: ubicaciones // Nuevo campo
+            ubicaciones: ubicaciones,
+            zona_influencia: zonaInfluencia,
+            barrio,
+            localidad,
+            provincia,
         });
 
         try {
@@ -973,14 +1026,6 @@
             }
 
             e.target.reset();
-            
-            // Restablecer fecha actual
-            const fechaInput = document.getElementById('fecha_hecho'); // CAMBIADO: 'fecha' → 'fecha_hecho'
-            if (fechaInput) {
-                const today = new Date().toISOString().split('T')[0];
-                fechaInput.value = today;
-            }
-            
             articuloEditandoId = null;
             cargarLinksAprobados();
             cargarArticulosAcordeon();
@@ -999,24 +1044,39 @@
             }
 
             const titulo = document.getElementById("edit-titulo").value;
-            const fecha_hecho = document.getElementById("edit-fecha_hecho").value; // CAMBIADO: fecha → fecha_hecho
+            const fechaInput = document.getElementById("edit-fecha_hecho");
+            const fecha_hecho = fechaInput ? fechaInput.value : null;
             const descripcion = document.getElementById("edit-descripcion").value;
-            const categoria = document.getElementById("edit-categoria").value;
+            const categoriaSeleccionada = mostrarSelectorCategoria
+                ? (document.getElementById("edit-categoria")?.value || "")
+                : (categoriaFijaId || "");
+            const categoria = categoriaSeleccionada || null;
+            if (!mostrarSelectorCategoria && !categoria) {
+                mostrarToast("No se pudo asignar la categoría fija. Intentá recargar la página.", "danger");
+                return;
+            }
             const estado = document.getElementById("edit-estado").value;
             const links = [...document.querySelectorAll('input[name="link_seleccionado"]:checked')]
                 .map(cb => parseInt(cb.value));
             
-            // NUEVOS CAMPOS: Obtener ubicaciones en edición
-            const ubicaciones = obtenerUbicacionesEdicion();
+            const ubicaciones = esPanelBandas ? [] : obtenerUbicacionesEdicion();
+            const barrio = esPanelBandas ? (document.getElementById("edit-barrio")?.value || "") : "";
+            const zonaInfluencia = esPanelBandas ? (document.getElementById("edit-zona_influencia")?.value || "") : "";
+            const localidad = esPanelBandas ? (document.getElementById("edit-localidad")?.value || "") : "";
+            const provincia = esPanelBandas ? (document.getElementById("edit-provincia")?.value || "") : "";
 
             const payload = JSON.stringify({ 
                 titulo, 
-                fecha_hecho, // CAMBIADO: fecha → fecha_hecho
+                fecha_hecho, 
                 descripcion, 
                 categoria, 
                 estado, 
                 links_incluidos: links,
-                ubicaciones: ubicaciones // Nuevo campo
+                ubicaciones: ubicaciones,
+                zona_influencia: zonaInfluencia,
+                barrio,
+                localidad,
+                provincia,
             });
 
             try {
@@ -1276,16 +1336,32 @@
             }
 
             document.getElementById("edit-titulo").value = art.titulo || "";
-            document.getElementById("edit-fecha_hecho").value = art.fecha_hecho || ""; // CAMBIADO: fecha → fecha_hecho
+            const editFecha = document.getElementById("edit-fecha_hecho");
+            if (editFecha) {
+                editFecha.value = art.fecha_hecho || "";
+            }
             document.getElementById("edit-descripcion").value = art.descripcion || "";
-            document.getElementById("edit-categoria").value = categoriaId || "";
+            const editCategoria = document.getElementById("edit-categoria");
+            if (editCategoria) {
+                editCategoria.value = categoriaId || "";
+            }
             document.getElementById("edit-estado").value = art.estado || "en redaccion";
 
-            // NUEVO: Cargar ubicaciones en edición
-            if (art.ubicaciones && Array.isArray(art.ubicaciones)) {
-                cargarUbicacionesEdicion(art.ubicaciones);
+            if (esPanelBandas) {
+                const editBarrio = document.getElementById("edit-barrio");
+                if (editBarrio) editBarrio.value = art.barrio || "";
+                const editZona = document.getElementById("edit-zona_influencia");
+                if (editZona) editZona.value = art.zona_influencia || "";
+                const editLocalidad = document.getElementById("edit-localidad");
+                if (editLocalidad) editLocalidad.value = art.localidad || "";
+                const editProvincia = document.getElementById("edit-provincia");
+                if (editProvincia) editProvincia.value = art.provincia || "";
             } else {
-                cargarUbicacionesEdicion([]);
+                if (art.ubicaciones && Array.isArray(art.ubicaciones)) {
+                    cargarUbicacionesEdicion(art.ubicaciones);
+                } else {
+                    cargarUbicacionesEdicion([]);
+                }
             }
 
             document.querySelectorAll('input[name="link_seleccionado"]').forEach(cb => {
@@ -1345,11 +1421,24 @@
             document.getElementById("modalVerDescripcion").textContent = art.descripcion;
 
             // Mostrar ubicaciones
-            const ubicacionesTexto = art.ubicaciones && Array.isArray(art.ubicaciones) && art.ubicaciones.length > 0
-                ? art.ubicaciones.map(ubicacion => 
-                    `${ubicacion.calle || ''} ${ubicacion.numero || ''} ${ubicacion.barrio || ''} ${ubicacion.localidad || ''}`
-                  ).filter(text => text.trim()).join(', ')
-                : 'No especificada';
+            let ubicacionesTexto = 'No especificada';
+            if (esPanelBandas) {
+                const partes = [
+                    art.barrio || "",
+                    art.localidad || "",
+                    art.provincia || "",
+                    art.zona_influencia ? `Zona: ${art.zona_influencia}` : "",
+                ].filter(parte => (parte || "").toString().trim());
+                ubicacionesTexto = partes.length ? partes.join(" · ") : 'No especificada';
+            } else if (art.ubicaciones && Array.isArray(art.ubicaciones) && art.ubicaciones.length > 0) {
+                ubicacionesTexto = art.ubicaciones
+                    .map(ubicacion =>
+                        `${ubicacion.calle || ''} ${ubicacion.numero || ''} ${ubicacion.barrio || ''} ${ubicacion.localidad || ''}`.trim()
+                    )
+                    .filter(text => text)
+                    .join(', ');
+                ubicacionesTexto = ubicacionesTexto || 'No especificada';
+            }
             document.getElementById("modalVerUbicacion").textContent = ubicacionesTexto || 'No especificada';
 
             document.getElementById("modalVerLinks").innerHTML = Array.isArray(art.links_incluidos) && art.links_incluidos.length
