@@ -175,8 +175,6 @@ def login_view(request):
                 return redirect("redaccion")
             elif rol == Roles.ADMIN:
                 return redirect("actividad")
-            elif rol == Roles.INFORMES:
-                return redirect("informes")
             elif rol == Roles.GERENCIA:
                 return redirect("estadisticas")
             elif rol == Roles.GERENTE_PRODUCCION:
@@ -1117,7 +1115,7 @@ def banda_criminal_eliminar_view(request, pk):
 def crear_banda_rapida_view(request):
     if request.method != "POST":
         return JsonResponse({"error": "Método no permitido"}, status=405)
-    if not _user_has_panel_access(request.user, [Roles.INFORMES, Roles.GERENCIA]):
+    if not _user_has_panel_access(request.user, [Roles.EDITOR, Roles.GERENCIA]):
         return JsonResponse({"error": "No autorizado"}, status=403)
     try:
         payload = json.loads(request.body.decode("utf-8"))
@@ -1722,7 +1720,7 @@ class LinkRelevanteViewSet(viewsets.ModelViewSet):
             rol = user.userprofile.rol
             if rol == Roles.PRENSA:
                 queryset = queryset.filter(cargado_por=user)
-            elif rol in [Roles.CLIENTE, Roles.INFORMES]:
+            elif rol in [Roles.CLIENTE, Roles.EDITOR]:
                 queryset = queryset.filter(estado="aprobado")
             elif rol == Roles.CLASIFICADOR_IA:
                 queryset = queryset.filter(
@@ -1861,7 +1859,7 @@ class LinkRedSocialViewSet(viewsets.ModelViewSet):
             rol = user.userprofile.rol
             if rol == Roles.PRENSA:
                 queryset = queryset.filter(cargado_por=user)
-            elif rol in [Roles.CLIENTE, Roles.INFORMES]:
+            elif rol in [Roles.CLIENTE, Roles.EDITOR]:
                 queryset = queryset.filter(estado=EstadoLink.APROBADO)
 
         estado = self.request.query_params.get("estado")
@@ -1977,7 +1975,7 @@ class LinkTvDigitalViewSet(viewsets.ModelViewSet):
             rol = user.userprofile.rol
             if rol == Roles.PRENSA:
                 queryset = queryset.filter(cargado_por=user)
-            elif rol in [Roles.CLIENTE, Roles.INFORMES]:
+            elif rol in [Roles.CLIENTE, Roles.EDITOR]:
                 queryset = queryset.filter(estado=EstadoLink.APROBADO)
 
         estado = self.request.query_params.get("estado")
@@ -2093,7 +2091,7 @@ class LinkRadioDigitalViewSet(viewsets.ModelViewSet):
             rol = user.userprofile.rol
             if rol == Roles.PRENSA:
                 queryset = queryset.filter(cargado_por=user)
-            elif rol in [Roles.CLIENTE, Roles.INFORMES]:
+            elif rol in [Roles.CLIENTE, Roles.EDITOR]:
                 queryset = queryset.filter(estado=EstadoLink.APROBADO)
 
         estado = self.request.query_params.get("estado")
@@ -2744,7 +2742,7 @@ def api_links(request):
     rol = request.user.userprofile.rol
     if rol == Roles.PRENSA:
         qs = qs.filter(cargado_por=request.user)
-    elif rol in [Roles.CLIENTE, Roles.INFORMES]:
+    elif rol in [Roles.CLIENTE, Roles.EDITOR]:
         qs = qs.filter(estado='aprobado')
 
     if estado:
@@ -2797,7 +2795,7 @@ def lista_links(request):
 
 @login_required
 def informes_view(request):
-    if not _user_has_panel_access(request.user, [Roles.INFORMES, Roles.GERENCIA]):
+    if not _user_has_panel_access(request.user, [Roles.EDITOR, Roles.GERENCIA]):
         return render(request, "403.html", status=403)
 
     # ------------------ FILTRO DE ARTÍCULOS ------------------
@@ -2855,7 +2853,7 @@ def informes_view(request):
 
 @login_required
 def informes_crear_view(request):
-    if not _user_has_panel_access(request.user, [Roles.INFORMES, Roles.GERENCIA, Roles.EDITOR]):
+    if not _user_has_panel_access(request.user, [Roles.EDITOR, Roles.GERENCIA]):
         return render(request, "403.html", status=403)
 
     # ------------------ INFORMES (Lista para la tabla lateral) -------------------
@@ -3136,7 +3134,7 @@ def api_detalle_informe(request, id):
 def eliminar_informe_view(request, id):
     informe = get_object_or_404(InformeIndividual, id=id)
     puede_eliminar = (
-        _user_has_panel_access(request.user, [Roles.INFORMES, Roles.GERENCIA])
+        _user_has_panel_access(request.user, [Roles.EDITOR, Roles.GERENCIA])
         or informe.generado_por_id == request.user.id
     )
     if not puede_eliminar:
@@ -3289,7 +3287,7 @@ def consulta_informes_view(request):
 def editar_individuo_view(request, id):
     # CORRECCIÓN: La vista original estaba mezclando crear y editar. La forma más limpia
     # es usar esta función solo para editar. La creación se hace en informes_crear_view (POST).
-    if not _user_has_panel_access(request.user, [Roles.INFORMES, Roles.GERENCIA]):
+    if not _user_has_panel_access(request.user, [Roles.EDITOR, Roles.GERENCIA]):
         return render(request, "403.html", status=403)
         
     # El `id` es obligatorio para editar
@@ -3838,7 +3836,7 @@ def _obtener_estadisticas_redaccion(desde=None, hasta=None):
 
 def _obtener_estadisticas_informes(desde=None, hasta=None):
     usuarios = list(
-        User.objects.filter(userprofile__rol=Roles.INFORMES)
+        User.objects.filter(userprofile__rol=Roles.EDITOR)
         .order_by("first_name", "last_name", "username")
     )
 
@@ -4989,7 +4987,7 @@ def exportar_informe_pdf(request, informe_id):
     # VERIFICACIÓN ESPECÍFICA PARA cliente1 Y ROL CLIENTE - MODIFICADO
     if not (
         request.user.userprofile.rol
-        in [Roles.ADMIN, Roles.GERENCIA, Roles.CLIENTE, Roles.INFORMES]
+        in [Roles.ADMIN, Roles.GERENCIA, Roles.CLIENTE, Roles.EDITOR]
         or request.user.username == "cliente1"
     ):
         return render(request, "403.html", status=403)
